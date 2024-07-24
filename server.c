@@ -94,10 +94,19 @@ bool put(int id, point_t pos) {
     return false;
 }
 
+int check_draw(board_t bd) {
+    for (int i = 0; i < BOARD_SIZE; i++) {
+        for (int j = 0; j < BOARD_SIZE; j++) {
+            if (!bd[i][j]) return 0;
+        }
+    }
+    return 1;
+}
+
 int check(board_t bd, point_t pos) {
     int id = bd[pos.x][pos.y];
     if (!id) return 0;
-    int arrows[8][2] = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}, {1, 1}, {-1, 1}, {1, -1}, {-1, -1}};
+    static const int arrows[8][2] = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}, {1, 1}, {-1, 1}, {1, -1}, {-1, -1}};
     for (int i = 0; i < 8; i++) {
         int a = arrows[i][0], b = arrows[i][1];
         for (int k = -WIN_LENGTH + 1; k <= 0; k++) {
@@ -131,29 +140,26 @@ int game(bool reverse_flag) {
         while (put(1, pos = player1(board))) { loge("invalid position!"); }
         print(board);
         refresh();
-        if (check(board, pos)) {
-            log("player1 wins.");
-            return 1;
-        }
+        if (check_draw(board)) { log("draw"); return 0; }
+        if (check(board, pos)) { log("player1 wins."); return 1; }
+
         log("player2's turn.");
         while (put(2, pos = player2(board))) { loge("invalid position!"); }
         print(board);
         refresh();
-        if (check(board, pos)) {
-            log("player2 wins.");
-            return 2;
-        }
+        if (check_draw(board)) { log("draw"); return 0; }
+        if (check(board, pos)) { log("player2 wins."); return 2; }
         //test(board);
     }
 }
 
-int result[3];
+int result[5];
 
 void signal_handler(int signum) {
     log("received signal %d, terminate.", signum);
     int r1 = result[1], r2 = result[2];
     if (r1 + r2) {
-        log("result: %d / %d (%.2lf%%).", r1, r2, (double)r1 / (r1 + r2) * 100);
+        log("result: p1/p2/draw: %d/%d/%d (%.2lf%%), 1st/2nd: %d/%d (%.2lf%%)", r1, r2, result[0], (double)r1 / (r1 + r2) * 100, result[3], result[4], (double)result[3] / (r1 + r2) * 100);
     }
     exit(0);
 }
@@ -161,10 +167,18 @@ void signal_handler(int signum) {
 int main() {
     signal(SIGINT, signal_handler);
     while (1) {
-        result[game(0)]++;
-        log("result: %d / %d", result[1], result[2]);
-        result[game(1)]++;
-        log("result: %d / %d", result[1], result[2]);
+        int res = game(0);
+        result[res]++;
+        if (res) {
+            result[(res != 1) + 3]++;
+        }
+        log("result: p1/p2/draw: %d/%d/%d, 1st/2nd: %d/%d", result[1], result[2], result[0], result[3], result[4]);
+        res = game(1);
+        result[res]++;
+        if (res) {
+            result[(res != 2) + 3]++;
+        }
+        log("result: p1/p2/draw: %d/%d/%d, 1st/2nd: %d/%d", result[1], result[2], result[0], result[3], result[4]);
     }
     return 0;
 }

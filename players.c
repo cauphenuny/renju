@@ -55,10 +55,10 @@ point_t manual(const board_t board) {
 const int CAPACITY = sizeof(board_t) / sizeof(int);
 
 #ifndef TIME_LIMIT
-    #define TIME_LIMIT 15000
+    #define TIME_LIMIT 5000
 #endif
 
-void encode(const board_t src, uint64_t dest[]) {
+void encode(const board_t src, uint32_t dest[]) {
     for (int i = 0; i < BOARD_SIZE; i++) {
         dest[i] = 0;
         for (int j = BOARD_SIZE - 1; j >= 0; j--) {
@@ -68,9 +68,9 @@ void encode(const board_t src, uint64_t dest[]) {
     }
 }
 
-void decode(const uint64_t src[], board_t dest) {
+void decode(const uint32_t src[], board_t dest) {
     for (int i = 0; i < BOARD_SIZE; i++) {
-        uint64_t tmp = src[i];
+        uint32_t tmp = src[i];
         for (int j = 0; j < BOARD_SIZE; j++) {
             dest[i][j] = tmp & 3;
             tmp >>= 2;
@@ -79,8 +79,8 @@ void decode(const uint64_t src[], board_t dest) {
 }
 
 typedef struct {
-    uint64_t board[BOARD_SIZE];
-    uint64_t visited[BOARD_SIZE];
+    uint32_t board[BOARD_SIZE];
+    uint32_t visited[BOARD_SIZE];
     int piece_cnt;
     int visited_cnt;
     int result;
@@ -101,7 +101,13 @@ typedef struct node_t {
     struct node_t* next;
 } node_t;
 
-state_t create_state(uint64_t *board, point_t pos) {
+#define MAX_TREE_SIZE 20001000
+#define NODE_LIMIT 20000000
+
+node_t *memory_pool;
+int tot;
+
+state_t create_state(uint32_t *board, point_t pos) {
     state_t st;
     memset(&st, 0, sizeof(state_t));
     memcpy(st.board, board, sizeof(st.board));
@@ -124,7 +130,9 @@ state_t create_state(uint64_t *board, point_t pos) {
 }
 
 node_t* create_node(state_t state) {
-    node_t* node = (node_t*)malloc(sizeof(node_t));
+    if (tot >= NODE_LIMIT) return NULL;
+    node_t* node = memory_pool + tot;
+    tot++;
     memset(node, 0, sizeof(node_t));
     memcpy(&node->state, &state, sizeof(state_t));
     return node;
@@ -150,19 +158,40 @@ int delete_tree(node_t* node) {
     return size;
 }
 
-double C;
+double C, D;
+int E;
 
 #undef log
-double eval(node_t* node, bool flag) {
-    double f1 = (double)node->state.result / node->state.count;
-    if (flag) f1 = 1 - f1;
+double ucb_eval(node_t* node, int flag) {
+    int win_cnt = node->state.count + flag * node->state.result;
+    double f1 = (double)win_cnt / node->state.count;
     double f2 = sqrt(log(node->parent->state.count) / node->state.count);
     return f1 + C * f2;
 }
 #define log logi
+double mix_eval(node_t* node, int flag) {
+    double f1 = (double)node->state.result * flag / node->state.count;
+    double f2 = (double)node->state.count / node->parent->state.count;
+    return f1 + D * f2;
+}
+
+node_t* mix_select(node_t* parent) {
+    if (parent->son == NULL) return parent;
+    node_t *cur = parent->son, *sel = cur;
+    int flag = (parent->state.id == 1) ? 1 : -1;
+    while (cur != NULL) {
+        if (mix_eval(cur, flag) > mix_eval(sel, flag)) {
+            sel = cur;
+        }
+        cur = cur->next;
+    }
+    return sel;
+}
 
 node_t* count_select(node_t* parent) {
+    if (parent->son == NULL) return parent;
     node_t *cur = parent->son, *sel = cur;
+    //int flag = (parent->state.id == 1) ? 1 : -1;
     while (cur != NULL) {
         if (cur->state.count > sel->state.count) {
             sel = cur;
@@ -173,9 +202,9 @@ node_t* count_select(node_t* parent) {
 }
 node_t* ucb_select(node_t* parent) {
     node_t *cur = parent->son, *sel = cur;
-    bool flag = (parent->state.id != 1);
+    int flag = (parent->state.id == 1) ? 1 : -1;
     while (cur != NULL) {
-        if (eval(cur, flag) > eval(sel, flag)) {
+        if (ucb_eval(cur, flag) > ucb_eval(sel, flag)) {
             sel = cur;
         }
         cur = cur->next;
@@ -213,6 +242,7 @@ node_t* traverse(node_t* parent) {
         state_t st = create_state(parent->state.board, p);
         set(parent->state.board, i, j, 0);
         node_t* node = create_node(st);
+        if (node == NULL) return NULL;
         append_child(parent, node);
         set(parent->state.visited, i, j, 1);
         parent->state.visited_cnt++;
@@ -253,7 +283,7 @@ void backpropagate(node_t* node, int score) {
 point_t mcts(const board_t board, int id) {
     reset_time();
     log("start searching.");
-    uint64_t zip[BOARD_SIZE];
+    uint32_t zip[BOARD_SIZE];
     encode(board, zip);
     point_t p = {0, 0};
     for (int i = 0; i < BOARD_SIZE; i++) {
@@ -265,37 +295,52 @@ point_t mcts(const board_t board, int id) {
     }
     node_t *root = create_node(create_state(zip, p));
     if (root->state.piece_cnt == 0) return (point_t){BOARD_SIZE / 2, BOARD_SIZE / 2};
-    while (get_time() < TIME_LIMIT) {
+    int cnt = 0, tim;
+    double keyframe[5] = {0, 0.7, 0.9, 0.95, 0.97};
+    while ((tim = get_time()) < TIME_LIMIT) {
     //while (count_select(root)->state.count < 10000) {
-        node_t *leaf = traverse(root);
-        backpropagate(leaf, leaf->state.score == 1 ? 1 : 0);
+        cnt++;
+        node_t *leaf, *start = root;
+        if (cnt % E == 0) {
+            for (int i = 1; i < 5; i++) {
+                if (tim > TIME_LIMIT * keyframe[i]) {
+                    start = count_select(start);
+                } else {
+                    break;
+                }
+            }
+        }
+        leaf = traverse(start);
+        if (leaf != NULL) backpropagate(leaf, leaf->state.score);
     }
     node_t *move = count_select(root);
     state_t st = move->state;
-    int size = delete_tree(root);
-    double rate = (double)st.result / st.count * 100;
-    if (id == 2) {
-        rate = 100 - rate;
-    }
-    log("consumption: %d ms, %d nodes; result: %.1lf%% (%d).", get_time(), size, rate, st.count);
+    //int size = delete_tree(root);
+    double rate;
+    if (id == 1) rate = (double)(st.count + st.result) / 2 / st.count * 100;
+    else         rate = (double)(st.count - st.result) / 2 / st.count * 100;
+    log("consumption: %d ms, %d nodes.", get_time(), tot);
+    log("result: %.2lf%% (%d).", rate, st.count);
+    tot = 0;
     return st.pos;
 }
 
 /****************************  export ****************************/
 
 point_t player1(const board_t board) {
-    C = 1.414;
+    C = 1.414, D = 100, E = 100;
     return mcts(board, 1);
     //return manual(board);
 }
 
 point_t player2(const board_t board) {
-    //C = 1;
+    //C = 1.414, D = 100, E = 200;
     //return mcts(board, 2);
     return manual(board);
 }
 
 void players_init() {
     srand((unsigned)time(0));
+    memory_pool = (node_t*)malloc(MAX_TREE_SIZE * sizeof(node_t));
     //base_init();
 }
