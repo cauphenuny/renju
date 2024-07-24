@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
+#include <signal.h>
 #include "util.h"
 #include "board.h"
 #include "players.h"
@@ -114,10 +115,17 @@ int check(board_t bd, point_t pos) {
     return 0;
 }
 
-int main() {
+int game(bool reverse_flag) {
     players_init();
+    memset(board, 0, sizeof(board));
     print(board);
     point_t pos;
+    if (reverse_flag) {
+        log("player2's turn.");
+        while (put(2, pos = player2(board))) { loge("invalid position!"); }
+        print(board);
+        refresh();
+    }
     while (1) {
         log("player1's turn.");
         while (put(1, pos = player1(board))) { loge("invalid position!"); }
@@ -125,7 +133,7 @@ int main() {
         refresh();
         if (check(board, pos)) {
             log("player1 wins.");
-            return 0;
+            return 1;
         }
         log("player2's turn.");
         while (put(2, pos = player2(board))) { loge("invalid position!"); }
@@ -133,9 +141,30 @@ int main() {
         refresh();
         if (check(board, pos)) {
             log("player2 wins.");
-            return 0;
+            return 2;
         }
         //test(board);
+    }
+}
+
+int result[3];
+
+void signal_handler(int signum) {
+    log("received signal %d, terminate.", signum);
+    int r1 = result[1], r2 = result[2];
+    if (r1 + r2) {
+        log("result: %d / %d (%.2lf%%).", r1, r2, (double)r1 / (r1 + r2) * 100);
+    }
+    exit(0);
+}
+
+int main() {
+    signal(SIGINT, signal_handler);
+    while (1) {
+        result[game(0)]++;
+        log("result: %d / %d", result[1], result[2]);
+        result[game(1)]++;
+        log("result: %d / %d", result[1], result[2]);
     }
     return 0;
 }

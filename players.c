@@ -55,7 +55,7 @@ point_t manual(const board_t board) {
 const int CAPACITY = sizeof(board_t) / sizeof(int);
 
 #ifndef TIME_LIMIT
-    #define TIME_LIMIT 20000
+    #define TIME_LIMIT 15000
 #endif
 
 void encode(const board_t src, uint64_t dest[]) {
@@ -150,15 +150,14 @@ int delete_tree(node_t* node) {
     return size;
 }
 
-#ifndef C
-    #define C 1
-#endif
+double C;
 
 #undef log
-double eval(node_t* node, int flag) {
+double eval(node_t* node, bool flag) {
     double f1 = (double)node->state.result / node->state.count;
+    if (flag) f1 = 1 - f1;
     double f2 = sqrt(log(node->parent->state.count) / node->state.count);
-    return flag * f1 + C * f2;
+    return f1 + C * f2;
 }
 #define log logi
 
@@ -174,7 +173,7 @@ node_t* count_select(node_t* parent) {
 }
 node_t* ucb_select(node_t* parent) {
     node_t *cur = parent->son, *sel = cur;
-    int flag = (parent->state.id == 1) ? 1 : -1;
+    bool flag = (parent->state.id != 1);
     while (cur != NULL) {
         if (eval(cur, flag) > eval(sel, flag)) {
             sel = cur;
@@ -269,23 +268,29 @@ point_t mcts(const board_t board, int id) {
     while (get_time() < TIME_LIMIT) {
     //while (count_select(root)->state.count < 10000) {
         node_t *leaf = traverse(root);
-        backpropagate(leaf, leaf->state.score);
+        backpropagate(leaf, leaf->state.score == 1 ? 1 : 0);
     }
     node_t *move = count_select(root);
     state_t st = move->state;
     int size = delete_tree(root);
-    log("consumption: %dms, %d nodes; result: %d/%d.", get_time(), size, st.result, st.count);
+    double rate = (double)st.result / st.count * 100;
+    if (id == 2) {
+        rate = 100 - rate;
+    }
+    log("consumption: %d ms, %d nodes; result: %.1lf%% (%d).", get_time(), size, rate, st.count);
     return st.pos;
 }
 
 /****************************  export ****************************/
 
 point_t player1(const board_t board) {
+    C = 1.414;
     return mcts(board, 1);
     //return manual(board);
 }
 
 point_t player2(const board_t board) {
+    //C = 1;
     //return mcts(board, 2);
     return manual(board);
 }
