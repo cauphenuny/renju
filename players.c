@@ -7,6 +7,7 @@
 #include <time.h>
 #include <math.h>
 #include <assert.h>
+#include <stdint.h>
 
 #include "util.h"
 #include "board.h"
@@ -54,7 +55,7 @@ point_t manual(const board_t board) {
 const int CAPACITY = sizeof(board_t) / sizeof(int);
 
 #ifndef TIME_LIMIT
-    #define TIME_LIMIT 10000
+    #define TIME_LIMIT 20000
 #endif
 
 void encode(const board_t src, uint64_t dest[]) {
@@ -150,7 +151,7 @@ int delete_tree(node_t* node) {
 }
 
 #ifndef C
-    #define C 1.414
+    #define C 1
 #endif
 
 #undef log
@@ -188,7 +189,7 @@ bool terminated(state_t st) {
     return false;
 }
 
-node_t* select(node_t* parent) {
+node_t* traverse(node_t* parent) {
     if (terminated(parent->state)) {
         //board_t b;
         //decode(parent->state.board, b);
@@ -216,9 +217,9 @@ node_t* select(node_t* parent) {
         append_child(parent, node);
         set(parent->state.visited, i, j, 1);
         parent->state.visited_cnt++;
-        return select(node);
+        return traverse(node);
     } else {
-        return select(ucb_select(parent));
+        return traverse(ucb_select(parent));
     }
 }
 
@@ -267,7 +268,7 @@ point_t mcts(const board_t board, int id) {
     if (root->state.piece_cnt == 0) return (point_t){BOARD_SIZE / 2, BOARD_SIZE / 2};
     while (get_time() < TIME_LIMIT) {
     //while (count_select(root)->state.count < 10000) {
-        node_t *leaf = select(root);
+        node_t *leaf = traverse(root);
         backpropagate(leaf, leaf->state.score);
     }
     node_t *move = count_select(root);
@@ -280,13 +281,13 @@ point_t mcts(const board_t board, int id) {
 /****************************  export ****************************/
 
 point_t player1(const board_t board) {
-    //return mcts(board, 1);
-    return manual(board);
+    return mcts(board, 1);
+    //return manual(board);
 }
 
 point_t player2(const board_t board) {
-    return mcts(board, 2);
-    //return manual(board);
+    //return mcts(board, 2);
+    return manual(board);
 }
 
 void players_init() {

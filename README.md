@@ -1,2 +1,8 @@
 # gomoku
 
+usage
+
+```
+make run
+```
+

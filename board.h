@@ -1,5 +1,5 @@
 #pragma once
-#define BOARD_SIZE 10
+#define BOARD_SIZE 15
 #define WIN_LENGTH 5
 
 typedef struct {
