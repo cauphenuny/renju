@@ -162,8 +162,9 @@ int game(int id) {
     int player_types[2] = {MCTS, MANUAL};
     while (1) {
         log("player%d's turn.", id);
-        while (put(id, pos = move(player_types[id], board, id))) {
+        if (put(id, pos = move(player_types[id], board, id))) {
             loge("invalid position!");
+            exit(0);
         }
         print(board);
         refresh();
