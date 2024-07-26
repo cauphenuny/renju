@@ -159,7 +159,7 @@ int game(int id) {
     memset(board, 0, sizeof(board));
     print(board);
     point_t pos;
-    int player_types[2] = {MCTS, MCTS};
+    int player_types[2] = {MCTS, MANUAL};
     while (1) {
         log("player%d's turn.", id);
         while (put(id, pos = move(player_types[id], board, id))) {

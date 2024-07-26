@@ -1,3 +1,5 @@
+// author: Cauphenuny <https://cauphenuny.github.io/>
+// date: 2024/07/26
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>

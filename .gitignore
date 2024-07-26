@@ -1,6 +1,6 @@
 **/.DS_Store
 *.o
-gomoku
+gomoku*
 bin/*
 legacy/*
 **/*.swp

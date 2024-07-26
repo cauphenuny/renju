@@ -414,14 +414,14 @@ point_t mcts(const board_t board, int id, mcts_parm_t parm) {
   {
     int tim;
     int cnt = 0;
-    double keyframe[5] = {0, 0.7, 0.9, 0.95, 0.97};
+    double keyframe[5] = {0, 0.7, 0.9, 0.95}; //TODO
     log("start searching.");
     while ((tim = get_time()) < TIME_LIMIT) {
     //while (count_select(root)->state.count < 10000) {
         node_t *leaf, *start = root;
         cnt++;
         if (cnt % parm.M == 0) {
-            for (int i = 1; i < 5; i++) {
+            for (int i = 1; i < 4; i++) {
                 if (tim > TIME_LIMIT * keyframe[i]) {
                     start = count_select(start);
                 } else {
