@@ -21,7 +21,7 @@
 const int CAPACITY = sizeof(board_t) / sizeof(int);
 
 #ifndef TIME_LIMIT
-    #define TIME_LIMIT 3000
+    #define TIME_LIMIT 5000
 #endif
 
 void encode(const board_t src, uint32_t dest[]) {
@@ -420,7 +420,7 @@ point_t mcts(const board_t board, int id, mcts_parm_t parm) {
     //while (count_select(root)->state.count < 10000) {
         node_t *leaf, *start = root;
         cnt++;
-        if (cnt % parm.M == 0) {
+        if (parm.M && cnt % parm.M == 0) {
             for (int i = 1; i < 4; i++) {
                 if (tim > TIME_LIMIT * keyframe[i]) {
                     start = count_select(start);
