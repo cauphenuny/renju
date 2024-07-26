@@ -1,4 +1,5 @@
 // author: Cauphenuny <https://cauphenuny.github.io/>
+// date: 2024/07/24
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -54,7 +55,7 @@ void print(const board_t bd) {
         "\033[" CLI_STYLE_UNDERLINE "m\033[" CLI_STYLE_BOLD ";" CLI_COLOR_GREEN "mo\033[0m",
         "\033[" CLI_STYLE_UNDERLINE "m\033[" CLI_STYLE_BOLD ";" CLI_COLOR_RED "mx\033[0m",
     };
-    int top, bottom, left, right;
+    int top = 0, bottom = BOARD_SIZE, left = 0, right = BOARD_SIZE;
     wrap_area(bd, &top, &bottom, &left, &right, 3);
     printf("   |");
     for (int i = left; i < right; i++) {
@@ -106,79 +107,97 @@ int check_draw(board_t bd) {
 int check(board_t bd, point_t pos) {
     int id = bd[pos.x][pos.y];
     if (!id) return 0;
-    static const int arrows[8][2] = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}, {1, 1}, {-1, 1}, {1, -1}, {-1, -1}};
-    for (int i = 0; i < 8; i++) {
-        int a = arrows[i][0], b = arrows[i][1];
-        for (int k = -WIN_LENGTH + 1; k <= 0; k++) {
-            bool flag = true;
-            for (int j = 0; j < WIN_LENGTH ; j++) {
-                point_t np = {pos.x + (j + k) * a, pos.y + (j + k) * b};
-                if (!inboard(np) || (bd[np.x][np.y] != id)) {
-                    flag = 0;
-                    break;
-                }
-            }
-            if (flag) return id == 1 ? 1 : -1;
+    static const int arrows[4][2] = {{0, 1}, {1, 0}, {1, 1}, {-1, 1}};
+    for (int i = 0, a, b, cnt; i < 4; i++) {
+        a = arrows[i][0], b = arrows[i][1];
+        point_t np = {pos.x, pos.y};
+        for (cnt = 0; inboard(np); np.x += a, np.y += b) {
+            if (bd[np.x][np.y] == id) cnt++;
+            else break;
         }
+        np = (point_t){pos.x - a, pos.y - b};
+        for (; inboard(np); np.x -= a, np.y -= b) {
+            if (bd[np.x][np.y] == id) cnt++;
+            else break;
+        }
+        if (cnt >= WIN_LENGTH) return id == 1 ? 1 : -1;
     }
     return 0;
 }
 
-int game(bool reverse_flag) {
-    players_init();
+/*
+   | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | A |
+---+---+---+---+---+---+---+---+---+---+---+---+
+ 0 |   |   |   |   |   |   |   |   |   |   |   |
+---+---+---+---+---+---+---+---+---+---+---+---+
+ 1 |   |   |   |   |   |   |   |   |   |   |   |
+---+---+---+---+---+---+---+---+---+---+---+---+
+ 2 |   |   |   |   |   |   |   |   |   |   |   |
+---+---+---+---+---+---+---+---+---+---+---+---+
+ 3 |   |   |   |   |   |   |   |   |   |   |   |
+---+---+---+---+---+---+---+---+---+---+---+---+
+ 4 |   |   |   |   | x |   |   |   |   |   |   |
+---+---+---+---+---+---+---+---+---+---+---+---+
+ 5 |   |   |   | x | o | o |   | o | x |   |   |
+---+---+---+---+---+---+---+---+---+---+---+---+
+ 6 |   |   |   |   | x |   | o |   |   |   |   |
+---+---+---+---+---+---+---+---+---+---+---+---+
+ 7 |   |   |   |   |   | o |   | o |   |   |   |
+---+---+---+---+---+---+---+---+---+---+---+---+
+ 8 |   |   |   |   |   |   |   |   | x |   |   |
+---+---+---+---+---+---+---+---+---+---+---+---+
+ 9 |   |   |   |   |   |   |   |   |   |   |   |
+---+---+---+---+---+---+---+---+---+---+---+---+
+ A |   |   |   |   |   |   |   |   |   |   |   |
+---+---+---+---+---+---+---+---+---+---+---+---+
+reverse_flag = 1;
+board[4][4] = board[5][3] = board[6][4] = board[5][8] = board[8][8] = 2;
+board[5][4] = board[5][5] = board[7][5] = board[5][7] = board[6][6] = board[7][7] = 1;
+*/
+
+int game(int id) {
     memset(board, 0, sizeof(board));
     print(board);
     point_t pos;
-    if (reverse_flag) {
-        log("player2's turn.");
-        while (put(2, pos = player2(board))) { loge("invalid position!"); }
-        print(board);
-        refresh();
-    }
+    int player_types[2] = {MCTS, MCTS};
     while (1) {
-        log("player1's turn.");
-        while (put(1, pos = player1(board))) { loge("invalid position!"); }
+        log("player%d's turn.", id);
+        while (put(id, pos = move(player_types[id], board, id))) {
+            loge("invalid position!");
+        }
         print(board);
         refresh();
         if (check_draw(board)) { log("draw"); return 0; }
-        if (check(board, pos)) { log("player1 wins."); return 1; }
-
-        log("player2's turn.");
-        while (put(2, pos = player2(board))) { loge("invalid position!"); }
-        print(board);
-        refresh();
-        if (check_draw(board)) { log("draw"); return 0; }
-        if (check(board, pos)) { log("player2 wins."); return 2; }
-        //test(board);
+        if (check(board, pos)) { log("player%d wins.", id); return 1; }
+        id = 3 - id;
     }
 }
 
-int result[5];
+int results[5];
 
 void signal_handler(int signum) {
     log("received signal %d, terminate.", signum);
-    int r1 = result[1], r2 = result[2];
+    int r1 = results[1], r2 = results[2];
     if (r1 + r2) {
-        log("result: p1/p2/draw: %d/%d/%d (%.2lf%%), 1st/2nd: %d/%d (%.2lf%%)", r1, r2, result[0], (double)r1 / (r1 + r2) * 100, result[3], result[4], (double)result[3] / (r1 + r2) * 100);
+        log("results: p1/p2/draw: %d/%d/%d (%.2lf%%), 1st/2nd: %d/%d (%.2lf%%)", r1, r2, results[0], (double)r1 / (r1 + r2) * 100, results[3], results[4], (double)results[3] / (r1 + r2) * 100);
     }
     exit(0);
 }
 
 int main() {
     signal(SIGINT, signal_handler);
+    log("gomoku v%s", VERSION);
+    int id = 1;
     while (1) {
-        int res = game(0);
-        result[res]++;
-        if (res) {
-            result[(res != 1) + 3]++;
+        int res = game(id);
+        results[res]++;
+        if (res == id) {
+            results[3]++;
+        } else if (res == 3 - id) {
+            results[4]++;
         }
-        log("result: p1/p2/draw: %d/%d/%d, 1st/2nd: %d/%d", result[1], result[2], result[0], result[3], result[4]);
-        res = game(1);
-        result[res]++;
-        if (res) {
-            result[(res != 2) + 3]++;
-        }
-        log("result: p1/p2/draw: %d/%d/%d, 1st/2nd: %d/%d", result[1], result[2], result[0], result[3], result[4]);
+        log("results: p1/p2/draw: %d/%d/%d, 1st/2nd: %d/%d", results[1], results[2], results[0], results[3], results[4]);
+        id = 3 - id;
     }
     return 0;
 }

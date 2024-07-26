@@ -5,4 +5,3 @@ usage
 ```
 make run
 ```
-

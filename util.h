@@ -1,5 +1,7 @@
 #pragma once
 
+#define VERSION "1.1.1"
+
 #define min(x, y) ((x) < (y) ? (x) : (y))
 #define max(x, y) ((x) > (y) ? (x) : (y))
 #define chkmin(x, y) (x) = min(x, y)
@@ -53,3 +55,6 @@
     "\033[" CLI_STYLE_NORMAL ";" CLI_COLOR_RED "m[ERROR] \033[0m" \
     "\033[" CLI_STYLE_DARK ";" CLI_COLOR_NORMAL "m%s/%s/%d: \033[0m" \
     fmt "\n", __FILE__, __func__, __LINE__, ## __VA_ARGS__)
+
+void reset_time();
+int get_time();

@@ -3,12 +3,11 @@ head = $(wildcard *.h)
 obj = $(src:%.c=%.o)
 target = gomoku
 CFLAGS = -Wall -Wextra -Wshadow -O2
-CPPFLAGS = 
 #LDFLAGS = -g -fsanitize=undefined,address,leak,null,bounds
 LDFLAGS = -lm
 
 %.o: %.c $(head) Makefile 
-	$(CC) -c $< -o $@ $(CFLAGS)
+	$(CC) -c $< -o $@ $(CFLAGS) $(CPPFLAGS)
 
 $(target): $(obj)
 	$(CC) $(obj) -o $(target) $(LDFLAGS)
