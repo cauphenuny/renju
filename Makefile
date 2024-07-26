@@ -1,7 +1,7 @@
 src = $(wildcard *.c)
 head = $(wildcard *.h)
 obj = $(src:%.c=%.o)
-target = gomoku3
+target = gomoku
 CFLAGS = -Wall -Wextra -Wshadow -O2
 #LDFLAGS = -g -fsanitize=undefined,address,leak,null,bounds
 LDFLAGS = -lm
