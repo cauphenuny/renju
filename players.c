@@ -18,9 +18,9 @@ point_t move(int player_type, const board_t board, int id) {
         }
         case MCTS: {
             mcts_parm_t parm = {.C = 1.414, .M = 10};
-            if (id == 2) {
-                parm.M = 10000;
-            }
+            //if (id == 2) {
+            //    parm.M = 10000;
+            //}
             return mcts(board, id, parm);
         }
     }
