@@ -1,5 +1,5 @@
 # gomoku
 
-usage: cmake
+build: cmake
 
 target: bin/gomoku
