@@ -21,7 +21,7 @@ void signal_handler(int signum) {
     exit(0);
 }
 
-int main() {
+int main(void) {
     signal(SIGINT, signal_handler);
     log("gomoku v%s", VERSION);
     int id = 1;
