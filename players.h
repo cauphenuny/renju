@@ -2,7 +2,7 @@
 
 enum {
     MANUAL,
-    MCTS
+    MCTS,
 };
 
 point_t move(int, const board_t, int);
