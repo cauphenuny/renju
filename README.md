@@ -3,7 +3,7 @@
 usage
 
 ```
-mkdir build && cd build/
+cd build/
 cmake ..
 make
 cd ../bin
