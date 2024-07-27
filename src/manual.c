@@ -12,7 +12,6 @@
 
 #include "util.h"
 #include "board.h"
-#include "server.h"
 
 /**************************** manual ****************************/
 

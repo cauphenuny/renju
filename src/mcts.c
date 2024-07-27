@@ -12,13 +12,10 @@
 
 #include "util.h"
 #include "board.h"
-#include "server.h"
 #include "mcts.h"
 
 
 /**************************** mcts ****************************/
-
-const int CAPACITY = sizeof(board_t) / sizeof(int);
 
 void encode(const board_t src, uint32_t dest[]) {
     for (int i = 0; i < BOARD_SIZE; i++) {
@@ -69,6 +66,7 @@ typedef struct node_t {
 
 node_t *memory_pool;
 int tot;
+int top, bottom, left, right, capacity;
 
 bool __get_danger_pos_log_flag;
 
@@ -139,23 +137,36 @@ void get_danger_pos(state_t* st, point_t pos) {
     //}
 }
 
-state_t create_state(uint32_t *board, point_t pos) {
+int compressed_check(const uint32_t *bd, point_t pos) {
+    int id = get(bd, pos.x, pos.y);
+    if (!id) return 0;
+    static const int arrows[4][2] = {{0, 1}, {1, 0}, {1, 1}, {-1, 1}};
+    for (int i = 0, a, b, cnt; i < 4; i++) {
+        a = arrows[i][0], b = arrows[i][1];
+        point_t np = {pos.x, pos.y};
+        for (cnt = 0; inboard(np); np.x += a, np.y += b) {
+            if (get(bd, np.x, np.y) == id) cnt++;
+            else break;
+        }
+        np = (point_t){pos.x - a, pos.y - b};
+        for (; inboard(np); np.x -= a, np.y -= b) {
+            if (get(bd,np.x, np.y) == id) cnt++;
+            else break;
+        }
+        if (cnt >= WIN_LENGTH) return id == 1 ? 1 : -1;
+    }
+    return 0;
+}
+
+state_t create_state(uint32_t *board, point_t pos, int cnt) {
     state_t st;
     memset(&st, 0, sizeof(state_t));
     memcpy(st.board, board, sizeof(st.board));
     memcpy(st.visited, board, sizeof(st.board));
-    static board_t dec_board;
-    decode(st.board, dec_board);
-    for (int i = 0; i < BOARD_SIZE; i++) {
-        for (int j = 0; j < BOARD_SIZE; j++) {
-            if (dec_board[i][j]) {
-                st.piece_cnt++;
-            }
-        }
-    }
+    st.piece_cnt = cnt;
     st.visited_cnt = st.piece_cnt;
-    st.id = 3 - dec_board[pos.x][pos.y];
-    st.score = check(dec_board, pos);
+    st.id = 3 - get(board, pos.x, pos.y);
+    st.score = compressed_check(board, pos);
     //if(st.score) log("(%d, %d): %d", pos.x, pos.y, st.id);
     st.pos = pos;
     st.danger_pos[0] = st.danger_pos[1] = (point_t){-1, -1};
@@ -210,37 +221,46 @@ double ucb_eval(node_t* node, int flag) {
 }
 #define log logi
 
-node_t* count_select(node_t* parent) {
-    if (parent->son == NULL) return parent;
-    node_t *cur = parent->son, *sel = cur;
-    //int flag = (parent->state.id == 1) ? 1 : -1;
-#define CAND_SIZE 4
-    //node_t* cand[CAND_SIZE] = {NULL, NULL, NULL, NULL};
+void print_candidate(node_t* parent, int count) {
+    if (parent->son == NULL) return ;
+    node_t *cur = parent->son;
+    node_t **cand = (node_t**)malloc(count * sizeof(node_t*));
+    cand[0] = cur;
     while (cur != NULL) {
-        if (cur->state.count > sel->state.count) {
-            //for (int i = CAND_SIZE - 1; i > 0; i--) {
-            //    cand[i] = cand[i - 1];
-            //}
-            //cand[0] = sel;
-            sel = cur;
+        if (cur->state.count > cand[0]->state.count) {
+            for (int i = count - 1; i > 0; i--) {
+                cand[i] = cand[i - 1];
+            }
+            cand[0] = cur;
         }
         cur = cur->next;
     }
 #define percentage(a, b) ((double)(a) / (double)(b) * 100)
 #define get_rate(st, f) (percentage((st.count + (f) * st.result) / 2 , st.count))
-#define print_stat(st) \
-    log("candidate: (%d, %d) => win: %.2lf%%, count: %.2lf%% (%d).", st.pos.x, st.pos.y, get_rate(st, parent->state.id == 1 ? 1 : -1), percentage(st.count, parent->state.count), st.count)
-    //print_stat(sel->state);
-    //for (int i = 0; i < CAND_SIZE; i++) {
-    //    if (cand[i] != NULL) {
-    //        print_stat(cand[i]->state);
-    //    }
-    //}
-    return sel;
+#define print_stat(i, st) \
+    log("#%d: (%d, %d) => win: %.2lf%%, count: %.2lf%% (%d).", i, st.pos.x, st.pos.y, get_rate(st, parent->state.id == 1 ? 1 : -1), percentage(st.count, parent->state.count), st.count)
+    for (int i = 0; i < count; i++) {
+        if (cand[i] != NULL) {
+            print_stat(i, cand[i]->state);
+        }
+    }
+    free(cand);
 #undef CAND_SIZE
 #undef percentage
 #undef get_rate
 #undef print_stat
+}
+
+node_t* count_select(node_t* parent) {
+    if (parent->son == NULL) return parent;
+    node_t *cur = parent->son, *sel = cur;
+    while (cur != NULL) {
+        if (cur->state.count > sel->state.count) {
+            sel = cur;
+        }
+        cur = cur->next;
+    }
+    return sel;
 }
 
 node_t* ucb_select(node_t* parent) {
@@ -256,14 +276,14 @@ node_t* ucb_select(node_t* parent) {
 }
 
 bool terminated(state_t st) {
-    if (st.score || st.piece_cnt == CAPACITY) return true;
+    if (st.score || st.piece_cnt == capacity) return true;
     return false;
 }
 
 node_t* put_piece(node_t* parent, point_t pos) {
     int i = pos.x, j = pos.y;
     set(parent->state.board, i, j, parent->state.id);
-    state_t st = create_state(parent->state.board, pos);
+    state_t st = create_state(parent->state.board, pos, parent->state.piece_cnt + 1);
     set(parent->state.board, i, j, 0);
     node_t* node = create_node(st);
     if (node == NULL) return NULL;
@@ -315,15 +335,15 @@ node_t* traverse(node_t* parent) {
         }
     }
     //log("%d", parent->state.id);
-    int res = CAPACITY - parent->state.visited_cnt;
+    int res = capacity - parent->state.visited_cnt;
     if (res) {
         int pos = (rand() % res) + 1;
-        int i = -1, j = -1;
-        for (int t = 0, cnt = 0; cnt < pos && t < CAPACITY; t++) {
-            i = t / BOARD_SIZE;
-            j = t % BOARD_SIZE;
+        int i = top, j = left;
+        for (int t = 0, cnt = 0; t < capacity; t++, j++) {
+            if (j >= right) i++, j = left;
             if (!get(parent->state.visited, i, j)) {
                 cnt++;
+                if (cnt >= pos) break;
             }
         }
         //log("res = %d, pos = %d, choose %d, %d", res, pos, i, j);
@@ -363,30 +383,33 @@ void backpropagate(node_t* node, int score) {
 //}
 
 point_t mcts(const board_t board, int id, mcts_parm_t parm) {
-    log("initializing.");
     srand((unsigned)time(0));
     if (memory_pool == NULL) {
         memory_pool = (node_t*)malloc(MAX_TREE_SIZE * sizeof(node_t));
     }
     reset_time();
+    log("options: {C: %.3lf, min_time: %d, min_count: %d}", parm.C, parm.TIME_LIMIT, parm.MIN_COUNT);
     mcts_parm = parm;
     node_t *virtual_root, *root;
   {
     uint32_t zip[BOARD_SIZE];
     encode(board, zip);
     point_t p0 = {0, 0}, p1 = {0, 0}, p;
+    int cnt = 0;
     for (int i = 0; i < BOARD_SIZE; i++) {
         for (int j = 0; j < BOARD_SIZE; j++) {
             if (board[i][j] == 3 - id) {
                 p0.x = i, p0.y = j;
+                cnt++;
             } else if (board[i][j] == id) {
                 p1.x = i, p1.y = j;
+                cnt++;
             }
         }
     }
     __get_danger_pos_log_flag = 1;
-    root = create_node(create_state(zip, p0));
-    virtual_root = create_node(create_state(zip, p1));
+    root = create_node(create_state(zip, p0, cnt));
+    virtual_root = create_node(create_state(zip, p1, cnt));
     for (int i = 0; i < BOARD_SIZE; i++) {
         for (int j = 0; j < BOARD_SIZE; j++) {
             if (board[i][j]) {
@@ -403,6 +426,10 @@ point_t mcts(const board_t board, int id, mcts_parm_t parm) {
     append_child(virtual_root, root);
     __get_danger_pos_log_flag = 0;
     if (root->state.piece_cnt == 0) return (point_t){BOARD_SIZE / 2, BOARD_SIZE / 2};
+    wrap_area(board, &top, &bottom, &left, &right, 4);
+    //log("area: %d, %d, %d, %d", top, bottom, left, right);
+    capacity = (right - left) * (bottom - top);
+    //log("capacity: %d", capacity);
   }
     //log("virtual_root's danger pos: (%d, %d)/(%d, %d)", virtual_root->state.danger_pos[0].x, virtual_root->state.danger_pos[0].y, virtual_root->state.danger_pos[1].x, virtual_root->state.danger_pos[1].y);
     //log("root's danger pos: (%d, %d)/(%d, %d)", root->state.danger_pos[0].x, root->state.danger_pos[0].y, root->state.danger_pos[1].x, root->state.danger_pos[1].y);
@@ -410,25 +437,29 @@ point_t mcts(const board_t board, int id, mcts_parm_t parm) {
   {
     int tim;
     int cnt = 0;
-    double keyframe[5] = {0, 0.7, 0.9, 0.95}; //TODO
-    log("start searching.");
-    while ((tim = get_time()) < parm.TIME_LIMIT) {
-    //while (count_select(root)->state.count < 10000) {
+    //double keyframe[5] = {0, 0.7, 0.9, 0.95}; //TODO
+    log("start searching, capacity: %d.", capacity);
+    while ( (tim = get_time()) < parm.TIME_LIMIT || 
+            (cnt % 1024 != 0) || 
+            ((tot < NODE_LIMIT) && count_select(root)->state.count < parm.MIN_COUNT) )
+    {
         node_t *leaf, *start = root;
         cnt++;
-        if (parm.M && cnt % parm.M == 0) {
-            for (int i = 1; i < 4; i++) {
-                if (tim > parm.TIME_LIMIT * keyframe[i]) {
-                    //log("virtual");
-                    start = count_select(start);
-                } else {
-                    break;
-                }
-            }
-        }
+        //if (parm.M && cnt % parm.M == 0) {
+        //    for (int i = 1; i < 4; i++) {
+        //        if (tim > parm.TIME_LIMIT * keyframe[i]) {
+        //            //log("virtual");
+        //            start = count_select(start);
+        //        } else {
+        //            break;
+        //        }
+        //    }
+        //}
         leaf = traverse(start);
         if (leaf != NULL) backpropagate(leaf, leaf->state.score);
     }
+    log("all count: %d", root->state.count);
+    print_candidate(root, 7);
     node_t *move = count_select(root);
     state_t st = move->state;
     point_t pos = st.pos;
