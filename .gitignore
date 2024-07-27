@@ -1,6 +1,6 @@
 **/.DS_Store
-*.o
-gomoku*
-bin/*
-legacy/*
+bin/
+build/*
 **/*.swp
+.vscode/
+*.json

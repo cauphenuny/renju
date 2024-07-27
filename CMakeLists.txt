@@ -1,0 +1,8 @@
+cmake_minimum_required (VERSION 3.5)
+project (gomoku)
+set(CMAKE_VERBOSE_MAKEFILE OFF)
+set (EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
+set (CMAKE_C_STANDARD 99)
+aux_source_directory (src SRC_LIST)
+include_directories (include)
+add_executable (gomoku ${SRC_LIST})

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdio.h>
+
 #define VERSION "1.1.2"
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
@@ -28,13 +30,15 @@
 #define CLI_COLOR_WHITE    "37"
 #define CLI_COLOR_NORMAL   "38"
 
+char* basename(char*);
+
 // infomation log
 
 #define logi(fmt, ...) \
     fprintf(stderr, \
     "\033[" CLI_STYLE_NORMAL ";" CLI_COLOR_BLUE "m[LOG] \033[0m" \
     "\033[" CLI_STYLE_DARK ";" CLI_COLOR_NORMAL "m%s/%s/%d: \033[0m" \
-    fmt "\n", __FILE__, __func__, __LINE__, ## __VA_ARGS__)
+    fmt "\n", basename(__FILE__), __func__, __LINE__, ## __VA_ARGS__)
 
 #define log logi
 
@@ -47,14 +51,15 @@
     fprintf(stderr, \
     "\033[" CLI_STYLE_NORMAL ";" CLI_COLOR_YELLOW "m[WARN] \033[0m" \
     "\033[" CLI_STYLE_DARK ";" CLI_COLOR_NORMAL "m%s/%s/%d: \033[0m" \
-    fmt "\n", __FILE__, __func__, __LINE__, ## __VA_ARGS__)
+    fmt "\n", basename(__FILE__), __func__, __LINE__, ## __VA_ARGS__)
 
 // error style log
 #define loge(fmt, ...) \
     fprintf(stderr, \
     "\033[" CLI_STYLE_NORMAL ";" CLI_COLOR_RED "m[ERROR] \033[0m" \
     "\033[" CLI_STYLE_DARK ";" CLI_COLOR_NORMAL "m%s/%s/%d: \033[0m" \
-    fmt "\n", __FILE__, __func__, __LINE__, ## __VA_ARGS__)
+    fmt "\n", basename(__FILE__), __func__, __LINE__, ## __VA_ARGS__)
 
 void reset_time();
 int get_time();
+
