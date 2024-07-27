@@ -20,10 +20,6 @@
 
 const int CAPACITY = sizeof(board_t) / sizeof(int);
 
-#ifndef TIME_LIMIT
-    #define TIME_LIMIT 1000
-#endif
-
 void encode(const board_t src, uint32_t dest[]) {
     for (int i = 0; i < BOARD_SIZE; i++) {
         dest[i] = 0;
@@ -416,13 +412,13 @@ point_t mcts(const board_t board, int id, mcts_parm_t parm) {
     int cnt = 0;
     double keyframe[5] = {0, 0.7, 0.9, 0.95}; //TODO
     log("start searching.");
-    while ((tim = get_time()) < TIME_LIMIT) {
+    while ((tim = get_time()) < parm.TIME_LIMIT) {
     //while (count_select(root)->state.count < 10000) {
         node_t *leaf, *start = root;
         cnt++;
         if (parm.M && cnt % parm.M == 0) {
             for (int i = 1; i < 4; i++) {
-                if (tim > TIME_LIMIT * keyframe[i]) {
+                if (tim > parm.TIME_LIMIT * keyframe[i]) {
                     //log("virtual");
                     start = count_select(start);
                 } else {

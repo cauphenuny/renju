@@ -4,6 +4,7 @@
 
 typedef struct {
     double C;
+    int TIME_LIMIT;
     int M;
 } mcts_parm_t; // parameters for mcts
 

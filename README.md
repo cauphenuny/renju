@@ -1,11 +1,5 @@
 # gomoku
 
-usage
+usage: cmake
 
-```
-mkdir build && cd build/
-cmake ..
-make
-cd ../bin
-./gomoku
-```
+target: bin/gomoku
