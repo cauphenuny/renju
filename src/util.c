@@ -6,18 +6,18 @@
 
 long long tim_;
 
-long long get_raw_time() {
+long long get_raw_time(void) {
     struct timespec time;
     clock_gettime(CLOCK_REALTIME, &time);
     long long tim = time.tv_sec * 1000 + time.tv_nsec / 1000000;
     return tim;
 }
 
-void reset_time() {
+void reset_time(void) {
     tim_ = get_raw_time();
 }
 
-int get_time() {
+int get_time(void) {
     return (int)(get_raw_time() - tim_);
 }
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "board.h"
+
 enum {
     MANUAL,
     MCTS,

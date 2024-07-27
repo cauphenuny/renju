@@ -2,8 +2,6 @@
 
 #include <stdio.h>
 
-#define VERSION "1.1.2"
-
 #define min(x, y) ((x) < (y) ? (x) : (y))
 #define max(x, y) ((x) > (y) ? (x) : (y))
 #define chkmin(x, y) (x) = min(x, y)
@@ -60,6 +58,6 @@ char* basename(char*);
     "\033[" CLI_STYLE_DARK ";" CLI_COLOR_NORMAL "m%s/%s/%d: \033[0m" \
     fmt "\n", basename(__FILE__), __func__, __LINE__, ## __VA_ARGS__)
 
-void reset_time();
-int get_time();
+void reset_time(void);
+int get_time(void);
 
