@@ -17,7 +17,23 @@ point_t move(int player_type, const board_t board, int id) {
             return manual(board);
         }
         case MCTS: {
-            mcts_parm_t parm = {.C = 1.414, .M = 0, .TIME_LIMIT = 500, .MIN_COUNT = 5000};
+            mcts_parm_t parm = {
+                .C = 1.414, 
+                .M = 0, 
+                .TIME_LIMIT = 500, 
+                .MIN_COUNT = 60,
+                .WRAP_RAD = 2,
+            };
+            return mcts(board, id, parm);
+        }
+        case MCTS2: {
+            mcts_parm_t parm = {
+                .C = 1.414, 
+                .M = 0, 
+                .TIME_LIMIT = 500, 
+                .MIN_COUNT = 60,
+                .WRAP_RAD = 4,
+            };
             return mcts(board, id, parm);
         }
     }

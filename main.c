@@ -8,8 +8,28 @@
 #include <stdbool.h>
 
 #include "players.h"
-#include "server.h"
 #include "util.h"
+
+int game(int player1, int player2, int first) {
+    board_t board;
+    memset(board, 0, sizeof(board));
+    print(board);
+    point_t pos;
+    int players[2] = {player1, player2};
+    int id = first;
+    while (1) {
+        log("player%d's turn.", id);
+        while (put(board, id, pos = move(players[id - 1], board, id))) {
+            loge("invalid position!");
+            getchar();
+        }
+        print(board);
+        refresh(board);
+        if (check_draw(board)) { log("draw."); return 0; }
+        if (check(board, pos)) { log("player%d wins.", id); return id; }
+        id = 3 - id;
+    }
+}
 
 int results[5];
 

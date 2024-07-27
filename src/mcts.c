@@ -17,7 +17,15 @@
 
 /**************************** mcts ****************************/
 
-void encode(const board_t src, uint32_t dest[]) {
+#if BOARD_SIZE <= 16
+    typedef uint32_t cmpr_t;
+#elif BOARD_SIZE <= 32
+    typedef uint64_t cmpr_t;
+#else
+    #error "board size too large!"
+#endif
+
+void encode(const board_t src, cmpr_t dest[]) {
     for (int i = 0; i < BOARD_SIZE; i++) {
         dest[i] = 0;
         for (int j = BOARD_SIZE - 1; j >= 0; j--) {
@@ -27,9 +35,9 @@ void encode(const board_t src, uint32_t dest[]) {
     }
 }
 
-void decode(const uint32_t src[], board_t dest) {
+void decode(const cmpr_t src[], board_t dest) {
     for (int i = 0; i < BOARD_SIZE; i++) {
-        uint32_t tmp = src[i];
+        cmpr_t tmp = src[i];
         for (int j = 0; j < BOARD_SIZE; j++) {
             dest[i][j] = tmp & 3;
             tmp >>= 2;
@@ -38,8 +46,8 @@ void decode(const uint32_t src[], board_t dest) {
 }
 
 typedef struct {
-    uint32_t board[BOARD_SIZE];
-    uint32_t visited[BOARD_SIZE];
+    cmpr_t board[BOARD_SIZE];
+    cmpr_t visited[BOARD_SIZE];
     int piece_cnt;
     int visited_cnt;
     int result;
@@ -51,7 +59,11 @@ typedef struct {
 } state_t;
 
 #define get(arr, x, y) ((arr[x] >> ((y) * 2)) & 3)
+#define get1(arr, x, y) ((arr[x] >> ((y) * 2)) & 3)
+//#define get1(arr, x, y) ((arr[x] >> (y)) & 1)
 #define set(arr, x, y, v) (arr[x] += (((v - get(arr, x, y)) << ((y) * 2))))
+#define set1(arr, x, y, v) (arr[x] += (((v - get(arr, x, y)) << ((y) * 2))))
+//#define set1(arr, x, y, v) (arr[x] += (((v - get(arr, x, y)) << (y))))
 
 typedef struct node_t {
     state_t state;
@@ -77,7 +89,7 @@ void print_state(state_t st) {
 }
 
 void get_danger_pos(state_t* st, point_t pos) {
-    uint32_t* bd = st->board;
+    cmpr_t* bd = st->board;
     int id = get(bd, pos.x, pos.y);
     //st->danger_pos[0] = st->danger_pos[1] = (point_t){-1, -1};
     if (!id) { return; }
@@ -137,7 +149,7 @@ void get_danger_pos(state_t* st, point_t pos) {
     //}
 }
 
-int compressed_check(const uint32_t *bd, point_t pos) {
+int compressed_check(const cmpr_t *bd, point_t pos) {
     int id = get(bd, pos.x, pos.y);
     if (!id) return 0;
     static const int arrows[4][2] = {{0, 1}, {1, 0}, {1, 1}, {-1, 1}};
@@ -158,7 +170,7 @@ int compressed_check(const uint32_t *bd, point_t pos) {
     return 0;
 }
 
-state_t create_state(uint32_t *board, point_t pos, int cnt) {
+state_t create_state(cmpr_t *board, point_t pos, int cnt) {
     state_t st;
     memset(&st, 0, sizeof(state_t));
     memcpy(st.board, board, sizeof(st.board));
@@ -341,7 +353,7 @@ node_t* traverse(node_t* parent) {
         int i = top, j = left;
         for (int t = 0, cnt = 0; t < capacity; t++, j++) {
             if (j >= right) i++, j = left;
-            if (!get(parent->state.visited, i, j)) {
+            if (!get1(parent->state.visited, i, j)) {
                 cnt++;
                 if (cnt >= pos) break;
             }
@@ -388,11 +400,12 @@ point_t mcts(const board_t board, int id, mcts_parm_t parm) {
         memory_pool = (node_t*)malloc(MAX_TREE_SIZE * sizeof(node_t));
     }
     reset_time();
-    log("options: {C: %.3lf, min_time: %d, min_count: %d}", parm.C, parm.TIME_LIMIT, parm.MIN_COUNT);
+    log("options: {C: %.3lf, time: %dms, count: %dpc, wrap_rad: %d}", parm.C, parm.TIME_LIMIT, parm.MIN_COUNT, parm.WRAP_RAD);
+    //pc: per capacity
     mcts_parm = parm;
     node_t *virtual_root, *root;
   {
-    uint32_t zip[BOARD_SIZE];
+    cmpr_t zip[BOARD_SIZE];
     encode(board, zip);
     point_t p0 = {0, 0}, p1 = {0, 0}, p;
     int cnt = 0;
@@ -426,9 +439,11 @@ point_t mcts(const board_t board, int id, mcts_parm_t parm) {
     append_child(virtual_root, root);
     __get_danger_pos_log_flag = 0;
     if (root->state.piece_cnt == 0) return (point_t){BOARD_SIZE / 2, BOARD_SIZE / 2};
-    wrap_area(board, &top, &bottom, &left, &right, 4);
     //log("area: %d, %d, %d, %d", top, bottom, left, right);
-    capacity = (right - left) * (bottom - top);
+    do {
+        wrap_area(board, &top, &bottom, &left, &right, parm.WRAP_RAD);
+        capacity = (right - left) * (bottom - top);
+    } while ((capacity < 50) && (parm.WRAP_RAD++));
     //log("capacity: %d", capacity);
   }
     //log("virtual_root's danger pos: (%d, %d)/(%d, %d)", virtual_root->state.danger_pos[0].x, virtual_root->state.danger_pos[0].y, virtual_root->state.danger_pos[1].x, virtual_root->state.danger_pos[1].y);
@@ -437,24 +452,24 @@ point_t mcts(const board_t board, int id, mcts_parm_t parm) {
   {
     int tim;
     int cnt = 0;
-    //double keyframe[5] = {0, 0.7, 0.9, 0.95}; //TODO
+    double keyframe[5] = {0, 0.8, 0.9, 0.95}; //TODO
     log("start searching, capacity: %d.", capacity);
     while ( (tim = get_time()) < parm.TIME_LIMIT || 
             (cnt % 1024 != 0) || 
-            ((tot < NODE_LIMIT) && count_select(root)->state.count < parm.MIN_COUNT) )
+            ((tot < NODE_LIMIT) && count_select(root)->state.count < parm.MIN_COUNT * capacity) )
     {
         node_t *leaf, *start = root;
         cnt++;
-        //if (parm.M && cnt % parm.M == 0) {
-        //    for (int i = 1; i < 4; i++) {
-        //        if (tim > parm.TIME_LIMIT * keyframe[i]) {
-        //            //log("virtual");
-        //            start = count_select(start);
-        //        } else {
-        //            break;
-        //        }
-        //    }
-        //}
+        if (parm.M && cnt % parm.M == 0) {
+            for (int i = 1; i < 4; i++) {
+                if (tim > parm.TIME_LIMIT * keyframe[i]) {
+                    //log("virtual");
+                    start = count_select(start);
+                } else {
+                    break;
+                }
+            }
+        }
         leaf = traverse(start);
         if (leaf != NULL) backpropagate(leaf, leaf->state.score);
     }

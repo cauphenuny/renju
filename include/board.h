@@ -2,7 +2,6 @@
 
 #include <stdbool.h>
 
-// DO NOT LET THIS GREATER THAN 16 UNLESS YOU CHANGE uint32_t TO uint64_t!
 #define BOARD_SIZE 15
 
 #define WIN_LENGTH 5
