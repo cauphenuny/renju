@@ -46,9 +46,8 @@ int main(void) {
     signal(SIGINT, signal_handler);
     log("gomoku v%s", VERSION);
     int id = 1;
-    int player1 = MCTS, player2 = MANUAL;
     while (1) {
-        int res = game(player1, player2, id);
+        int res = game(MCTS, MANUAL, id);
         results[res]++;
         if (res == id) {
             results[3]++;
