@@ -452,7 +452,7 @@ point_t mcts(const board_t board, int id, mcts_parm_t parm) {
     int tim;
     int cnt = 0;
     double keyframe[5] = {0, 0.8, 0.9, 0.95}; //TODO
-    log("searching... {C: %.2lf, time: %d, count: %d, rad: %d}", parm.C, parm.TIME_LIMIT, parm.MIN_COUNT, parm.WRAP_RAD);
+    log("searching... (C: %.2lf, time: %d, count: %d, rad: %d)", parm.C, parm.TIME_LIMIT, parm.MIN_COUNT, parm.WRAP_RAD);
     while ( (tim = get_time()) < parm.TIME_LIMIT || 
             (cnt % 1024 != 0) || 
             ((tot < NODE_LIMIT) && count_select(root)->state.count < parm.MIN_COUNT * capacity) )

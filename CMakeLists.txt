@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 3.5)
 project (
     gomoku
-    VERSION 1.2.1
+    VERSION 1.2.2
 )
 set (CMAKE_VERBOSE_MAKEFILE OFF)
 set (EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
