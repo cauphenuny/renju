@@ -58,8 +58,8 @@ typedef struct {
     point_t danger_pos[2];
 } state_t;
 
-#define get(arr, x, y) ((arr[x] >> ((y) * 2)) & 3)
-#define get1(arr, x, y) ((arr[x] >> ((y) * 2)) & 3)
+#define get(arr, x, y) (int)((arr[x] >> ((y) * 2)) & 3)
+#define get1(arr, x, y) (int)((arr[x] >> ((y) * 2)) & 3)
 //#define get1(arr, x, y) ((arr[x] >> (y)) & 1)
 #define set(arr, x, y, v) (arr[x] += (((v - get(arr, x, y)) << ((y) * 2))))
 #define set1(arr, x, y, v) (arr[x] += (((v - get(arr, x, y)) << ((y) * 2))))

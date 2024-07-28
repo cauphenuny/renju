@@ -11,3 +11,4 @@ add_definitions (-DVERSION="${PROJECT_VERSION}")
 aux_source_directory (src SRC_LIST)
 include_directories (include)
 add_executable (gomoku main.c ${SRC_LIST})
+target_link_libraries (gomoku m) # linking to math library
