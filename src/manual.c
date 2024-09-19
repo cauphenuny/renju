@@ -2,16 +2,14 @@
 // date: 2024/07/26
 #include <ctype.h>
 #include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
 #include <stdbool.h>
-#include <time.h>
 #include <math.h>
 #include <assert.h>
 #include <stdint.h>
 
 #include "util.h"
 #include "board.h"
+#include "game.h"
 
 /**************************** manual ****************************/
 
@@ -24,13 +22,13 @@ int parse(char s[]) {
     return tmp;
 }
 
-point_t manual(const board_t board) {
+point_t manual(const game_t game) {
+    log("manual player%d", game.current_id);
     point_t pos;
     char input_x[2], input_y[2];
-    do {
-        log("waiting input. (format: 8 11 or 8 b or 8 B)");
-        scanf("%s %s", input_x, input_y);
-        pos.x = parse(input_x), pos.y = parse(input_y);
-    } while ((!inboard(pos) || board[pos.x][pos.y]) && loge("invalid input!"));
+    log("waiting input. (format: 8 11 or 8 b or 8 B)");
+    scanf("%s %s", input_x, input_y);
+    pos.x = parse(input_x), pos.y = parse(input_y);
+    log("%d, %d", pos.x, pos.y);
     return pos;
 }

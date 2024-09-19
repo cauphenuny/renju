@@ -1,13 +1,29 @@
 cmake_minimum_required (VERSION 3.5)
 project (
     gomoku
-    VERSION 1.2.2
+    VERSION 1.3.0
     LANGUAGES C
 )
 set (CMAKE_VERBOSE_MAKEFILE OFF)
 set (EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 set (CMAKE_C_STANDARD 99)
+set (CMAKE_EXPORT_COMPILE_COMMANDS True)
 add_compile_options (-Wall -Wextra -Wshadow)
+if (NOT CMAKE_BUILD_TYPE)
+    set (CMAKE_BUILD_TYPE Release CACHE STRING "No build type selected, default to Release" FORCE)
+endif()
+string (ASCII 27 ESC)
+set (COLOR_GREEN "${ESC}[1;32m")
+set (COLOR_RED "${ESC}[1;31m")
+set (COLOR_RESET "${ESC}[0m")
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    message ("-- ${COLOR_RED}Debug mode${COLOR_RESET}")
+    add_compile_options (-DDEBUG -g -fno-omit-frame-pointer -fsanitize=undefined,address,leak,null,bounds)
+    add_link_options (-fno-omit-frame-pointer -fsanitize=undefined,address,leak,null,bounds)
+else()
+    message ("-- ${COLOR_GREEN}Release mode${COLOR_RESET}")
+    add_compile_options (-DRELEASE -O3)
+endif()
 add_definitions (-DVERSION="${PROJECT_VERSION}")
 aux_source_directory (src SRC_LIST)
 include_directories (include)
