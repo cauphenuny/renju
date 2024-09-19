@@ -25,7 +25,7 @@ int parse(char s[]) {
 point_t manual(const game_t game) {
     log("manual player%d", game.current_id);
     point_t pos;
-    char input_x[2], input_y[2];
+    char input_x[10], input_y[10];
     log("waiting input. (format: 8 11 or 8 b or 8 B)");
     scanf("%s %s", input_x, input_y);
     pos.x = parse(input_x), pos.y = parse(input_y);
