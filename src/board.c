@@ -56,7 +56,7 @@ char id2name(int id) {
 /// @param board board
 void print(const board_t board) {
     // 0: empty, 1/2: prev p1/p2 piece, 3/4: cur p1/p2 piece
-    char* ch[5] = {
+    const char* ch[5] = {
         " ",
         "\033[" CLI_COLOR_GREEN "mo\033[0m",
         "\033[" CLI_COLOR_RED "mx\033[0m",

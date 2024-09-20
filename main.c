@@ -42,7 +42,7 @@ game_t start_game(game_t game)
         game.current_id = id;
         pos = move(game.players[id], game);
         if (!available(game.board, pos)) {
-            loge("invalid position!");
+            log_e("invalid position!");
             export(game, game.step_cnt);
             // prompt_getch();
             continue;
@@ -51,7 +51,7 @@ game_t start_game(game_t game)
             // int ban = banned(game.board, pos, id);
             int ban = POS_ACCEPT;
             if (ban != POS_ACCEPT) {
-                loge("banned position! (%s)", POS_BAN_MSG[ban]);
+                log_e("banned position! (%s)", POS_BAN_MSG[ban]);
                 export(game, game.step_cnt);
                 prompt_getch();
                 continue;
@@ -79,10 +79,12 @@ game_t start_game(game_t game)
 int results[5];
 
 void signal_handler(int signum) {
+    log_s("\n");
     log("received signal %d, terminate.", signum);
     int r1 = results[1], r2 = results[2];
     if (r1 + r2) {
-        log("results: p1/p2/draw: %d/%d/%d (%.2lf%%), 1st/2nd: %d/%d (%.2lf%%)",
+        log_i(
+            "results: p1/p2/draw: %d/%d/%d (%.2lf%%), 1st/2nd: %d/%d (%.2lf%%)",
             r1, r2, results[0], (double)r1 / (r1 + r2) * 100, results[3],
             results[4], (double)results[3] / (r1 + r2) * 100);
     }
@@ -119,8 +121,8 @@ int main(void) {
         } else if (game.winner_id == 3 - id) {
             results[4]++;
         }
-        log("results: p1/p2/draw: %d/%d/%d, 1st/2nd: %d/%d", results[1],
-            results[2], results[0], results[3], results[4]);
+        log_i("results: p1/p2/draw: %d/%d/%d, 1st/2nd: %d/%d", results[1],
+              results[2], results[0], results[3], results[4]);
 #ifdef DEBUG
         char ch[3];
         do {

@@ -351,7 +351,8 @@ void get_danger_pos(state_t* st, point_t pos)
     }
 }
 
-state_t create_state(cprboard_t board, zobrist_t hash, point_t pos, int cnt)
+state_t create_state(cprboard_t board, zobrist_t hash, point_t pos, int cnt,
+                     point_t begin, point_t end)
 {
     state_t st;
     memset(&st, 0, sizeof(state_t));
@@ -361,6 +362,9 @@ state_t create_state(cprboard_t board, zobrist_t hash, point_t pos, int cnt)
     st.visited_cnt = st.piece_cnt;
     st.id = 3 - get(board, pos.x, pos.y);
     st.hash = hash;
+    st.begin = begin;
+    st.end = end;
+    st.capacity = ((int)end.x - begin.x) * ((int)end.y - begin.y);
     // for (int i = assets.top; i < assets.bottom; i++) {
     //     for (int j = assets.left; j < assets.right; j++) {
     //         if (st.id == assets.first_id && !get(board, i, j) &&
@@ -488,7 +492,7 @@ double ucb_eval(node_t* parent, node_t* node, int flag)
     double f2 = sqrt(log(parent->state.count) / node->state.count);
     return f1 + assets.mcts_parm.C * f2;
 }
-#define log logi
+#define log log_l
 
 void print_candidate(node_t* parent, int count)
 {
@@ -509,10 +513,11 @@ void print_candidate(node_t* parent, int count)
     }
 #define percentage(a, b) ((double)(a) / (double)(b) * 100)
 #define get_rate(st, f)  (percentage((st.count + (f) * st.result) / 2, st.count))
-#define print_stat(i, st)                                                   \
-    log("#%d: (%d, %d) => win: %.2lf%%, count: %.2lf%% (%d).", i, st.pos.x, \
-        st.pos.y, get_rate(st, parent->state.id == 1 ? 1 : -1),             \
-        percentage(st.count, parent->state.count), st.count)
+#define print_stat(i, st)                                                 \
+    log("(%hhd, %hhd) => win: %.2lf%%, count: %.1lf%% (%d), eval: %.3lf", \
+        st.pos.x, st.pos.y, get_rate(st, parent->state.id == 1 ? 1 : -1), \
+        percentage(st.count, parent->state.count), st.count,              \
+        ucb_eval(parent, cand[i], st.id == 1 ? -1 : 1))
     for (int i = 0; i < cnt; i++) {
         if (cand[i] != NULL) {
             print_stat(i, cand[i]->state);
@@ -555,18 +560,24 @@ node_t* ucb_select(node_t* parent)
 
 bool terminated(state_t st)
 {
-    if (st.score || st.piece_cnt == assets.capacity) return true;
+    if (st.score || st.piece_cnt == st.capacity) return true;
     return false;
 }
 
 node_t* put_piece(node_t* parent, point_t pos)
 {
-    int i = pos.x, j = pos.y;
+    int8_t i = pos.x, j = pos.y;
+    point_t new_begin = {
+        max(min(parent->state.begin.x, i - assets.mcts_parm.WRAP_RAD), 0),
+        max(min(parent->state.begin.y, j - assets.mcts_parm.WRAP_RAD), 0)};
+    point_t new_end = {
+        min(max(parent->state.end.x, i + assets.mcts_parm.WRAP_RAD + 1), BOARD_SIZE),
+        min(max(parent->state.end.y, j + assets.mcts_parm.WRAP_RAD + 1), BOARD_SIZE)};
     add(parent->state.board, i, j, parent->state.id);
     state_t st = create_state(
         parent->state.board,
         zobrist_update(parent->state.hash, pos, 0, parent->state.id), pos,
-        parent->state.piece_cnt + 1);
+        parent->state.piece_cnt + 1, new_begin, new_end);
     minus(parent->state.board, i, j, parent->state.id);
     node_t* node = create_node(st);
     if (node == NULL) return NULL;
@@ -636,12 +647,12 @@ node_t* traverse(node_t* parent)
     }
     // TODO: end
     // log("%d", parent->state.id);
-    int res = assets.capacity - parent->state.visited_cnt;
+    int res = parent->state.capacity - parent->state.visited_cnt;
     if (res) {
         int pos = (rand() % res) + 1;
-        int i = assets.top, j = assets.left;
-        for (int t = 0, cnt = 0; t < assets.capacity; t++, j++) {
-            if (j >= assets.right) i++, j = assets.left;
+        int i = parent->state.begin.x, j = parent->state.begin.y;
+        for (int t = 0, cnt = 0; t < parent->state.capacity; t++, j++) {
+            if (j >= parent->state.end.y) i++, j = parent->state.begin.y;
             if (!get(parent->state.visited, i, j)) {
                 cnt++;
                 if (cnt >= pos) break;
@@ -712,11 +723,14 @@ point_t mcts(const game_t game, mcts_assets_t* player_assets)
     int id = game.current_id;
     cprboard_t zip;
     encode(game.board, zip);
+    int top, bottom, left, right;
+    wrap_area(board, &top, &bottom, &left, &right, parm.WRAP_RAD);
     if (game.step_cnt == 0) {
         point_t pos = {BOARD_SIZE / 2, BOARD_SIZE / 2};
         add(zip, pos.x, pos.y, id);
         assets.last_status =
-            create_state(zip, zobrist_update(0, pos, 0, id), pos, 1);
+            create_state(zip, zobrist_update(0, pos, 0, id), pos, 1,
+                         (point_t){left, top}, (point_t){right, bottom});
         (*player_assets) = assets;
         return pos;
     }
@@ -724,7 +738,8 @@ point_t mcts(const game_t game, mcts_assets_t* player_assets)
     node_t *root, *pre;
     if (assets.last_status.piece_cnt == 0) {
         root = create_node(create_state(zip, zobrist_update(0, p0, 0, 3 - id),
-                                        p0, game.step_cnt));
+                                        p0, game.step_cnt, (point_t){left, top},
+                                        (point_t){right, bottom}));
         pre = NULL;
     } else {
         pre = create_node(assets.last_status);
@@ -745,13 +760,6 @@ point_t mcts(const game_t game, mcts_assets_t* player_assets)
     //     get_danger_pos(&(virtual_root->state), p1);
     //     append_child(virtual_root, root);
     // }
-    do {
-        wrap_area(board, &assets.top, &assets.bottom, &assets.left,
-                  &assets.right, parm.WRAP_RAD);
-        assets.capacity =
-            (assets.right - assets.left) * (assets.bottom - assets.top);
-    } while ((assets.capacity < 50) && (parm.WRAP_RAD++));
-    // log("capacity: %d", capacity);
     // log("virtual_root's danger pos: (%d, %d)/(%d, %d)",
     // virtual_root->state.danger_pos[0].x, virtual_root->state.danger_pos[0].y,
     // virtual_root->state.danger_pos[1].x,
@@ -768,13 +776,14 @@ point_t mcts(const game_t game, mcts_assets_t* player_assets)
     // while ((tim = get_time()) < parm.TIME_LIMIT ) {
     while ((tim = get_time()) < parm.MIN_TIME ||
            ((tim < parm.MAX_TIME) && (assets.tot < NODE_LIMIT) &&
-            (count_select(root)->state.count < parm.MIN_COUNT * assets.capacity))) {
+            (count_select(root)->state.count <
+             parm.MIN_COUNT * root->state.capacity))) {
         node_t *leaf, *start = root;
         leaf = traverse(start);
         if (leaf != NULL) backpropagate(leaf, leaf->state.score);
         cnt++;
         if (cnt % base == 0) {
-            //log("tried %d times.", cnt);
+            // log("tried %d times.", cnt);
             base *= 2;
         }
     }
@@ -805,9 +814,9 @@ point_t mcts(const game_t game, mcts_assets_t* player_assets)
             st.pos.y, rate, (double)st.count / root->state.count * 100,
             st.count);
     else
-        logw("(%d, %d) => win: %.2lf%%, count: %.2lf%% (%d).", st.pos.x,
-             st.pos.y, rate, (double)st.count / root->state.count * 100,
-             st.count);
+        log_w("(%d, %d) => win: %.2lf%%, count: %.2lf%% (%d).", st.pos.x,
+              st.pos.y, rate, (double)st.count / root->state.count * 100,
+              st.count);
     (*player_assets) = assets;
     return pos;
 }

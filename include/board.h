@@ -1,4 +1,5 @@
-#pragma once
+#ifndef BOARD_H
+#define BOARD_H
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -33,3 +34,4 @@ int  check_draw(const board_t);
 int  check(const board_t, point_t);
 int banned(const board_t, point_t, int);
 void test_ban(void);
+#endif

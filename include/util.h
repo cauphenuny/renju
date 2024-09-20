@@ -1,4 +1,5 @@
-#pragma once
+#ifndef UTIL_H
+#define UTIL_H
 
 #include <stdio.h>
 
@@ -51,35 +52,61 @@
 #define CLRLINE              "\r\e[K"
 #define NONE                 "\e[0m"
 
-char* basename(char*);
+const char* basename(const char*);
 
-// infomation log
+#ifdef NO_LOG
 
-#define logi(fmt, ...) \
-    fprintf(stderr, \
-    "\033[" CLI_STYLE_NORMAL ";" CLI_COLOR_BLUE "m[LOG] \033[0m" \
-    "\033[" CLI_STYLE_DARK ";" CLI_COLOR_NORMAL "m%s/%s/%d: \033[0m" \
-    fmt "\n", basename(__FILE__), __func__, __LINE__, ## __VA_ARGS__)
+#    define log_l(...) 1
+#    define log        log_l
 
-#define log logi
+#    define log_s(...) 1
+#    define log_i(...) 1
+#    define log_w(...) 1
+#    define log_e(...) 1
+
+#else
+
+// log-named log
+
+#    define log_l(fmt, ...)                                                  \
+        fprintf(stderr,                                                      \
+                "\033[" CLI_STYLE_NORMAL ";" CLI_COLOR_BLUE "m[LOG] \033[0m" \
+                "\033[" CLI_STYLE_DARK ";" CLI_COLOR_NORMAL                  \
+                "m%s/%s/%d: \033[0m" fmt "\n",                               \
+                basename(__FILE__), __func__, __LINE__, ##__VA_ARGS__)
+
+#    define log log_l
 
 // simplified log
 
-#define logs(...) fprintf(stderr, __VA_ARGS__)
+#    define log_s(...) fprintf(stderr, __VA_ARGS__)
 
-// warning style log
-#define logw(fmt, ...) \
-    fprintf(stderr, \
-    "\033[" CLI_STYLE_NORMAL ";" CLI_COLOR_YELLOW "m[WARN] \033[0m" \
-    "\033[" CLI_STYLE_DARK ";" CLI_COLOR_NORMAL "m%s/%s/%d: \033[0m" \
-    fmt "\n", basename(__FILE__), __func__, __LINE__, ## __VA_ARGS__)
+// info-named log
+#    define log_i(fmt, ...)                                                    \
+        fprintf(stderr,                                                        \
+                "\033[" CLI_STYLE_NORMAL ";" CLI_COLOR_GREEN "m[INFO] \033[0m" \
+                "\033[" CLI_STYLE_DARK ";" CLI_COLOR_NORMAL                    \
+                "m%s/%s/%d: \033[0m" fmt "\n",                                 \
+                basename(__FILE__), __func__, __LINE__, ##__VA_ARGS__)
 
-// error style log
-#define loge(fmt, ...) \
-    fprintf(stderr, \
-    "\033[" CLI_STYLE_NORMAL ";" CLI_COLOR_RED "m[ERROR] \033[0m" \
-    "\033[" CLI_STYLE_DARK ";" CLI_COLOR_NORMAL "m%s/%s/%d: \033[0m" \
-    fmt "\n", basename(__FILE__), __func__, __LINE__, ## __VA_ARGS__)
+// warning-named log
+#    define log_w(fmt, ...)                                   \
+        fprintf(stderr,                                       \
+                "\033[" CLI_STYLE_NORMAL ";" CLI_COLOR_YELLOW \
+                "m[WARN] \033[0m"                             \
+                "\033[" CLI_STYLE_DARK ";" CLI_COLOR_NORMAL   \
+                "m%s/%s/%d: \033[0m" fmt "\n",                \
+                basename(__FILE__), __func__, __LINE__, ##__VA_ARGS__)
+
+// error-named log
+#    define log_e(fmt, ...)                                                   \
+        fprintf(stderr,                                                       \
+                "\033[" CLI_STYLE_NORMAL ";" CLI_COLOR_RED "m[ERROR] \033[0m" \
+                "\033[" CLI_STYLE_DARK ";" CLI_COLOR_NORMAL                   \
+                "m%s/%s/%d: \033[0m" fmt "\n",                                \
+                basename(__FILE__), __func__, __LINE__, ##__VA_ARGS__)
+
+#endif
 
 #define prompt_getch() fprintf(stderr, "(%s) ", __func__), getchar()
 #define prompt() fprintf(stderr, "(%s) ", __func__)
@@ -87,3 +114,4 @@ char* basename(char*);
 void reset_time(void);
 int get_time(void);
 
+#endif

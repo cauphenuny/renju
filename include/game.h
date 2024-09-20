@@ -1,4 +1,5 @@
-#pragma once
+#ifndef GAME_H
+#define GAME_H
 
 #include "board.h"
 
@@ -14,3 +15,5 @@ typedef struct game_t {
     int winner_id;
     int players[3];
 } game_t;
+
+#endif

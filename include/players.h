@@ -1,4 +1,5 @@
-#pragma once
+#ifndef PLAYERS_H
+#define PLAYERS_H
 
 #include "board.h"
 #include "game.h"
@@ -12,3 +13,5 @@ enum {
 point_t move(int, const game_t);
 
 void players_init();
+
+#endif

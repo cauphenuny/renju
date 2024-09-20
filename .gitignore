@@ -2,9 +2,9 @@
 bin/
 test/
 build/
+export/
 **/*.swp
 .vscode/
 .cache/
 *.json
-*.sh
 .*

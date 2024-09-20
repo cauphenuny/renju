@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 3.5)
 project (
     gomoku
-    VERSION 1.3.1
+    VERSION 1.3.2
     LANGUAGES C
 )
 set (CMAKE_VERBOSE_MAKEFILE OFF)
@@ -20,12 +20,17 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     message ("-- ${COLOR_RED}Debug mode${COLOR_RESET}")
     add_compile_options (-DDEBUG -g -fno-omit-frame-pointer -fsanitize=undefined,address,leak,null,bounds)
     add_link_options (-fno-omit-frame-pointer -fsanitize=undefined,address,leak,null,bounds)
+    set (VERSION_STRING "${PROJECT_VERSION} ${COLOR_RED}(debug)${COLOR_RESET}")
 else()
     message ("-- ${COLOR_GREEN}Release mode${COLOR_RESET}")
     add_compile_options (-DRELEASE -O3)
+    set (VERSION_STRING "${PROJECT_VERSION}")
 endif()
-add_definitions (-DVERSION="${PROJECT_VERSION}")
+add_definitions (-DVERSION="${VERSION_STRING}")
 aux_source_directory (src SRC_LIST)
 include_directories (include)
 add_executable (gomoku main.c ${SRC_LIST})
+add_executable (botzone botzone.c ${SRC_LIST})
+target_compile_definitions (botzone PRIVATE NO_LOG)
 target_link_libraries (gomoku m) # linking to math library
+target_link_libraries (botzone m)

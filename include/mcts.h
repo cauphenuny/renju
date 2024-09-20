@@ -1,4 +1,5 @@
-#pragma once
+#ifndef MCTS_H
+#define MCTS_H
 
 #include "board.h"
 #include "game.h"
@@ -26,6 +27,9 @@ typedef struct {
     point_t pos;
     point_t danger_pos[2];
     zobrist_t hash;
+    point_t begin; // wrap left-top
+    point_t end; // wrap right-bottom
+    int capacity;
 } state_t;
 
 typedef struct {
@@ -60,7 +64,7 @@ typedef struct {
 
 typedef struct {
     int tot, edge_tot, hash_tot, reused_tot;
-    int top, bottom, left, right, capacity, first_id;
+    int first_id;
     mcts_parm_t mcts_parm;
     state_t last_status;
     hash_map_t hash_map;
@@ -68,3 +72,5 @@ typedef struct {
 
 point_t mcts(const game_t, mcts_assets_t*);
 void assets_init(mcts_assets_t*);
+
+#endif

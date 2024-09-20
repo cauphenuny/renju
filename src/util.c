@@ -22,8 +22,9 @@ int get_time(void) {
 }
 
 
-char* basename(char* fullname) {
-    char* pos = fullname, ch;
+const char* basename(const char* fullname) {
+    const char* pos = fullname;
+    char ch;
 #if defined(_WIN32) || defined(_WIN64)
     ch = '\\';
 #else

@@ -18,13 +18,13 @@ void players_init()
     mcts_parm_t parm = {
         .C = 1.414,
         .M = 0,
-        .MIN_TIME = 100,
-        .MAX_TIME = 5000,
+        .MIN_TIME = 10,
+        .MAX_TIME = 1000,
         .MIN_COUNT = 60,
         .WRAP_RAD = 2,
     };
     mcts1.mcts_parm = parm;
-    parm.C = 0.5;
+    // parm.WRAP_RAD = 1;
     mcts2.mcts_parm = parm;
     // assets_init(&mcts1);
     // assets_init(&mcts2);
