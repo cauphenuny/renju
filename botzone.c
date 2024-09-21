@@ -4,6 +4,7 @@
 #include "board.h"
 #include "game.h"
 #include "players.h"
+#include "util.h"
 #include "zobrist.h"
 
 #include <stdio.h>
@@ -20,6 +21,26 @@ void print_pos(point_t p)
     printf("%hhd %hhd\n", p.x, p.y);
 }
 
+void read_multy_pos(int n)
+{
+    int id = 1;
+    for (int i = 0; i < n; i++) {
+        point_t p;
+        read_pos(&p);
+        if (inboard(p)) {
+            put(game.board, id, p), refresh(game.board);
+            game.steps[game.step_cnt++] = p;
+        }
+        if (!i) {
+            if (inboard(p))
+                game.first_id = id;
+            else
+                game.first_id = 3 - id;
+        }
+        id = 3 - id;
+    }
+}
+
 int main()
 {
     zobrist_init();
@@ -27,36 +48,28 @@ int main()
 
     int n;
     scanf("%d", &n);
+
+    read_multy_pos(n * 2 - 1);
+
     point_t p;
-    read_pos(&p);
-    if (inboard(p)) {
-        put(game.board, 1, p);
-        game.steps[game.step_cnt++] = p;
-    }
-    refresh(game.board);
+    // point_t p = move(MCTS, game);
 
-    game.current_id = 2;
-    point_t pos = move(MCTS, game);
-    print_pos(pos);
-    put(game.board, 2, pos);
-    game.steps[game.step_cnt++] = p;
-    printf("\n>>>BOTZONE_REQUEST_KEEP_RUNNING<<<\n");
+    // print_pos(p);
 
-    // print(board);
-    fflush(stdout);
     while (1) {
-        read_pos(&p);
-        put(game.board, 1, p);
-        game.steps[game.step_cnt++] = p;
-        refresh(game.board);
-
         game.current_id = 2;
-        pos = move(MCTS, game);
-        put(game.board, 2, pos);
-        game.steps[game.step_cnt++] = pos;
-        print_pos(pos);
-        printf("\n>>>BOTZONE_REQUEST_KEEP_RUNNING<<<\n");
-        // print(board);
+        p = move(MCTS, game);
+        put(game.board, 2, p), refresh(game.board);
+        game.steps[game.step_cnt++] = p;
+
+        print_pos(p);
+        log_flush();
+
+        printf(">>>BOTZONE_REQUEST_KEEP_RUNNING<<<\n");
         fflush(stdout);
+
+        read_pos(&p);
+        put(game.board, 1, p), refresh(game.board);
+        game.steps[game.step_cnt++] = p;
     }
 }

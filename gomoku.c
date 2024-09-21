@@ -44,7 +44,7 @@ game_t start_game(game_t game)
         if (!available(game.board, pos)) {
             log_e("invalid position!");
             export(game, game.step_cnt);
-            // prompt_getch();
+            prompt_getch();
             continue;
         }
         if (id == game.first_id) {
@@ -108,12 +108,12 @@ int main(void) {
         game.current_id = id;
         // load_preset(&game);
         game.players[1] = MCTS;
-        game.players[2] = MANUAL;
+        game.players[2] = MCTS2;
         zobrist_init();
         players_init();
-#ifdef DEBUG
-    start_game:
-#endif
+// #ifdef DEBUG
+//     start_game:
+// #endif
         game = start_game(game);
         results[game.winner_id]++;
         if (game.winner_id == id) {
@@ -123,41 +123,41 @@ int main(void) {
         }
         log_i("results: p1/p2/draw: %d/%d/%d, 1st/2nd: %d/%d", results[1],
               results[2], results[0], results[3], results[4]);
-#ifdef DEBUG
-        char ch[3];
-        do {
-            prompt();
-            int step;
-            char identifier[64];
-            scanf("%s", ch);
-            switch (ch[0]) {
-            case 'p':
-                scanf("%d%s", &step, identifier);
-                for (int i = 0, x, y; i < step; i++) {
-                    x = game.steps[i].x;
-                    y = game.steps[i].y;
-                    printf("%s.board[%d][%d]=%d;"
-                           "%s.steps[%s.steps_cnt++]=(point_t){%d, %d};",
-                           identifier, x, y, game.board[x][y], identifier,
-                           identifier, x, y);
-                }
-                printf("\n");
-                break;
-            case 'r':
-                scanf("%d", &step);
-                memset(&game.board, 0, sizeof(game.board));
-                int cur_id = game.first_id;
-                for (int i = 0, x, y; i < step; i++) {
-                    x = game.steps[i].x;
-                    y = game.steps[i].y;
-                    game.board[x][y] = cur_id;
-                    cur_id = 3 - cur_id;
-                }
-                game.current_id = 3 - cur_id;
-                goto start_game;
-            }
-        } while (ch[0] != 'n');
-#endif
+// #ifdef DEBUG
+//         char ch[3];
+//         do {
+//             prompt();
+//             int step;
+//             char identifier[64];
+//             scanf("%s", ch);
+//             switch (ch[0]) {
+//             case 'p':
+//                 scanf("%d%s", &step, identifier);
+//                 for (int i = 0, x, y; i < step; i++) {
+//                     x = game.steps[i].x;
+//                     y = game.steps[i].y;
+//                     printf("%s.board[%d][%d]=%d;"
+//                            "%s.steps[%s.steps_cnt++]=(point_t){%d, %d};",
+//                            identifier, x, y, game.board[x][y], identifier,
+//                            identifier, x, y);
+//                 }
+//                 printf("\n");
+//                 break;
+//             case 'r':
+//                 scanf("%d", &step);
+//                 memset(&game.board, 0, sizeof(game.board));
+//                 int cur_id = game.first_id;
+//                 for (int i = 0, x, y; i < step; i++) {
+//                     x = game.steps[i].x;
+//                     y = game.steps[i].y;
+//                     game.board[x][y] = cur_id;
+//                     cur_id = 3 - cur_id;
+//                 }
+//                 game.current_id = 3 - cur_id;
+//                 goto start_game;
+//             }
+//         } while (ch[0] != 'n');
+// #endif
         id = 3 - id;
     }
     return 0;

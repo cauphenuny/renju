@@ -6,6 +6,18 @@
 
 long long tim_;
 
+#ifndef ECHO_LOG
+
+char log_buffer[LOG_BUFFER_SIZE];
+
+void log_flush()
+{
+    printf("%s\n", log_buffer);
+    log_buffer[0] = '\0';
+}
+
+#endif
+
 long long get_raw_time(void) {
     struct timespec time;
     clock_gettime(CLOCK_REALTIME, &time);
@@ -21,6 +33,7 @@ int get_time(void) {
     return (int)(get_raw_time() - tim_);
 }
 
+#ifdef ECHO_LOG
 
 const char* basename(const char* fullname) {
     const char* pos = fullname;
@@ -38,3 +51,5 @@ const char* basename(const char* fullname) {
     }
     return pos;
 }
+
+#endif

@@ -54,19 +54,36 @@
 
 const char* basename(const char*);
 
-#ifdef NO_LOG
+#ifndef ECHO_LOG
 
-#    define log_l(...) 1
-#    define log        log_l
+#    define LOG_BUFFER_SIZE 1024
 
-#    define log_s(...) 1
-#    define log_i(...) 1
-#    define log_w(...) 1
-#    define log_e(...) 1
+extern char log_buffer[LOG_BUFFER_SIZE];
+
+void log_flush();
+
+#    define log_l(fmt, ...)                                                    \
+        snprintf(log_buffer, LOG_BUFFER_SIZE, "%s[LOG] %s/%d: " fmt " | ", log_buffer, __func__, \
+                __LINE__, ##__VA_ARGS__)
+#    define log log_l
+
+#    define log_s(fmt, ...) \
+        snprintf(log_buffer, LOG_BUFFER_SIZE, "%s" fmt " | ", log_buffer, ##__VA_ARGS__)
+#    define log_i(fmt, ...)                                           \
+        snprintf(log_buffer, LOG_BUFFER_SIZE, "%s[INFO] %s/%d: " fmt " | ", log_buffer, \
+                __func__, __LINE__, ##__VA_ARGS__)
+#    define log_w(fmt, ...)                                           \
+        snprintf(log_buffer, LOG_BUFFER_SIZE, "%s[WARN] %s/%d: " fmt " | ", log_buffer, \
+                __func__, __LINE__, ##__VA_ARGS__)
+#    define log_e(fmt, ...)                                            \
+        snprintf(log_buffer, LOG_BUFFER_SIZE, "%s[ERROR] %s/%d: " fmt " | ", log_buffer, \
+                __func__, __LINE__, ##__VA_ARGS__)
 
 #else
 
 // log-named log
+
+#define log_flush(...) 1
 
 #    define log_l(fmt, ...)                                                  \
         fprintf(stderr,                                                      \
