@@ -128,7 +128,7 @@ void log_flush();
 #define prompt_getch() fprintf(stderr, "(%s) ", __func__), getchar()
 #define prompt() fprintf(stderr, "(%s) ", __func__)
 
-void reset_time(void);
-int get_time(void);
+int record_time(void);
+int get_time(int);
 
 #endif

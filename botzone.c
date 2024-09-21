@@ -1,5 +1,5 @@
 // author: Cauphenuny <https://cauphenuny.github.io/>
-// date: 2024/07/27
+// date: 2024/09/20
 
 #include "board.h"
 #include "game.h"
@@ -58,14 +58,14 @@ int main()
 
     while (1) {
         game.current_id = 2;
-        p = move(MCTS, game);
+        p = move(MINIMAX, game);
         put(game.board, 2, p), refresh(game.board);
         game.steps[game.step_cnt++] = p;
 
         print_pos(p);
         log_flush();
 
-        printf(">>>BOTZONE_REQUEST_KEEP_RUNNING<<<\n");
+        printf("\n>>>BOTZONE_REQUEST_KEEP_RUNNING<<<\n");
         fflush(stdout);
 
         read_pos(&p);

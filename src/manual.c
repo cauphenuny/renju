@@ -11,8 +11,6 @@
 #include "board.h"
 #include "game.h"
 
-/**************************** manual ****************************/
-
 int parse(char s[]) {
     if (isupper(s[0])) return s[0] - 'A' + 10;
     if (islower(s[0])) return s[0] - 'a' + 10;

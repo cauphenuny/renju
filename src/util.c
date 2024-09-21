@@ -4,8 +4,6 @@
 #include <string.h>
 #include "util.h"
 
-long long tim_;
-
 #ifndef ECHO_LOG
 
 char log_buffer[LOG_BUFFER_SIZE];
@@ -25,12 +23,12 @@ long long get_raw_time(void) {
     return tim;
 }
 
-void reset_time(void) {
-    tim_ = get_raw_time();
+int record_time(void) {
+    return get_raw_time();
 }
 
-int get_time(void) {
-    return (int)(get_raw_time() - tim_);
+int get_time(int start_time) {
+    return (int)(get_raw_time() - start_time);
 }
 
 #ifdef ECHO_LOG

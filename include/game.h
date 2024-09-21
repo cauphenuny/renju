@@ -6,6 +6,8 @@
 #define GAMECTRL_REGRET -2
 #define GAMECTRL_EXPORT -3
 
+#define GAME_TIME_LIMIT 990
+
 typedef struct game_t {
     board_t board;
     point_t steps[BOARD_SIZE * BOARD_SIZE];

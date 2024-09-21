@@ -8,6 +8,8 @@ enum {
     MANUAL,
     MCTS,
     MCTS2,
+    MINIMAX,
+    MIX,
 };
 
 point_t move(int, const game_t);

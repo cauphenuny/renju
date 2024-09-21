@@ -2,6 +2,7 @@
 // date: 2024/07/27
 #include "game.h"
 #include "mcts.h"
+#include "minimax.h"
 #include "players.h"
 #include "util.h"
 #include "zobrist.h"
@@ -34,13 +35,15 @@ game_t start_game(game_t game)
     print(game.board);
     while (1) {
         if (id == 1)
-            log("step " L_GREEN "#%d" NONE ", player1's turn.",
+            log("------ step " L_GREEN "#%d" NONE ", player1's turn ------",
                 game.step_cnt + 1);
         else
-            log("step " L_RED "#%d" NONE ", player2's turn.",
+            log("------ step " L_RED "#%d" NONE ", player2's turn ------",
                 game.step_cnt + 1);
         game.current_id = id;
+        int tim = record_time();
         pos = move(game.players[id], game);
+        log("time: %dms", get_time(tim));
         if (!available(game.board, pos)) {
             log_e("invalid position!");
             export(game, game.step_cnt);
@@ -61,6 +64,7 @@ game_t start_game(game_t game)
         put(game.board, id, pos);
         print(game.board);
         refresh(game.board);
+        //log("eval: %d", ab_evaluate(game.board, pos, id == 1 ? 1 : -1));
         if (check_draw(game.board)) {
             log("draw.");
             game.winner_id = 0;
@@ -108,7 +112,7 @@ int main(void) {
         game.current_id = id;
         // load_preset(&game);
         game.players[1] = MCTS;
-        game.players[2] = MCTS2;
+        game.players[2] = MIX;
         zobrist_init();
         players_init();
 // #ifdef DEBUG

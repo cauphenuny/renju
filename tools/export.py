@@ -2,6 +2,8 @@ import os
 import sys
 import re
 
+# export all source files to a single file for botzone uploading
+
 def collect_includes_and_code(file_path):
     includes = []
     code = []
