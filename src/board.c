@@ -23,20 +23,20 @@ const char* POS_BAN_MSG[] = {
 /// @param left return left
 /// @param right return right
 /// @param radius wrap radius
-void wrap_area(const board_t board, int* top, int* bottom, int* left,
-               int* right, int radius) {
-    int n = BOARD_SIZE, mid = n / 2;
-    *top = *left = mid - radius;
-    *bottom = *right = mid + radius + 1;
-    chkmin(*right, n), chkmin(*bottom, n);
-    chkmax(*top, 0), chkmax(*left, 0);
+void wrap_area(const board_t board, point_t* begin, point_t* end, int8_t radius)
+{
+    int8_t n = BOARD_SIZE, mid = n / 2;
+    begin->x = begin->y = mid - radius;
+    end->x = end->y = mid + radius + 1;
+    chkmin(end->y, n), chkmin(end->x, n);
+    chkmax(begin->x, 0), chkmax(begin->y, 0);
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < n; j++) {
             if (board[i][j]) {
-                chkmin(*top, max(0, i - radius));
-                chkmin(*left, max(0, j - radius));
-                chkmax(*bottom, min(i + radius + 1, n));
-                chkmax(*right, min(j + radius + 1, n));
+                chkmin(begin->x, max(0, i - radius));
+                chkmin(begin->y, max(0, j - radius));
+                chkmax(end->x, min(i + radius + 1, n));
+                chkmax(end->y, min(j + radius + 1, n));
             }
         }
     }
@@ -65,9 +65,10 @@ void print(const board_t board) {
         "\033[" CLI_STYLE_UNDERLINE "m\033[" CLI_STYLE_BOLD ";" CLI_COLOR_RED
         "mx\033[0m",
     };
-    int top = 0, bottom = BOARD_SIZE, left = 0, right = BOARD_SIZE;
-    wrap_area(board, &top, &bottom, &left, &right, 3);
+    point_t begin = {0, 0}, end = {BOARD_SIZE, BOARD_SIZE};
+    wrap_area(board, &begin, &end, 3);
     printf("   |");
+    int8_t left = begin.y, right = end.y, top = begin.x, bottom = end.x;
     for (int i = left; i < right; i++) {
         printf(" %c |%c", id2name(i), "\n"[i != right - 1]);
     }
@@ -136,18 +137,19 @@ int check_draw(const board_t board) {
 int check(const board_t board, point_t pos) {
     int id = board[pos.x][pos.y];
     if (!id) return 0;
-    static const int arrows[4][2] = {{0, 1}, {1, 0}, {1, 1}, {-1, 1}};
-    for (int i = 0, a, b, cnt; i < 4; i++) {
-        a = arrows[i][0], b = arrows[i][1];
+    static const int8_t arrows[4][2] = {{0, 1}, {1, 0}, {1, 1}, {-1, 1}};
+    int8_t dx, dy;
+    for (int i = 0, cnt; i < 4; i++) {
+        dx = arrows[i][0], dy = arrows[i][1];
         point_t np = {pos.x, pos.y};
-        for (cnt = 0; inboard(np); np.x += a, np.y += b) {
+        for (cnt = 0; inboard(np); np.x += dx, np.y += dy) {
             if (board[np.x][np.y] == id)
                 cnt++;
             else
                 break;
         }
-        np = (point_t){pos.x - a, pos.y - b};
-        for (; inboard(np); np.x -= a, np.y -= b) {
+        np = (point_t){pos.x - dx, pos.y - dy};
+        for (; inboard(np); np.x -= dx, np.y -= dy) {
             if (board[np.x][np.y] == id)
                 cnt++;
             else
@@ -169,15 +171,16 @@ int banned(const board_t board, point_t pos, int id) {
     if (id == -1) return POS_ACCEPT;
     board_t bd;
     memcpy(bd, board, sizeof(board_t));
-    static const int arrows[4][2] = {{0, 1}, {1, 0}, {1, 1}, {-1, 1}};
+    static const int8_t arrows[4][2] = {{0, 1}, {1, 0}, {1, 1}, {-1, 1}};
     int cnt[8];
-    for (int i = 0, a, b; i < 8; i++) {
+    int8_t dx, dy;
+    for (int i = 0; i < 8; i++) {
         if (i < 4)
-            a = arrows[i][0], b = arrows[i][1];
+            dx = arrows[i][0], dy = arrows[i][1];
         else
-            a = -arrows[i - 4][0], b = -arrows[i - 4][1];
-        point_t np = {pos.x + a, pos.y + b};
-        for (cnt[i] = 0; inboard(np); np.x += a, np.y += b) {
+            dx = -arrows[i - 4][0], dy = -arrows[i - 4][1];
+        point_t np = {pos.x + dx, pos.y + dy};
+        for (cnt[i] = 0; inboard(np); np.x += dx, np.y += dy) {
             if (bd[np.x][np.y] == id) {
                 cnt[i]++;
             } else {
@@ -210,17 +213,17 @@ int banned(const board_t board, point_t pos, int id) {
         {5, 1, 1, 1, 1, 0},
     };
     int live3_cnt = 0, exist4_cnt = 0;
-    for (int i = 0, a, b; i < 4; i++) {
-        a = arrows[i][0], b = arrows[i][1];
+    for (int i = 0; i < 4; i++) {
+        dx = arrows[i][0], dy = arrows[i][1];
         for (int offset = -6; offset <= -1; offset++) {
             for (int j = 0; j < 3; j++) {
                 const int* live3 = live3s[j];
                 int n = live3[0];
                 point_t np;
-                np.x = pos.x + a * offset;
-                np.y = pos.y + b * offset;
+                np.x = pos.x + dx * offset;
+                np.y = pos.y + dy * offset;
                 for (int k = 1; inboard(np) && k <= n;
-                     np.x += a, np.y += b, k++) {
+                     np.x += dx, np.y += dy, k++) {
                     // log("i=%d,j=%d,k=%d", i, j, k);
                     if (bd[np.x][np.y] == (live3[k] ? id : 0)) {
                         if (k == n) {
@@ -238,14 +241,14 @@ int banned(const board_t board, point_t pos, int id) {
                 const int* exist4 = exist4s[j];
                 int n = exist4[0];
                 point_t np;
-                np.x = pos.x + a * offset;
-                np.y = pos.y + b * offset;
+                np.x = pos.x + dx * offset;
+                np.y = pos.y + dy * offset;
                 for (int k = 1; inboard(np) && k <= n;
-                     np.x += a, np.y += b, k++) {
+                     np.x += dx, np.y += dy, k++) {
                     if (bd[np.x][np.y] == (exist4[k] ? id : 0)) {
                         if (k == n) {
                             exist4_cnt++;
-                            // logw("arrow: %d(%d, %d)", i, a, b);
+                            // logw("arrow: %d(%d, %d)", i, dx, dy);
                             offset += (n - 1);
                         }
                     } else {

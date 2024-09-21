@@ -4,6 +4,6 @@
 #include "board.h"
 #include "game.h"
 
-point_t manual(const game_t game);
+point_t manual();
 
 #endif

@@ -141,18 +141,19 @@ int compressive_check(const cprboard_t bd, point_t pos)
 {
     int id = get(bd, pos.x, pos.y);
     if (!id) return 0;
-    static const int arrows[4][2] = {{0, 1}, {1, 0}, {1, 1}, {-1, 1}};
-    for (int i = 0, a, b, cnt; i < 4; i++) {
-        a = arrows[i][0], b = arrows[i][1];
+    static const int8_t arrows[4][2] = {{0, 1}, {1, 0}, {1, 1}, {-1, 1}};
+    int8_t dx, dy;
+    for (int i = 0, cnt; i < 4; i++) {
+        dx = arrows[i][0], dy = arrows[i][1];
         point_t np = {pos.x, pos.y};
-        for (cnt = 0; inboard(np); np.x += a, np.y += b) {
+        for (cnt = 0; inboard(np); np.x += dx, np.y += dy) {
             if (get(bd, np.x, np.y) == id)
                 cnt++;
             else
                 break;
         }
-        np = (point_t){pos.x - a, pos.y - b};
-        for (; inboard(np); np.x -= a, np.y -= b) {
+        np = (point_t){pos.x - dx, pos.y - dy};
+        for (; inboard(np); np.x -= dx, np.y -= dy) {
             if (get(bd, np.x, np.y) == id)
                 cnt++;
             else
@@ -171,15 +172,16 @@ int compressive_banned(const cprboard_t board, point_t pos, int id)
     if (id == -1) return POS_ACCEPT;
     cprboard_t bd;
     memcpy(bd, board, sizeof(cprboard_t));
-    static const int arrows[4][2] = {{0, 1}, {1, 0}, {1, 1}, {-1, 1}};
+    static const int8_t arrows[4][2] = {{0, 1}, {1, 0}, {1, 1}, {-1, 1}};
     int cnt[8];
-    for (int i = 0, a, b; i < 8; i++) {
+    int8_t dx, dy;
+    for (int i = 0; i < 8; i++) {
         if (i < 4)
-            a = arrows[i][0], b = arrows[i][1];
+            dx = arrows[i][0], dy = arrows[i][1];
         else
-            a = -arrows[i - 4][0], b = -arrows[i - 4][1];
-        point_t np = {pos.x + a, pos.y + b};
-        for (cnt[i] = 0; inboard(np); np.x += a, np.y += b) {
+            dx = -arrows[i - 4][0], dy = -arrows[i - 4][1];
+        point_t np = {pos.x + dx, pos.y + dy};
+        for (cnt[i] = 0; inboard(np); np.x += dx, np.y += dy) {
             if (get(bd, np.x, np.y) == id) {
                 cnt[i]++;
             } else {
@@ -213,17 +215,17 @@ int compressive_banned(const cprboard_t board, point_t pos, int id)
         {5, 1, 1, 0, 1, 1},
     };
     int live3_cnt = 0, exist4_cnt = 0;
-    for (int i = 0, a, b; i < 4; i++) {
-        a = arrows[i][0], b = arrows[i][1];
+    for (int i = 0; i < 4; i++) {
+        dx = arrows[i][0], dy = arrows[i][1];
         for (int offset = -6; offset <= -1; offset++) {
             for (int j = 0; j < 3; j++) {
                 const int* live3 = live3s[j];
                 int n = live3[0];
                 point_t np;
-                np.x = pos.x + a * offset;
-                np.y = pos.y + b * offset;
+                np.x = pos.x + dx * offset;
+                np.y = pos.y + dy * offset;
                 for (int k = 1; inboard(np) && k <= n;
-                     np.x += a, np.y += b, k++) {
+                     np.x += dx, np.y += dy, k++) {
                     // log("i=%d,j=%d,k=%d", i, j, k);
                     if (get(bd, np.x, np.y) == (live3[k] ? id : 0)) {
                         if (k == n) {
@@ -241,14 +243,14 @@ int compressive_banned(const cprboard_t board, point_t pos, int id)
                 const int* exist4 = exist4s[j];
                 int n = exist4[0];
                 point_t np;
-                np.x = pos.x + a * offset;
-                np.y = pos.y + b * offset;
+                np.x = pos.x + dx * offset;
+                np.y = pos.y + dy * offset;
                 for (int k = 1; inboard(np) && k <= n;
-                     np.x += a, np.y += b, k++) {
+                     np.x += dx, np.y += dy, k++) {
                     if (get(bd, np.x, np.y) == (exist4[k] ? id : 0)) {
                         if (k == n) {
                             exist4_cnt++;
-                            // logw("arrow: %d(%d, %d)", i, a, b);
+                            // logw("arrow: %d(%d, %d)", i, dx, dy);
                             offset += (n - 1);
                         }
                     } else {
@@ -281,14 +283,15 @@ void get_danger_pos(state_t* st, point_t pos)
     if (!id) {
         return;
     }
-    static const int arrows[4][2] = {{0, 1}, {1, 0}, {1, 1}, {-1, 1}};
+    static const int8_t arrows[4][2] = {{0, 1}, {1, 0}, {1, 1}, {-1, 1}};
     point_t np = pos, d0 = {-1, -1}, d1 = {-1, -1};
     // log("start.");
-    for (int i = 0, a, b, cnt0 = 0, cnt1 = 0; i < 4; i++) {
-        a = arrows[i][0], b = arrows[i][1];
+    int8_t dx, dy;
+    for (int i = 0, cnt0 = 0, cnt1 = 0; i < 4; i++) {
+        dx = arrows[i][0], dy = arrows[i][1];
         np = (point_t){pos.x, pos.y};
         for (int flag = cnt0 = cnt1 = 0; inboard(np) && flag < 2;
-             np.x += a, np.y += b) {
+             np.x += dx, np.y += dy) {
             if (get(bd, np.x, np.y) == 3 - id) break;
             if (get(bd, np.x, np.y) == 0) {
                 if (id == assets.first_id &&
@@ -307,8 +310,8 @@ void get_danger_pos(state_t* st, point_t pos)
             }
         }
         // log("cnt0: %d, cnt1: %d", cnt0, cnt1);
-        np = (point_t){pos.x - a, pos.y - b};
-        for (int flag = 0; inboard(np) && flag < 2; np.x -= a, np.y -= b) {
+        np = (point_t){pos.x - dx, pos.y - dy};
+        for (int flag = 0; inboard(np) && flag < 2; np.x -= dx, np.y -= dy) {
             if (get(bd, np.x, np.y) == 3 - id) break;
             if (get(bd, np.x, np.y) == 0) {
                 if (id == assets.first_id &&
@@ -512,7 +515,7 @@ void print_candidate(node_t* parent, int count)
         cur = cur->next;
     }
 #define percentage(a, b) ((double)(a) / (double)(b) * 100)
-#define get_rate(st, f)  (percentage((st.count + (f) * st.result) / 2, st.count))
+#define get_rate(st, f)  (percentage(((double)st.count + (f) * st.result) / 2, st.count))
 #define print_stat(i, st)                                                 \
     log("(%hhd, %hhd) => win: %.2lf%%, count: %.1lf%% (%d), eval: %.3lf", \
         st.pos.x, st.pos.y, get_rate(st, parent->state.id == 1 ? 1 : -1), \
@@ -567,17 +570,17 @@ bool terminated(state_t st)
 node_t* put_piece(node_t* parent, point_t pos)
 {
     int8_t i = pos.x, j = pos.y;
-    point_t new_begin = {
-        max(min(parent->state.begin.x, i - assets.mcts_parm.WRAP_RAD), 0),
-        max(min(parent->state.begin.y, j - assets.mcts_parm.WRAP_RAD), 0)};
-    point_t new_end = {
-        min(max(parent->state.end.x, i + assets.mcts_parm.WRAP_RAD + 1), BOARD_SIZE),
-        min(max(parent->state.end.y, j + assets.mcts_parm.WRAP_RAD + 1), BOARD_SIZE)};
+    // point_t new_begin = {
+    //     max(min(parent->state.begin.x, i - assets.mcts_parm.WRAP_RAD), 0),
+    //     max(min(parent->state.begin.y, j - assets.mcts_parm.WRAP_RAD), 0)};
+    // point_t new_end = {
+    //     min(max(parent->state.end.x, i + assets.mcts_parm.WRAP_RAD + 1), BOARD_SIZE),
+    //     min(max(parent->state.end.y, j + assets.mcts_parm.WRAP_RAD + 1), BOARD_SIZE)};
     add(parent->state.board, i, j, parent->state.id);
     state_t st = create_state(
         parent->state.board,
         zobrist_update(parent->state.hash, pos, 0, parent->state.id), pos,
-        parent->state.piece_cnt + 1, new_begin, new_end);
+        parent->state.piece_cnt + 1, parent->state.begin, parent->state.end);
     minus(parent->state.board, i, j, parent->state.id);
     node_t* node = create_node(st);
     if (node == NULL) return NULL;
@@ -650,7 +653,7 @@ node_t* traverse(node_t* parent)
     int res = parent->state.capacity - parent->state.visited_cnt;
     if (res) {
         int pos = (rand() % res) + 1;
-        int i = parent->state.begin.x, j = parent->state.begin.y;
+        int8_t i = parent->state.begin.x, j = parent->state.begin.y;
         for (int t = 0, cnt = 0; t < parent->state.capacity; t++, j++) {
             if (j >= parent->state.end.y) i++, j = parent->state.begin.y;
             if (!get(parent->state.visited, i, j)) {
@@ -722,15 +725,16 @@ point_t mcts(const game_t game, mcts_assets_t* player_assets)
     memcpy(&board, game.board, sizeof(board_t));
     int id = game.current_id;
     cprboard_t zip;
-    encode(game.board, zip);
-    int top, bottom, left, right;
-    wrap_area(board, &top, &bottom, &left, &right, parm.WRAP_RAD);
+    encode(board, zip);
+
+    point_t wrap_begin, wrap_end;
+    int8_t radius = parm.WRAP_RAD;
+    wrap_area(board, &wrap_begin, &wrap_end, radius);
     if (game.step_cnt == 0) {
         point_t pos = {BOARD_SIZE / 2, BOARD_SIZE / 2};
         add(zip, pos.x, pos.y, id);
         assets.last_status =
-            create_state(zip, zobrist_update(0, pos, 0, id), pos, 1,
-                         (point_t){left, top}, (point_t){right, bottom});
+            create_state(zip, zobrist_update(0, pos, 0, id), pos, 1, wrap_begin, wrap_end);
         (*player_assets) = assets;
         return pos;
     }
@@ -738,14 +742,16 @@ point_t mcts(const game_t game, mcts_assets_t* player_assets)
     node_t *root, *pre;
     if (assets.last_status.piece_cnt == 0) {
         root = create_node(create_state(zip, zobrist_update(0, p0, 0, 3 - id),
-                                        p0, game.step_cnt, (point_t){left, top},
-                                        (point_t){right, bottom}));
+                                        p0, game.step_cnt, wrap_begin, wrap_end));
         pre = NULL;
     } else {
         pre = create_node(assets.last_status);
         root = put_piece(pre, p0);
         append_child(pre, root);
     }
+    do {
+        wrap_area(board, &root->state.begin, &root->state.end, radius);
+    } while ((root->state.end.y - root->state.begin.y) * (root->state.end.x - root->state.begin.x) < 40 && ++radius);
     // board_t bd;
     // decode(assets.root->state.board, bd);
     // log("root"), print(bd);
@@ -770,7 +776,7 @@ point_t mcts(const game_t game, mcts_assets_t* player_assets)
     int tim, cnt = 0;
     // double keyframe[5] = {0, 0.8, 0.9, 0.95}; // TODO
     log("searching... (C: %.2lf, time: %d-%d, count: %d, rad: %d)", parm.C,
-        parm.MIN_TIME, parm.MAX_TIME, parm.MIN_COUNT, parm.WRAP_RAD);
+        parm.MIN_TIME, parm.MAX_TIME, parm.MIN_COUNT, radius);
     // while ((tim = get_time()) < parm.TIME_LIMIT &&
     int base = 4096;
     // while ((tim = get_time()) < parm.TIME_LIMIT ) {
@@ -808,7 +814,6 @@ point_t mcts(const game_t game, mcts_assets_t* player_assets)
     point_t pos = st.pos;
     int f = id == 1 ? 1 : -1;
     double rate = ((double)(st.count + (f)*st.result) / 2 / st.count * 100);
-    log("all consumption: %d ms", get_time());
     if (rate < 80 && rate > 20)
         log("(%d, %d) => win: %.2lf%%, count: %.2lf%% (%d).", st.pos.x,
             st.pos.y, rate, (double)st.count / root->state.count * 100,
@@ -818,6 +823,7 @@ point_t mcts(const game_t game, mcts_assets_t* player_assets)
               st.pos.y, rate, (double)st.count / root->state.count * 100,
               st.count);
     (*player_assets) = assets;
+    log("all consumption: %d ms", get_time());
     return pos;
 }
 

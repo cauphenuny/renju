@@ -22,8 +22,7 @@ int parse(char s[]) {
     return tmp;
 }
 
-point_t manual(const game_t game) {
-    log("manual player%d", game.current_id);
+point_t manual() {
     point_t pos;
     char input_x[10], input_y[10];
     log("waiting input. (format: 8 11 or 8 b or 8 B)");

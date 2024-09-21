@@ -24,7 +24,7 @@ enum {
 extern const char* POS_BAN_MSG[];
 
 void print(const board_t);
-void wrap_area(const board_t, int*, int*, int*, int*, int);
+void wrap_area(const board_t, point_t*, point_t*, int8_t);
 bool inboard(point_t);
 char id2name(int);
 void refresh(board_t board);

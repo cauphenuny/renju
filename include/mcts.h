@@ -37,8 +37,7 @@ typedef struct {
     int MIN_TIME;
     int MAX_TIME;
     int MIN_COUNT;
-    int WRAP_RAD;
-    int M;
+    int8_t WRAP_RAD;
 } mcts_parm_t; // parameters for mcts
 
 typedef struct edge_t {

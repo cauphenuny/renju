@@ -17,14 +17,13 @@ void players_init()
     memset(&mcts2, 0, sizeof(mcts1));
     mcts_parm_t parm = {
         .C = 1.414,
-        .M = 0,
         .MIN_TIME = 10,
-        .MAX_TIME = 1000,
-        .MIN_COUNT = 60,
+        .MAX_TIME = 990,
+        .MIN_COUNT = 1000,
         .WRAP_RAD = 2,
     };
     mcts1.mcts_parm = parm;
-    // parm.WRAP_RAD = 1;
+    parm.WRAP_RAD = 3;
     mcts2.mcts_parm = parm;
     // assets_init(&mcts1);
     // assets_init(&mcts2);
@@ -34,7 +33,7 @@ point_t move(int player_type, const game_t game)
 {
     switch (player_type) {
     case MANUAL: {
-        return manual(game);
+        return manual();
     }
     case MCTS: {
         return mcts(game, &mcts1);
