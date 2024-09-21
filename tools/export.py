@@ -21,17 +21,10 @@ def process_header_file(header_file):
                 content.append(line)
     return content
 
-def main():
-    if len(sys.argv) > 1:
-        c_files = sys.argv[1:]
-    else: 
-    # 获取 ./src/ 目录下的所有 .c 文件
-        src_files = [os.path.join('src', f) for f in os.listdir('src') if f.endswith('.c')]
-        # 添加 ./botzone.c 文件
-        c_files = src_files + ['botzone.c']
-    
+def process_files(c_files, export_filename):
     all_includes = set()
     all_code = []
+    flag = False
 
     for c_file in c_files:
         if os.path.exists(c_file):
@@ -43,6 +36,7 @@ def main():
                     header_file = os.path.join('include', match.group(1))
                     if os.path.exists(header_file):
                         print(f"Expanding header file {header_file}")
+                        flag = True
                         header_content = process_header_file(header_file)
                         all_code.extend(header_content)
                         all_code.extend('\n')
@@ -55,14 +49,31 @@ def main():
         else:
             print(f"File {c_file} does not exist")
     
-    os.makedirs('export', exist_ok=True)
-
-    with open('export/export.c', 'w') as export_file:
+    with open(export_filename, 'w') as export_file:
         for include in sorted(all_includes):
             export_file.write(include + '\n')
         export_file.write('\n')
         for line in all_code:
             export_file.write(line)
+
+    return flag
+
+def main():
+    if len(sys.argv) > 1:
+        c_files = sys.argv[1:]
+    else: 
+    # 获取 ./src/ 目录下的所有 .c 文件
+        src_files = [os.path.join('src', f) for f in os.listdir('src') if f.endswith('.c')]
+        # 添加 ./botzone.c 文件
+        c_files = src_files + ['botzone.c']
+    
+    os.makedirs('export', exist_ok=True)
+
+    export_file = os.path.join('export', 'export.c')
+
+    while process_files(c_files, export_file):
+        c_files = [export_file]
+    
 
 if __name__ == "__main__":
     main()
