@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 3.5)
 project (
     gomoku
-    VERSION 1.6.0
+    VERSION 1.6.1
     LANGUAGES C
 )
 set (CMAKE_VERBOSE_MAKEFILE OFF)
@@ -34,7 +34,7 @@ file(GLOB_RECURSE INCLUDE_LIST "*.h")
 
 add_library (gomoku SHARED ${SRC_LIST})
 target_compile_definitions (gomoku PRIVATE GAME_TIME_LIMIT=1000)
-target_compile_definitions (gomoku PRIVATE INSTANT_LOG)
+target_compile_definitions (gomoku PRIVATE INSTANT_LOG) # instantly echo log
 target_link_libraries(gomoku m)
 
 add_custom_command(
@@ -47,9 +47,9 @@ add_custom_command(
 add_custom_target(generate_bindings ALL DEPENDS ${PROJECT_SOURCE_DIR}/lib/gomoku.py)
 
 add_executable (main gomoku.c)
-set_source_files_properties (gomoku.c PROPERTIES COMPILE_DEFINITIONS "P1=MCTS;P2=MCTS2")
+set_source_files_properties (gomoku.c PROPERTIES COMPILE_DEFINITIONS "P1=MCTS;P2=MANUAL")
 # target_compile_definitions (main PRIVATE GAME_TIME_LIMIT=1000)
-# target_compile_definitions (main PRIVATE INSTANT_LOG) # instantly echo log
+target_compile_definitions (main PRIVATE INSTANT_LOG)
 target_link_libraries (main gomoku) # linking to math library
 
 add_executable (botzone botzone.c ${SRC_LIST})
