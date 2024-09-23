@@ -239,7 +239,7 @@ abresult_t minimax_search(int depth, int alpha, int beta)
 
 point_t minimax(const game_t game)
 {
-    if (game.step_cnt == 0) return (point_t){BOARD_SIZE / 2, BOARD_SIZE / 2};
+    if (game.count == 0) return (point_t){BOARD_SIZE / 2, BOARD_SIZE / 2};
     abclock = record_time();
     eval_cache = create_eval_cache();
     eval_reuse_cnt = 0, eval_cache_size = 0;
@@ -248,13 +248,13 @@ point_t minimax(const game_t game)
             sizeof(eval_cache_entry_t) * EVAL_CACHE_ENTRY_SIZE);
     }
     memcpy(abstate.board, game.board, sizeof(board_t));
-    abstate.id = game.current_id == 1 ? 1 : -1;
-    abstate.pos = game.steps[game.step_cnt - 1];
+    abstate.id = game.cur_player == 1 ? 1 : -1;
+    abstate.pos = game.steps[game.count - 1];
     abstate.result = 0;
     abstate.value = ab_evaluate(abstate.board, abstate.pos, -abstate.id);
     point_t pos;
     int maxdepth = 0;
-    for (int i = 3;; i += 2) {
+    for (int i = 2;; i += 2) {
         abresult_t ret = minimax_search(i, -0x7f7f7f7f, 0x7f7f7f7f);
         if (get_time(abclock) < GAME_TIME_LIMIT)
             pos = ret.pos, maxdepth = i;

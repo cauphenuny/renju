@@ -6,50 +6,55 @@
 #include "game.h"
 #include "manual.h"
 #include "mcts.h"
+#include "mcts_nn.h"
 #include "minimax.h"
 
 #include <string.h>
 
-mcts_parm_t mcts1, mcts2;
-
-/// @brief initialize players
-void players_init()
-{
-    memset(&mcts1, 0, sizeof(mcts1));
-    memset(&mcts2, 0, sizeof(mcts1));
-    mcts_parm_t parm = {
-        .C = 1.414,
-        .MIN_TIME = 500,
-        .MAX_TIME = GAME_TIME_LIMIT,
-        .MIN_COUNT = 1000,
-        .WRAP_RAD = 2,
-    };
-    mcts1 = parm;
-    parm.WRAP_RAD = 3;
-    mcts2 = parm;
-    // assets_init(&mcts1);
-    // assets_init(&mcts2);
-}
+mcts_parm_t mcts_preset = {
+    .C = 1.414,
+    .start_c = 3,
+    .end_c = 0.5,
+    .min_time = 200,
+    .max_time = GAME_TIME_LIMIT,
+    .min_count = 200,
+    .wrap_rad = 2,
+};
 
 /// @brief generate next step by playerid and game info
-point_t move(int player_type, const game_t game)
+point_t move(int player_type, void* player_assets, const game_t game)
 {
     switch (player_type) {
     case MANUAL: {
         return manual();
     }
     case MCTS: {
-        return mcts(game, mcts1);
+        if (player_assets == NULL)
+            return mcts(game, mcts_preset);
+        else
+            return mcts(game, *(mcts_parm_t*)player_assets);
     }
     case MCTS2: {
-        return mcts(game, mcts2);
+        if (player_assets == NULL) {
+            mcts_parm_t parm = mcts_preset;
+            return mcts(game, parm);
+        } else {
+            return mcts(game, *(mcts_parm_t*)player_assets);
+        }
+    }
+    case MCTS_NN: {
+        mcts_nn_parm_t parm;
+        parm.network = player_assets;
+        return mcts_nn(game, parm);
     }
     case MINIMAX: {
         return minimax(game);
     }
     case MIX: {
-        if (game.step_cnt < 15) return minimax(game);
-        else return mcts(game, mcts1);
+        if (game.count < 20)
+            return minimax(game);
+        else
+            return mcts(game, mcts_preset);
     }
     }
     return (point_t){-1, -1};

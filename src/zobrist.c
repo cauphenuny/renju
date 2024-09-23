@@ -2,9 +2,12 @@
 #include "board.h"
 
 #include <stdlib.h>
+#include <stdbool.h>
+#include <assert.h>
 #include <time.h>
 
-static zobrist_t zobrist_table[BOARD_SIZE][BOARD_SIZE][2];
+zobrist_t zobrist_table[BOARD_SIZE][BOARD_SIZE][2];
+bool zobrist_initialized = 0;
 
 void zobrist_init()
 {
@@ -16,10 +19,12 @@ void zobrist_init()
             }
         }
     }
+    zobrist_initialized = 1;
 }
 
 zobrist_t zobrist_create(board_t board)
 {
+    assert(zobrist_initialized);
     zobrist_t hash = 0;
     for (int i = 0; i < BOARD_SIZE; ++i) {
         for (int j = 0; j < BOARD_SIZE; ++j) {
@@ -34,6 +39,7 @@ zobrist_t zobrist_create(board_t board)
 
 zobrist_t zobrist_update(zobrist_t hash, point_t pos, int prev_id, int now_id)
 {
+    assert(zobrist_initialized);
     if (prev_id != 0) {
         hash ^= zobrist_table[pos.x][pos.y][prev_id - 1];
     }

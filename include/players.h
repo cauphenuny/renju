@@ -3,17 +3,19 @@
 
 #include "board.h"
 #include "game.h"
+#include "mcts.h"
 
 enum {
     MANUAL,
-    MCTS,
-    MCTS2,
+    MCTS,     // default MCTS
+    MCTS2,    // for test
+    MCTS_NN,  // MCTS with neural network
     MINIMAX,
     MIX,
 };
 
-point_t move(int, const game_t);
+extern mcts_parm_t mcts_preset;
 
-void players_init();
+point_t move(int, void* player_assets, const game_t);
 
 #endif

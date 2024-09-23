@@ -1,10 +1,12 @@
 **/.DS_Store
 bin/
+lib/
 test/
 build/
+model/
 export/
 **/*.swp
 .vscode/
 .cache/
 *.json
-.*
+.idea/

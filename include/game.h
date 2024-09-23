@@ -6,16 +6,27 @@
 #define GAMECTRL_REGRET -2
 #define GAMECTRL_EXPORT -3
 
-#define GAME_TIME_LIMIT 990
+#ifndef GAME_TIME_LIMIT
+#    define GAME_TIME_LIMIT 990
+#endif
 
-typedef struct game_t {
+typedef struct {
     board_t board;
     point_t steps[BOARD_SIZE * BOARD_SIZE];
-    int step_cnt;
-    int current_id;
-    int first_id;
-    int winner_id;
-    int players[3];
+    int count;
+    int cur_player;
+    int first_player;
+    int winner;
 } game_t;
+
+game_t new_game(int first_player);
+
+void game_add_step(game_t* game, point_t pos);
+
+game_t game_backward(game_t game, int after_step);
+
+void game_print(game_t);
+
+void game_export(game_t, const char* name);
 
 #endif

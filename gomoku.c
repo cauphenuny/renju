@@ -6,6 +6,7 @@
 #include "players.h"
 #include "util.h"
 #include "zobrist.h"
+#include "init.h"
 
 #include <signal.h>
 #include <stdbool.h>
@@ -13,69 +14,63 @@
 #include <stdlib.h>
 #include <string.h>
 
-void export(game_t game, int step)
-{
-    int id = game.first_id;
-    printf("game->first_id=%d;", id);
-    for (int i = 0, x, y; i < step; i++) {
-        x = game.steps[i].x;
-        y = game.steps[i].y;
-        printf("game->board[%d][%d]=%d;"
-               "game->steps[game->step_cnt++]=(point_t){%d, %d};",
-               x, y, game.board[x][y], x, y);
-        id = 3 - id;
-    }
-    printf("game->current_id=%d;", id);
-}
+#ifndef P1
+#    define P1 MCTS
+#endif
+#ifndef P2
+#    define P2 MANUAL
+#endif
 
-game_t start_game(game_t game)
+game_t start_game(int player1, int player2, int first_player)
 {
+    game_t game = new_game(first_player);
     point_t pos;
-    int id = game.current_id;
-    print(game.board);
+    game_print(game);
     while (1) {
-        if (id == 1)
+        int id = game.cur_player;
+        int tim;
+        if (id == 1) {
             log("------ step " L_GREEN "#%d" NONE ", player1's turn ------",
-                game.step_cnt + 1);
-        else
+                game.count + 1);
+            tim = record_time(), pos = move(player1, NULL, game);
+        } else {
             log("------ step " L_RED "#%d" NONE ", player2's turn ------",
-                game.step_cnt + 1);
-        game.current_id = id;
-        int tim = record_time();
-        pos = move(game.players[id], game);
+                game.count + 1);
+            tim = record_time(), pos = move(player2, NULL, game);
+        }
         log("time: %dms", get_time(tim));
+
         if (!available(game.board, pos)) {
             log_e("invalid position!");
-            export(game, game.step_cnt);
+            game_export(game, "game->");
             prompt_getch();
             continue;
         }
-        if (id == game.first_id) {
-            // int ban = banned(game.board, pos, id);
-            int ban = POS_ACCEPT;
-            if (ban != POS_ACCEPT) {
-                log_e("banned position! (%s)", POS_BAN_MSG[ban]);
-                export(game, game.step_cnt);
-                prompt_getch();
-                continue;
-            }
-        }
-        game.steps[game.step_cnt++] = pos;
-        put(game.board, id, pos);
-        print(game.board);
-        refresh(game.board);
-        //log("eval: %d", ab_evaluate(game.board, pos, id == 1 ? 1 : -1));
+
+        // if (game.current_id == game.first_id) {
+        //     // int ban = banned(game.board, pos, id);
+        //     int ban = POS_ACCEPT;
+        //     if (ban != POS_ACCEPT) {
+        //         log_e("banned position! (%s)", POS_BAN_MSG[ban]);
+        //         export(game, game.step_cnt);
+        //         prompt_getch();
+        //         continue;
+        //     }
+        // }
+
+        game_add_step(&game, pos);
+        game_print(game);
+
         if (check_draw(game.board)) {
             log("draw.");
-            game.winner_id = 0;
+            game.winner = 0;
             return game;
         }
         if (check(game.board, pos)) {
             log("player%d wins.", id);
-            game.winner_id = id;
+            game.winner = id;
             return game;
         }
-        id = 3 - id;
     }
     return game;
 }
@@ -102,27 +97,18 @@ void signal_handler(int signum) {
 
 int main(void) {
     signal(SIGINT, signal_handler);
-    // test_ban();
+
     log("gomoku v%s", VERSION);
+
+    init();
+
     int id = 1;
     while (1) {
-        game_t game;
-        memset(&game, 0, sizeof(game_t));
-        game.first_id = id;
-        game.current_id = id;
-        // load_preset(&game);
-        game.players[1] = MCTS;
-        game.players[2] = MIX;
-        zobrist_init();
-        players_init();
-// #ifdef DEBUG
-//     start_game:
-// #endif
-        game = start_game(game);
-        results[game.winner_id]++;
-        if (game.winner_id == id) {
+        game_t game = start_game(P1, P2, id);
+        results[game.winner]++;
+        if (game.winner == id) {
             results[3]++;
-        } else if (game.winner_id == 3 - id) {
+        } else if (game.winner == 3 - id) {
             results[4]++;
         }
         log_i("results: p1/p2/draw: %d/%d/%d, 1st/2nd: %d/%d", results[1],

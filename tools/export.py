@@ -62,16 +62,18 @@ def process_files(c_files, export_filename):
 
 def main():
     if len(sys.argv) > 1:
-        c_files = sys.argv[1:]
+        ext_file = sys.argv[1]
     else: 
+        ext_file = 'botzone.c'
+
     # 获取 ./src/ 目录下的所有 .c 文件
-        src_files = [os.path.join('src', f) for f in os.listdir('src') if f.endswith('.c')]
-        # 添加 ./botzone.c 文件
-        c_files = src_files + ['botzone.c']
+    src_files = [os.path.join('src', f) for f in os.listdir('src') if f.endswith('.c')]
+    # 添加 ./botzone.c 文件
+    c_files = src_files + [ext_file]
     
     os.makedirs('export', exist_ok=True)
 
-    export_file = os.path.join('export', 'export.c')
+    export_file = os.path.join('export', ext_file)
 
     while process_files(c_files, export_file):
         c_files = [export_file]

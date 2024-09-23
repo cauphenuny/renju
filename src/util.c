@@ -4,8 +4,6 @@
 #include <string.h>
 #include "util.h"
 
-#ifndef ECHO_LOG
-
 char log_buffer[LOG_BUFFER_SIZE];
 
 void log_flush()
@@ -13,8 +11,6 @@ void log_flush()
     printf("%s\n", log_buffer);
     log_buffer[0] = '\0';
 }
-
-#endif
 
 long long get_raw_time(void) {
     struct timespec time;
@@ -31,7 +27,7 @@ int get_time(int start_time) {
     return (int)(get_raw_time() - start_time);
 }
 
-#ifdef ECHO_LOG
+#ifdef INSTANT_LOG
 
 const char* basename(const char* fullname) {
     const char* pos = fullname;

@@ -3,16 +3,17 @@
 
 #include "board.h"
 #include "game.h"
+#include "neuro.h"
 #include "zobrist.h"
 
 typedef struct {
-    double C;
-    int MIN_TIME;
-    int MAX_TIME;
-    int MIN_COUNT;
-    int8_t WRAP_RAD;
+    double C, start_c, end_c;
+    int min_time;
+    int max_time;
+    int min_count;
+    int8_t wrap_rad;
 } mcts_parm_t; // parameters for mcts
 
-point_t mcts(const game_t, mcts_parm_t);
+point_t mcts(game_t, mcts_parm_t);
 
 #endif

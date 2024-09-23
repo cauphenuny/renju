@@ -51,25 +51,25 @@ typedef struct edge_t {
 
 typedef struct node_t {
     state_t state;
-    int son_cnt, parent_cnt;
-    struct edge_t *son_edge, *parent_edge;
+    int child_cnt, parent_cnt;
+    struct edge_t *child_edge, *parent_edge;
 } node_t;
 
-typedef struct node_cache_entry_t {
+typedef struct hash_entry_t {
     zobrist_t key;
     node_t* value;
-    struct node_cache_entry_t* next;
-} node_cache_entry_t;
+    struct hash_entry_t* next;
+} hash_entry_t;
 
 typedef struct {
-    node_cache_entry_t** table;
-} node_cache_t;
+    hash_entry_t** table;
+} hashmap_t;
 
 /// @brief memory buffer for node and edge, prevent from frequent malloc
 node_t* node_buffer;
 edge_t* edge_buffer;
 
-int tot, edge_tot, node_cache_tot, reused_tot;
+int tot, edge_tot, hashmap_tot, reused_tot;
 int first_id;
 mcts_parm_t mcts_parm;
 
@@ -99,24 +99,25 @@ void decode(const cprboard_t src, board_t dest)
 
 /// @brief read and modify compressed board
 #define get(arr, x, y)      (int)((arr[x] >> ((y) * 2)) & 3)
-#define add(arr, x, y, v)   arr[x] += ((v) << ((y) * 2))
-#define minus(arr, x, y, v) arr[x] -= ((v) << ((y) * 2))
+#define set(arr, x, y, v)   arr[x] += ((v) - get(arr, x, y)) * (1 << ((y) * 2))
+#define add(arr, x, y, v)   arr[x] += ((v) * (1 << ((y) * 2)))
+#define minus(arr, x, y, v) arr[x] -= ((v) * (1 << ((y) * 2)))
 
-#define node_cache_SIZE 10000019
+#define HASHMAP_SIZE 10000019
 
-node_cache_t create_node_cache()
+hashmap_t create_hashmap()
 {
-    node_cache_t map;
-    map.table = (node_cache_entry_t**)calloc(node_cache_SIZE, sizeof(node_cache_entry_t*));
+    hashmap_t map;
+    map.table = (hash_entry_t**)calloc(HASHMAP_SIZE, sizeof(hash_entry_t*));
     return map;
 }
 
-void free_node_cache(node_cache_t map)
+void free_hashmap(hashmap_t map)
 {
-    // for (int i = 0; i < node_cache_SIZE; i++) {
-    //     node_cache_entry_t* entry = map.table[i];
+    // for (int i = 0; i < HASHMAP_SIZE; i++) {
+    //     hash_entry_t* entry = map.table[i];
     //     while (entry) {
-    //         node_cache_entry_t* temp = entry;
+    //         hash_entry_t* temp = entry;
     //         entry = entry->next;
     //         free(temp);
     //     }
@@ -124,31 +125,32 @@ void free_node_cache(node_cache_t map)
     free(map.table);
 }
 
-unsigned int node_cache_hash(zobrist_t key)
+unsigned int hash(zobrist_t key)
 {
-    return key % node_cache_SIZE;
+    return key % HASHMAP_SIZE;
 }
 
 /// @brief memory buffer for hash entries
-node_cache_entry_t* node_cache_buffer;
+hash_entry_t* hashmap_buffer;
 
-node_cache_t node_cache;
+hashmap_t hashmap;
 
-void node_cache_insert(node_cache_t map, zobrist_t key, node_t* value)
+void hashmap_insert(hashmap_t map, zobrist_t key, node_t* value)
 {
-    unsigned int index = node_cache_hash(key);
-    // node_cache_entry_t* new_entry = (node_cache_entry_t*)malloc(sizeof(node_cache_entry_t));
-    node_cache_entry_t* new_entry = node_cache_buffer + node_cache_tot++;
+    unsigned int index = hash(key);
+    // hash_entry_t* new_entry =
+    // (hashmap_entry_t*)malloc(sizeof(hashmap_entry_t));
+    hash_entry_t* new_entry = hashmap_buffer + hashmap_tot++;
     new_entry->key = key;
     new_entry->value = value;
     new_entry->next = map.table[index];
     map.table[index] = new_entry;
 }
 
-node_t* node_cache_get(node_cache_t map, zobrist_t key)
+node_t* hashmap_get(hashmap_t map, zobrist_t key)
 {
-    unsigned int index = node_cache_hash(key);
-    node_cache_entry_t* entry = map.table[index];
+    unsigned int index = hash(key);
+    hash_entry_t* entry = map.table[index];
     while (entry) {
         if (entry->key == key) {
             return entry->value;
@@ -158,11 +160,11 @@ node_t* node_cache_get(node_cache_t map, zobrist_t key)
     return NULL;
 }
 
-void node_cache_remove(node_cache_t map, zobrist_t key)
+void hashmap_remove(hashmap_t map, zobrist_t key)
 {
-    unsigned int index = node_cache_hash(key);
-    node_cache_entry_t* entry = map.table[index];
-    node_cache_entry_t* prev = NULL;
+    unsigned int index = hash(key);
+    hash_entry_t* entry = map.table[index];
+    hash_entry_t* prev = NULL;
     while (entry) {
         if (entry->key == key) {
             if (prev) {
@@ -368,7 +370,7 @@ node_t* create_node(state_t state)
 {
     if (tot >= NODE_LIMIT) return NULL;
     node_t* node;
-    if ((node = node_cache_get(node_cache, state.hash)) != NULL) {
+    if ((node = hashmap_get(hashmap, state.hash)) != NULL) {
         // exit(0);
         // board_t bd;
         // decode(state.board, bd);
@@ -386,7 +388,7 @@ node_t* create_node(state_t state)
     node = node_buffer + tot++;
     memset(node, 0, sizeof(node_t));
     memcpy(&node->state, &state, sizeof(state_t));
-    node_cache_insert(node_cache, state.hash, node);
+    hashmap_insert(hashmap, state.hash, node);
     return node;
 }
 
@@ -396,24 +398,24 @@ node_t* create_node(state_t state)
 /// @return the count of children of parent node
 int append_child(node_t* parent, node_t* node)
 {
-    edge_t* son_edge = edge_buffer + edge_tot++;
+    edge_t* child_edge = edge_buffer + edge_tot++;
     edge_t* parent_edge = edge_buffer + edge_tot++;
-    // edge_t* son_edge = (edge_t*)malloc(sizeof(edge_t));
+    // edge_t* child_edge = (edge_t*)malloc(sizeof(edge_t));
     // edge_t* parent_edge = (edge_t*)malloc(sizeof(edge_t));
-    memset(son_edge, 0, sizeof(edge_t));
+    memset(child_edge, 0, sizeof(edge_t));
     memset(parent_edge, 0, sizeof(edge_t));
 
-    son_edge->next = parent->son_edge;
-    son_edge->to = node;
-    parent->son_edge = son_edge;
-    parent->son_cnt++;
+    child_edge->next = parent->child_edge;
+    child_edge->to = node;
+    parent->child_edge = child_edge;
+    parent->child_cnt++;
 
     parent_edge->next = node->parent_edge;
     parent_edge->to = parent;
     node->parent_edge = parent_edge;
     node->parent_cnt++;
 
-    return parent->son_cnt;
+    return parent->child_cnt;
 }
 
 /// @brief delete a subgraph of a node
@@ -422,7 +424,7 @@ int delete_subgraph(node_t* node)
 {
     int size = 1;
     node_t* child;
-    for (edge_t *e = node->son_edge, *nxt; e != NULL; e = nxt) {
+    for (edge_t *e = node->child_edge, *nxt; e != NULL; e = nxt) {
         nxt = e->next;
         child = e->to;
         for (edge_t *pe = child->parent_edge, *pnxt, *prev = NULL; pe != NULL;
@@ -444,7 +446,7 @@ int delete_subgraph(node_t* node)
         }
         free(e);
     }
-    node_cache_remove(node_cache, node->state.hash);
+    hashmap_remove(hashmap, node->state.hash);
     free(node);
     return size;
 }
@@ -463,8 +465,8 @@ double ucb_eval(node_t* parent, node_t* node, int flag)
 /// @brief print top <count> candidates of a node
 void print_candidate(node_t* parent, int count)
 {
-    if (parent->son_edge == NULL) return;
-    edge_t* cur = parent->son_edge;
+    if (parent->child_edge == NULL) return;
+    edge_t* cur = parent->child_edge;
     node_t** cand = (node_t**)malloc(count * sizeof(node_t*));
     cand[0] = cur->to;
     int cnt = 0;
@@ -500,8 +502,8 @@ void print_candidate(node_t* parent, int count)
 /// @brief select best child by count
 node_t* count_select(node_t* parent)
 {
-    if (parent->son_edge == NULL) return parent;
-    edge_t* cur = parent->son_edge;
+    if (parent->child_edge == NULL) return parent;
+    edge_t* cur = parent->child_edge;
     node_t* sel = cur->to;
     while (cur != NULL) {
         if (cur->to->state.count > sel->state.count) {
@@ -515,7 +517,7 @@ node_t* count_select(node_t* parent)
 /// @brief select best child by ucb value
 node_t* ucb_select(node_t* parent)
 {
-    edge_t* cur = parent->son_edge;
+    edge_t* cur = parent->child_edge;
     node_t* sel = cur->to;
     int flag = (parent->state.id == 1) ? 1 : -1;
     while (cur != NULL) {
@@ -542,11 +544,11 @@ node_t* put_piece(node_t* parent, point_t pos)
 {
     int8_t i = pos.x, j = pos.y;
     // point_t new_begin = {
-    //     max(min(parent->state.begin.x, i - mcts_parm.WRAP_RAD), 0),
-    //     max(min(parent->state.begin.y, j - mcts_parm.WRAP_RAD), 0)};
+    //     max(min(parent->state.begin.x, i - mcts_parm.wrap_rad), 0),
+    //     max(min(parent->state.begin.y, j - mcts_parm.wrap_rad), 0)};
     // point_t new_end = {
-    //     min(max(parent->state.end.x, i + mcts_parm.WRAP_RAD + 1),
-    //     BOARD_SIZE), min(max(parent->state.end.y, j + mcts_parm.WRAP_RAD +
+    //     min(max(parent->state.end.x, i + mcts_parm.wrap_rad + 1),
+    //     BOARD_SIZE), min(max(parent->state.end.y, j + mcts_parm.wrap_rad +
     //     1), BOARD_SIZE)};
     add(parent->state.board, i, j, parent->state.id);
     state_t st = create_state(
@@ -565,7 +567,7 @@ node_t* put_piece(node_t* parent, point_t pos)
 /// @brief if parent has a child at pos, return the child, else create a new one
 node_t* preset_piece(node_t* parent, point_t pos)
 {
-    for (edge_t* edge = parent->son_edge; edge != NULL; edge = edge->next) {
+    for (edge_t* edge = parent->child_edge; edge != NULL; edge = edge->next) {
         if (edge->to->state.pos.x == pos.x && edge->to->state.pos.y == pos.y) {
             return edge->to;
         }
@@ -640,7 +642,7 @@ node_t* traverse(node_t* parent)
         point_t p = {i, j};
         return traverse(put_piece(parent, p));
     } else {
-        if (parent->son_cnt == 0) {
+        if (parent->child_cnt == 0) {
             return parent;
         }
         return traverse(ucb_select(parent));
@@ -649,72 +651,75 @@ node_t* traverse(node_t* parent)
 
 // TODO: topo optimize
 /// @brief backpropagate the score of a node to its ancestors
-void backpropagate(node_t* node, int score)
+void backpropagate(node_t* node, int score, node_t* end)
 {
     node->state.result += score;
     node->state.count++;
+    if (node == end) return;
     for (edge_t* e = node->parent_edge; e != NULL; e = e->next) {
-        backpropagate(e->to, score);
+        backpropagate(e->to, score, end);
     }
 }
 
 /// @brief mcts main function
 /// @param game current game info
 /// @param player_assets player's assets
-point_t mcts(const game_t game, mcts_parm_t parms)
+point_t mcts(const game_t game, mcts_parm_t parm)
 {
-    mcts_parm = parms;
+    mcts_parm = parm;
     if (node_buffer == NULL)
         node_buffer = (node_t*)malloc(MAX_TREE_SIZE * sizeof(node_t));
     if (edge_buffer == NULL)
         edge_buffer = (edge_t*)malloc(MAX_TREE_SIZE * sizeof(edge_t) * 5);
-    if (node_cache_buffer == NULL)
-        node_cache_buffer =
-            (node_cache_entry_t*)malloc(MAX_TREE_SIZE * sizeof(node_cache_entry_t));
+    if (hashmap_buffer == NULL)
+        hashmap_buffer =
+            (hash_entry_t*)malloc(MAX_TREE_SIZE * sizeof(hash_entry_t));
 
     srand((unsigned)time(0));
     int start_time = record_time();
 
-    tot = edge_tot = reused_tot = node_cache_tot = 0;
-    node_cache = create_node_cache();
-    first_id = game.first_id;
+    tot = edge_tot = reused_tot = hashmap_tot = 0;
+    hashmap = create_hashmap();
+    first_id = game.first_player;
 
-    int id = game.current_id;
-    mcts_parm_t parm = mcts_parm;
+    int id = game.cur_player;
     cprboard_t zip;
     memset(zip, 0, sizeof(zip));
 
-    if (game.step_cnt == 0) {
+    if (game.count == 0) {
         point_t pos = {BOARD_SIZE / 2, BOARD_SIZE / 2};
         return pos;
     }
 
     point_t wrap_begin, wrap_end;
-    int8_t radius = parm.WRAP_RAD;
+    int8_t radius = parm.wrap_rad;
     do {
         wrap_area(game.board, &wrap_begin, &wrap_end, radius);
     } while (((wrap_end.y - wrap_begin.y) * (wrap_end.x - wrap_begin.x) < 40) &&
              ++radius);
 
     node_t* root = create_node(create_state(
-        zip, wrap_begin, wrap_end, 0, (point_t){-1, -1}, 0, game.first_id));
+        zip, wrap_begin, wrap_end, 0, (point_t){0, 0}, 0, game.first_player));
     node_t* pre = NULL;
-    for (int i = 0; i < game.step_cnt; i++) {
+    for (int i = 0; i < game.count; i++) {
         pre = root;
         root = put_piece(pre, game.steps[i]);
     }
 
     int tim, cnt = 0;
-    log("searching... (C: %.2lf, time: %d-%d, count: %d, rad: %d)", parm.C,
-        parm.MIN_TIME, parm.MAX_TIME, parm.MIN_COUNT, radius);
+    log("searching... (C: %.1lf->%.1lf, time: %d-%d, count: %d, rad: %d)",
+        parm.start_c, parm.end_c, parm.min_time, parm.max_time, parm.min_count,
+        radius);
     // int base = 1;
-    while ((tim = get_time(start_time)) < parm.MIN_TIME ||
-           ((tim < parm.MAX_TIME) && (tot < NODE_LIMIT) &&
-            (count_select(root)->state.count <
-             parm.MIN_COUNT * root->state.capacity))) {
+    int wanted_count = parm.min_count * root->state.capacity;
+    while ((tim = get_time(start_time)) < parm.min_time ||
+           (count_select(root)->state.count < wanted_count)) {
+        if (tim > parm.max_time || tot >= NODE_LIMIT) break;
+        mcts_parm.C = parm.start_c +
+                      (parm.end_c - parm.start_c) * (double)tim / parm.max_time;
         node_t *leaf, *start = root;
         leaf = traverse(start);
-        if (leaf != NULL) backpropagate(leaf, leaf->state.score);
+        if (leaf != NULL) backpropagate(leaf, leaf->state.score, root);
         cnt++;
         // if (cnt % base == 0) {
         //     log("tried %d times.", cnt);
@@ -726,7 +731,7 @@ point_t mcts(const game_t game, mcts_parm_t parms)
         edge_tot, get_time(start_time));
     print_candidate(root, 7);
     node_t* move = count_select(root);
-    free_node_cache(node_cache);
+    free_hashmap(hashmap);
     log("clear cache");
     state_t st = move->state;
     int f = id == 1 ? 1 : -1;

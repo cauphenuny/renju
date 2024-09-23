@@ -86,16 +86,6 @@ void print(const board_t board) {
     }
 }
 
-/// @brief eliminate the marks of whether a pos is just put by a player
-/// @param board board before eliminate
-void refresh(board_t board) {
-    for (int i = 0; i < BOARD_SIZE; i++) {
-        for (int j = 0; j < BOARD_SIZE; j++) {
-            if (board[i][j] > 2) board[i][j] -= 2;
-        }
-    }
-}
-
 /// @brief check if a pos is in board
 /// @param pos
 /// @return
@@ -113,9 +103,8 @@ bool available(board_t board, point_t pos) {
 /// @param board board before putting
 /// @param id put id
 /// @param pos put position
-/// @return
 void put(board_t board, int id, point_t pos) {
-    board[pos.x][pos.y] = id + 2;
+    board[pos.x][pos.y] = id;
 }
 
 /// @brief check if the board is draw (no available position)

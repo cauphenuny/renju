@@ -2,4 +2,6 @@
 
 build: cmake
 
-target: bin/gomoku
+targets: 
+- gomoku: main program
+- botzone: bot for botzone.org.cn
