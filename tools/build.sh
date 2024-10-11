@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
-# author: Cauphenuny <https://cauphenuny.github.io/>
+# author: Cauphenuny
 cmake -B build && cmake --build build

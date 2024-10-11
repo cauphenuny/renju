@@ -1,7 +1,7 @@
 # gomoku
 
-build: cmake
+`cmake -Bbuild && cmake --build build`
 
 targets: 
-- gomoku: main program
+- main: game launcher
 - botzone: bot for botzone.org.cn

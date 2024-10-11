@@ -1,4 +1,4 @@
-// author: Cauphenuny <https://cauphenuny.github.io/>
+// author: Cauphenuny
 // date: 2024/09/20
 
 #include "board.h"

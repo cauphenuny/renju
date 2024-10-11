@@ -44,6 +44,7 @@
 #define GRAY                 "\e[0;37m"
 #define WHITE                "\e[1;37m"
 #define BOLD                 "\e[1m"
+#define DARK                 "\e[2m"
 #define UNDERLINE            "\e[4m"
 #define BLINK                "\e[5m"
 #define REVERSE              "\e[7m"

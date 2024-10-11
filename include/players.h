@@ -12,7 +12,10 @@ enum {
     MCTS_NN,  // MCTS with neural network
     MINIMAX,
     MIX,
+    PLAYER_CNT,
 };
+
+extern const char* player_name[PLAYER_CNT];
 
 extern mcts_parm_t mcts_preset;
 

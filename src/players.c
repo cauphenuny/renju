@@ -1,4 +1,4 @@
-// author: Cauphenuny <https://cauphenuny.github.io/>
+// author: Cauphenuny
 // date: 2024/07/26
 #include "players.h"
 
@@ -19,6 +19,15 @@ mcts_parm_t mcts_preset = {
     .max_time = GAME_TIME_LIMIT,
     .min_count = 200,
     .wrap_rad = 2,
+};
+
+const char* player_name[PLAYER_CNT] = {
+    "manual",
+    "mcts",
+    "mcts2",
+    "mcts_nn",
+    "minimax",
+    "mix",
 };
 
 /// @brief generate next step by playerid and game info

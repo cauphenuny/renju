@@ -1,4 +1,4 @@
-// author: Cauphenuny <https://cauphenuny.github.io/>
+// author: Cauphenuny
 // date: 2024/07/26
 #include <time.h>
 #include <string.h>

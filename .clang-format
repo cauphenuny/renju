@@ -1,6 +1,6 @@
 ---
 BasedOnStyle: LLVM
-AccessModifierOffset: '-2'
+AccessModifierOffset: '-4'
 AlignOperands: true
 AlignAfterOpenBracket: Align
 AlignTrailingComments: true
@@ -24,4 +24,6 @@ IndentPPDirectives: AfterHash
 UseTab: Never
 SortIncludes: true
 PointerAlignment: Left
+IndentCaseLabels: true
+ColumnLimit: 100
 ...

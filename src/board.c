@@ -1,12 +1,13 @@
-// author: Cauphenuny <https://cauphenuny.github.io/>
+// author: Cauphenuny
 // date: 2024/07/27
-#include <stdio.h>
-#include <string.h>
-#include <stdbool.h>
-#include <assert.h>
+#include "board.h"
 
 #include "util.h"
-#include "board.h"
+
+#include <assert.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
 
 const char* POS_BAN_MSG[] = {
     "accept",
@@ -41,60 +42,68 @@ void wrap_area(const board_t board, point_t* begin, point_t* end, int8_t radius)
         }
     }
 }
-/// @brief convert int id to char id
-/// @param id int id
-/// @return char id
-char id2name(int id) {
-    if (id < 10) {
-        return id + '0';
-    } else {
-        return id - 10 + 'A';
-    }
-}
 
 /// @brief print board
 /// @param board board
-void print(const board_t board) {
+void print(const board_t board)
+{
+    // static const char* border_line[3] = {"┏━┯━┓",  //
+    //                                      "┠─┼─┨",  //
+    //                                      "┗━┷━┛"}; //
+#define dark(x) DARK x NONE
+    static const char* border_line[3][5] = {
+        {dark("╔"), dark("═"), dark("╤"), dark("═"), dark("╗")},   //
+        {dark("╟"), dark("─"), dark("┼"), dark("─"), dark("╢")},   //
+        {dark("╚"), dark("═"), dark("╧"), dark("═"), dark("╝")}};  //
+#undef dark
     // 0: empty, 1/2: prev p1/p2 piece, 3/4: cur p1/p2 piece
-    const char* ch[5] = {
-        " ",
-        "\033[" CLI_COLOR_GREEN "mo\033[0m",
-        "\033[" CLI_COLOR_RED "mx\033[0m",
-        "\033[" CLI_STYLE_UNDERLINE "m\033[" CLI_STYLE_BOLD ";" CLI_COLOR_GREEN
-        "mo\033[0m",
-        "\033[" CLI_STYLE_UNDERLINE "m\033[" CLI_STYLE_BOLD ";" CLI_COLOR_RED
-        "mx\033[0m",
+    static const char* ch[5] = {
+        " ",                         //
+        GREEN "o" NONE,              //
+        RED "x" NONE,                //
+        UNDERLINE L_GREEN "o" NONE,  //
+        UNDERLINE L_RED "x" NONE,    //
     };
-    point_t begin = {0, 0}, end = {BOARD_SIZE, BOARD_SIZE};
-    wrap_area(board, &begin, &end, 3);
-    printf("   |");
-    int8_t left = begin.y, right = end.y, top = begin.x, bottom = end.x;
-    for (int i = left; i < right; i++) {
-        printf(" %c |%c", id2name(i), "\n"[i != right - 1]);
-    }
-    for (int i = left; i < right + 1; i++) {
-        printf("---+%c", "\n"[i != right]);
-    }
-    for (int i = top; i < bottom; i++) {
-        printf(" %c |", id2name(i));
-        for (int j = left; j < right; j++) {
-            printf(" %s |%c", ch[board[i][j]], "\n"[j != right - 1]);
+    // point_t begin = {0, 0}, end = {BOARD_SIZE, BOARD_SIZE};
+    // wrap_area(board, &begin, &end, 3);
+    // int8_t left = begin.y, right = end.y, top = begin.x, bottom = end.x;
+    for (int i = BOARD_SIZE - 1, line_type, col_type; i >= 0; i--) {
+        switch (i) {
+            case BOARD_SIZE - 1: line_type = 0; break;
+            case 0: line_type = 2; break;
+            default: line_type = 1;
         }
-        for (int j = left; j < right + 1; j++) {
-            printf("---+%c", "\n"[j != right]);
+        printf("%2d ", i + 1);
+        for (int j = 0; j < 2 * BOARD_SIZE - 1; j++) {
+            switch (j) {
+                case 0: col_type = 0; break;
+                case 2 * BOARD_SIZE - 2: col_type = 4; break;
+                default: col_type = 2 + (j & 1);
+            }
+            printf("%s", ((j & 1) || !board[i][j / 2])
+                             ? border_line[line_type][col_type]
+                             : ch[board[i][j / 2]]);
         }
+        printf("\n");
     }
+    printf("   ");
+    for (int i = 0; i < 2 * BOARD_SIZE - 1; i++) {
+        printf("%c", (i & 1) ? ' ' : 'A' + i / 2);
+    }
+    printf("\n");
 }
 
 /// @brief check if a pos is in board
 /// @param pos
 /// @return
-bool inboard(point_t pos) {
+bool inboard(point_t pos)
+{
     int n = BOARD_SIZE;
     return pos.x >= 0 && pos.x < n && pos.y >= 0 && pos.y < n;
 }
 
-bool available(board_t board, point_t pos) {
+bool available(board_t board, point_t pos)
+{
     if (!inboard(pos) || board[pos.x][pos.y]) return false;
     return true;
 }
@@ -103,14 +112,16 @@ bool available(board_t board, point_t pos) {
 /// @param board board before putting
 /// @param id put id
 /// @param pos put position
-void put(board_t board, int id, point_t pos) {
+void put(board_t board, int id, point_t pos)
+{
     board[pos.x][pos.y] = id;
 }
 
 /// @brief check if the board is draw (no available position)
 /// @param board current board
 /// @return 0 for not draw, 1 for draw
-int check_draw(const board_t board) {
+int check_draw(const board_t board)
+{
     for (int i = 0; i < BOARD_SIZE; i++) {
         for (int j = 0; j < BOARD_SIZE; j++) {
             if (!board[i][j]) return 0;
@@ -123,7 +134,8 @@ int check_draw(const board_t board) {
 /// @param board current board
 /// @param pos position to check
 /// @return 1 for player 1 win, -1 for player 2 win, 0 for no win
-int check(const board_t board, point_t pos) {
+int check(const board_t board, point_t pos)
+{
     int id = board[pos.x][pos.y];
     if (!id) return 0;
     static const int8_t arrows[4][2] = {{0, 1}, {1, 0}, {1, 1}, {-1, 1}};
@@ -154,7 +166,8 @@ int check(const board_t board, point_t pos) {
 /// @param pos position to check
 /// @param id current id
 /// @return 0 for accept, 1 for banned long, 2 for banned 33, 3 for banned 44
-int banned(const board_t board, point_t pos, int id) {
+int banned(const board_t board, point_t pos, int id)
+{
     // print(board);
     // log("pos: (%d, %d), id: %d", pos.x, pos.y, id);
     if (id == -1) return POS_ACCEPT;
@@ -178,14 +191,14 @@ int banned(const board_t board, point_t pos, int id) {
         }
     }
     for (int i = 0; i < 4; i++) {
-        // log("%c: %d/%d", "hv/\\"[i], cnt[i], cnt[i + 4]);
-        if (cnt[i] + cnt[i + 4] + 1 >= 6) {
-            return POS_BANNED_LONG;
+        if (cnt[i] + cnt[i + 4] + 1 == 5) {
+            return POS_ACCEPT;
         }
     }
     for (int i = 0; i < 4; i++) {
-        if (cnt[i] + cnt[i + 4] + 1 == 5) {
-            return POS_ACCEPT;
+        // log("%c: %d/%d", "hv/\\"[i], cnt[i], cnt[i + 4]);
+        if (cnt[i] + cnt[i + 4] + 1 >= 6) {
+            return POS_BANNED_LONG;
         }
     }
     bd[pos.x][pos.y] = id;
@@ -195,11 +208,8 @@ int banned(const board_t board, point_t pos, int id) {
         {6, 0, 1, 1, 0, 1, 0},
     };
     static const int exist4s[8][10] = {
-        {5, 0, 1, 1, 1, 1},
-        {5, 1, 0, 1, 1, 1},
-        {5, 1, 1, 0, 1, 1},
-        {5, 1, 1, 1, 0, 1},
-        {5, 1, 1, 1, 1, 0},
+        {5, 0, 1, 1, 1, 1}, {5, 1, 0, 1, 1, 1}, {5, 1, 1, 0, 1, 1},
+        {5, 1, 1, 1, 0, 1}, {5, 1, 1, 1, 1, 0},
     };
     int live3_cnt = 0, exist4_cnt = 0;
     for (int i = 0; i < 4; i++) {

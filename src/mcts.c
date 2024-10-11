@@ -1,4 +1,4 @@
-// author: Cauphenuny <https://cauphenuny.github.io/>
+// author: Cauphenuny
 // date: 2024/07/24
 #include "mcts.h"
 
@@ -66,15 +66,15 @@ typedef struct {
 } hashmap_t;
 
 /// @brief memory buffer for node and edge, prevent from frequent malloc
-node_t* node_buffer;
-edge_t* edge_buffer;
+static node_t* node_buffer;
+static edge_t* edge_buffer;
 
-int tot, edge_tot, hashmap_tot, reused_tot;
-int first_id;
-mcts_parm_t mcts_parm;
+static int tot, edge_tot, hashmap_tot, reused_tot;
+static int first_id;
+static mcts_parm_t mcts_parm;
 
 /// @brief encode from raw board to compressed board
-void encode(const board_t src, cprboard_t dest)
+static void encode(const board_t src, cprboard_t dest)
 {
     for (int i = 0; i < BOARD_SIZE; i++) {
         dest[i] = 0;
@@ -86,7 +86,7 @@ void encode(const board_t src, cprboard_t dest)
 }
 
 /// @brief decode from compressed board to raw board
-void decode(const cprboard_t src, board_t dest)
+static void decode(const cprboard_t src, board_t dest)
 {
     for (int i = 0; i < BOARD_SIZE; i++) {
         cpr_t tmp = src[i];
@@ -103,16 +103,18 @@ void decode(const cprboard_t src, board_t dest)
 #define add(arr, x, y, v)   arr[x] += ((v) * (1 << ((y) * 2)))
 #define minus(arr, x, y, v) arr[x] -= ((v) * (1 << ((y) * 2)))
 
+// TODO: change to instructive list
+
 #define HASHMAP_SIZE 10000019
 
-hashmap_t create_hashmap()
+static hashmap_t create_hashmap()
 {
     hashmap_t map;
     map.table = (hash_entry_t**)calloc(HASHMAP_SIZE, sizeof(hash_entry_t*));
     return map;
 }
 
-void free_hashmap(hashmap_t map)
+static void free_hashmap(hashmap_t map)
 {
     // for (int i = 0; i < HASHMAP_SIZE; i++) {
     //     hash_entry_t* entry = map.table[i];
@@ -125,17 +127,17 @@ void free_hashmap(hashmap_t map)
     free(map.table);
 }
 
-unsigned int hash(zobrist_t key)
+static unsigned int hash(zobrist_t key)
 {
     return key % HASHMAP_SIZE;
 }
 
 /// @brief memory buffer for hash entries
-hash_entry_t* hashmap_buffer;
+static hash_entry_t* hashmap_buffer;
 
-hashmap_t hashmap;
+static hashmap_t hashmap;
 
-void hashmap_insert(hashmap_t map, zobrist_t key, node_t* value)
+static void hashmap_insert(hashmap_t map, zobrist_t key, node_t* value)
 {
     unsigned int index = hash(key);
     // hash_entry_t* new_entry =
@@ -147,7 +149,7 @@ void hashmap_insert(hashmap_t map, zobrist_t key, node_t* value)
     map.table[index] = new_entry;
 }
 
-node_t* hashmap_get(hashmap_t map, zobrist_t key)
+static node_t* hashmap_get(hashmap_t map, zobrist_t key)
 {
     unsigned int index = hash(key);
     hash_entry_t* entry = map.table[index];
@@ -160,7 +162,7 @@ node_t* hashmap_get(hashmap_t map, zobrist_t key)
     return NULL;
 }
 
-void hashmap_remove(hashmap_t map, zobrist_t key)
+static void hashmap_remove(hashmap_t map, zobrist_t key)
 {
     unsigned int index = hash(key);
     hash_entry_t* entry = map.table[index];
@@ -186,7 +188,7 @@ void hashmap_remove(hashmap_t map, zobrist_t key)
 // node_t* memory_pool;
 
 /// @brief print board for certain state
-void print_state(state_t st)
+static void print_state(state_t st)
 {
     board_t b;
     decode(st.board, b);
@@ -194,7 +196,7 @@ void print_state(state_t st)
 }
 
 /// @brief check if has winner on pos, same as board.c:check()
-int compressive_check(const cprboard_t bd, point_t pos)
+static int compressive_check(const cprboard_t bd, point_t pos)
 {
     int id = get(bd, pos.x, pos.y);
     if (!id) return 0;
@@ -224,7 +226,7 @@ int compressive_check(const cprboard_t bd, point_t pos)
 #define compressive_banned(...) POS_ACCEPT
 
 /// @brief get 2 positions which are winning pos for the opponent
-void get_danger_pos(state_t* st, point_t pos)
+static void get_danger_pos(state_t* st, point_t pos)
 {
     cpr_t* bd = st->board;
     int id = get(bd, pos.x, pos.y);
@@ -310,8 +312,8 @@ void get_danger_pos(state_t* st, point_t pos)
 /// @param cnt piece count
 /// @param begin left-top position of the area of board
 /// @param end right-bottom position of the area of board
-state_t create_state(cprboard_t board, point_t begin, point_t end,
-                     zobrist_t hash, point_t pos, int cnt, int next_id)
+static state_t create_state(cprboard_t board, point_t begin, point_t end,
+                            zobrist_t hash, point_t pos, int cnt, int next_id)
 {
     state_t st;
     memset(&st, 0, sizeof(state_t));
@@ -366,7 +368,7 @@ state_t create_state(cprboard_t board, point_t begin, point_t end,
 
 /// @brief create node from given state
 /// @param state state of the node
-node_t* create_node(state_t state)
+static node_t* create_node(state_t state)
 {
     if (tot >= NODE_LIMIT) return NULL;
     node_t* node;
@@ -396,7 +398,7 @@ node_t* create_node(state_t state)
 /// @param parent parent node
 /// @param node child node
 /// @return the count of children of parent node
-int append_child(node_t* parent, node_t* node)
+static int append_child(node_t* parent, node_t* node)
 {
     edge_t* child_edge = edge_buffer + edge_tot++;
     edge_t* parent_edge = edge_buffer + edge_tot++;
@@ -420,7 +422,7 @@ int append_child(node_t* parent, node_t* node)
 
 /// @brief delete a subgraph of a node
 /// @return the size of deleted subgraph
-int delete_subgraph(node_t* node)
+static int delete_subgraph(node_t* node)
 {
     int size = 1;
     node_t* child;
@@ -453,7 +455,7 @@ int delete_subgraph(node_t* node)
 
 #undef log
 /// @brief get the evaluation of a node by ucb formula
-double ucb_eval(node_t* parent, node_t* node, int flag)
+static double ucb_eval(node_t* parent, node_t* node, int flag)
 {
     int win_cnt = node->state.count + flag * node->state.result;
     double f1 = (double)win_cnt / node->state.count;
@@ -463,7 +465,7 @@ double ucb_eval(node_t* parent, node_t* node, int flag)
 #define log log_l
 
 /// @brief print top <count> candidates of a node
-void print_candidate(node_t* parent, int count)
+static void print_candidate(node_t* parent, int count)
 {
     if (parent->child_edge == NULL) return;
     edge_t* cur = parent->child_edge;
@@ -500,7 +502,7 @@ void print_candidate(node_t* parent, int count)
 }
 
 /// @brief select best child by count
-node_t* count_select(node_t* parent)
+static node_t* count_select(node_t* parent)
 {
     if (parent->child_edge == NULL) return parent;
     edge_t* cur = parent->child_edge;
@@ -515,7 +517,7 @@ node_t* count_select(node_t* parent)
 }
 
 /// @brief select best child by ucb value
-node_t* ucb_select(node_t* parent)
+static node_t* ucb_select(node_t* parent)
 {
     edge_t* cur = parent->child_edge;
     node_t* sel = cur->to;
@@ -530,7 +532,7 @@ node_t* ucb_select(node_t* parent)
 }
 
 /// @brief check if state is terminated
-bool terminated(state_t st)
+static bool terminated(state_t st)
 {
     if (st.score || st.piece_cnt == st.capacity) return true;
     return false;
@@ -540,7 +542,7 @@ bool terminated(state_t st)
 /// @param parent current node
 /// @param pos position of the piece
 /// @return pointer to new node
-node_t* put_piece(node_t* parent, point_t pos)
+static node_t* put_piece(node_t* parent, point_t pos)
 {
     int8_t i = pos.x, j = pos.y;
     // point_t new_begin = {
@@ -676,6 +678,7 @@ point_t mcts(const game_t game, mcts_parm_t parm)
             (hash_entry_t*)malloc(MAX_TREE_SIZE * sizeof(hash_entry_t));
 
     srand((unsigned)time(0));
+
     int start_time = record_time();
 
     tot = edge_tot = reused_tot = hashmap_tot = 0;

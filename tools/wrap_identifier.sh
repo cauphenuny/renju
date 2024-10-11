@@ -1,5 +1,5 @@
 #!/usr/bin/env zsh
-# author: Cauphenuny <https://cauphenuny.github.io/>
+# author: Cauphenuny
 
 if [ "$#" -ne 4 ]; then
     echo "Usage: $0 filein list version fileout"
