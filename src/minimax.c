@@ -158,16 +158,21 @@ abcache_t* eval_cache_insert(eval_cache_t map, zobrist_t key, abcache_t value)
     return &(map.table[index]->value);
 }
 
+int max_cnt = 0;
+
 abcache_t* eval_cache_search(eval_cache_t map, zobrist_t key)
 {
     unsigned int index = eval_cache_hash(key);
     eval_cache_entry_t* entry = map.table[index];
+    int cnt = 0;
     while (entry != NULL) {
         if (entry->key == key) {
             return &(entry->value);
         }
         entry = entry->next;
+        cnt++;
     }
+    max_cnt = max(max_cnt, cnt);
     return NULL;
 }
 
@@ -239,6 +244,7 @@ abresult_t minimax_search(int depth, int alpha, int beta)
 
 point_t minimax(const game_t game)
 {
+    max_cnt = 0;
     if (game.count == 0) return (point_t){BOARD_SIZE / 2, BOARD_SIZE / 2};
     abclock = record_time();
     eval_cache = create_eval_cache();
@@ -262,6 +268,7 @@ point_t minimax(const game_t game)
             break;
     }
     free_eval_cache(eval_cache);
+    log("max conflict: %d", max_cnt);
     log("maxdepth %d, total %d, reused %d", maxdepth, eval_cache_size, eval_reuse_cnt);
     return pos;
 }

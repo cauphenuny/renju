@@ -1,12 +1,10 @@
 // author: Cauphenuny
 // date: 2024/07/27
+#include "board.h"
 #include "game.h"
 #include "init.h"
-#include "mcts.h"
-#include "minimax.h"
 #include "players.h"
 #include "util.h"
-#include "zobrist.h"
 
 #include <signal.h>
 #include <stdbool.h>
@@ -16,6 +14,8 @@
 
 game_t start_game(int player1, int player2, int first_player)
 {
+    log("start game: %s vs %s, first player: %s", player_name[player1], player_name[player2],
+        player_name[first_player]);
     game_t game = new_game(first_player);
     point_t pos;
     game_print(game);
@@ -23,42 +23,49 @@ game_t start_game(int player1, int player2, int first_player)
         int id = game.cur_player;
         int tim;
         if (id == 1) {
-            log("------ step " L_GREEN "#%d" NONE ", player1's turn ------", game.count + 1);
+            log_i("------ step " L_GREEN "#%d" NONE ", player1's turn ------", game.count + 1);
             tim = record_time(), pos = move(player1, NULL, game);
         } else {
-            log("------ step " L_RED "#%d" NONE ", player2's turn ------", game.count + 1);
+            log_i("------ step " L_RED "#%d" NONE ", player2's turn ------", game.count + 1);
             tim = record_time(), pos = move(player2, NULL, game);
         }
-        log("time: %dms, chose (%c, %d)", get_time(tim), pos.y + 'A', pos.x + 1);
+        log_i("time: %dms, chose " BOLD UNDERLINE "(%c, %d)" NONE, get_time(tim), pos.y + 'A',
+              pos.x + 1);
 
         if (!available(game.board, pos)) {
             log_e("invalid position!");
-            game_export(game, "game->");
-            prompt_getch();
+            // game_export(game, "game->");
+            // prompt_getch();
             continue;
         }
-
-        // if (game.current_id == game.first_id) {
-        //     // int ban = banned(game.board, pos, id);
-        //     int ban = POS_ACCEPT;
-        //     if (ban != POS_ACCEPT) {
-        //         log_e("banned position! (%s)", POS_BAN_MSG[ban]);
-        //         export(game, game.step_cnt);
-        //         prompt_getch();
-        //         continue;
-        //     }
-        // }
+        extern int _is_banned_enable_log;
+        _is_banned_enable_log = 1;
+        int ban = is_banned(game.board, pos, id);
+        _is_banned_enable_log = 0;
+        if (game.cur_player == game.first_player) {
+            if (ban) {
+                log_e("banned position! (%s)", pattern4_typename[ban]);
+                prompt();
+                char c = 0;
+                while (c != 'q' && c != 'c') c = getchar();
+                if (c == 'c') continue;
+                else {
+                    game.winner = 3 - id;
+                    return game;
+                }
+            }
+        }
 
         game_add_step(&game, pos);
         game_print(game);
 
         if (check_draw(game.board)) {
-            log("draw.");
+            log_i("draw.");
             game.winner = 0;
             return game;
         }
         if (check(game.board, pos)) {
-            log("player%d wins.", id);
+            log_i("player%d wins.", id);
             game.winner = id;
             return game;
         }
@@ -93,15 +100,15 @@ int main(void)
 {
     signal(SIGINT, signal_handler);
 
-    log("gomoku v%s", VERSION);
+    log_i("gomoku v%s", VERSION);
 
     init();
 
-    log("available modes: ");
+    log_i("available modes: ");
     for (int i = 0; i < PRESET_SIZE; i++) {
-        log("#%d: %s vs %s", i + 1, player_name[presets[i][0]], player_name[presets[i][1]]);
+        log_i("#%d: %s vs %s", i + 1, player_name[presets[i][0]], player_name[presets[i][1]]);
     }
-    log("#0: custom");
+    log_i("#0: custom");
 
     int mode = -1;
     do {
@@ -110,9 +117,9 @@ int main(void)
 
     int player1, player2;
     if (!mode) {
-        log("available players:");
-        for (int i = 0; i < PLAYER_CNT; i++) log("#%d: %s", i, player_name[i]);
-        log("input P1 P2:");
+        log_i("available players:");
+        for (int i = 0; i < PLAYER_CNT; i++) log_i("#%d: %s", i, player_name[i]);
+        log_i("input P1 P2:");
         do prompt(), scanf("%d%d", &player1, &player2);
         while (player1 < 0 || player1 >= PLAYER_CNT || player2 < 0 || player2 >= PLAYER_CNT);
     } else {

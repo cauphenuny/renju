@@ -6,7 +6,5 @@ build/
 model/
 export/
 **/*.swp
-.vscode/
-.cache/
+.*/
 *.json
-.idea/

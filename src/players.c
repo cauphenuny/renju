@@ -16,16 +16,17 @@ mcts_parm_t mcts_preset = {
     .start_c = 3,
     .end_c = 0.5,
     .min_time = 200,
-    .max_time = GAME_TIME_LIMIT,
+    .max_time = GAME_TIME_LIMIT - 50,
     .min_count = 200,
     .wrap_rad = 2,
+    .check_ban = true, 
 };
 
 const char* player_name[PLAYER_CNT] = {
     "manual",
     "mcts",
-    "mcts2",
-    "mcts_nn",
+    "mcts, without checking forbidden pos",
+    "mcts, with neural network",
     "minimax",
     "mix",
 };
@@ -46,6 +47,7 @@ point_t move(int player_type, void* player_assets, const game_t game)
     case MCTS2: {
         if (player_assets == NULL) {
             mcts_parm_t parm = mcts_preset;
+            parm.check_ban = false;
             return mcts(game, parm);
         } else {
             return mcts(game, *(mcts_parm_t*)player_assets);

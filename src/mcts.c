@@ -38,7 +38,6 @@ typedef struct {
     int8_t score;
     point_t pos;
     point_t danger_pos[2];
-    zobrist_t hash;
     point_t begin; // wrap left-top
     point_t end; // wrap right-bottom
     int capacity;
@@ -51,25 +50,16 @@ typedef struct edge_t {
 
 typedef struct node_t {
     state_t state;
-    int child_cnt, parent_cnt;
-    struct edge_t *child_edge, *parent_edge;
+    int child_cnt;
+    struct edge_t* child_edge;
+    struct node_t* parent;
 } node_t;
-
-typedef struct hash_entry_t {
-    zobrist_t key;
-    node_t* value;
-    struct hash_entry_t* next;
-} hash_entry_t;
-
-typedef struct {
-    hash_entry_t** table;
-} hashmap_t;
 
 /// @brief memory buffer for node and edge, prevent from frequent malloc
 static node_t* node_buffer;
 static edge_t* edge_buffer;
 
-static int tot, edge_tot, hashmap_tot, reused_tot;
+static int tot, edge_tot;
 static int first_id;
 static mcts_parm_t mcts_parm;
 
@@ -102,85 +92,6 @@ static void decode(const cprboard_t src, board_t dest)
 #define set(arr, x, y, v)   arr[x] += ((v) - get(arr, x, y)) * (1 << ((y) * 2))
 #define add(arr, x, y, v)   arr[x] += ((v) * (1 << ((y) * 2)))
 #define minus(arr, x, y, v) arr[x] -= ((v) * (1 << ((y) * 2)))
-
-// TODO: change to instructive list
-
-#define HASHMAP_SIZE 10000019
-
-static hashmap_t create_hashmap()
-{
-    hashmap_t map;
-    map.table = (hash_entry_t**)calloc(HASHMAP_SIZE, sizeof(hash_entry_t*));
-    return map;
-}
-
-static void free_hashmap(hashmap_t map)
-{
-    // for (int i = 0; i < HASHMAP_SIZE; i++) {
-    //     hash_entry_t* entry = map.table[i];
-    //     while (entry) {
-    //         hash_entry_t* temp = entry;
-    //         entry = entry->next;
-    //         free(temp);
-    //     }
-    // }
-    free(map.table);
-}
-
-static unsigned int hash(zobrist_t key)
-{
-    return key % HASHMAP_SIZE;
-}
-
-/// @brief memory buffer for hash entries
-static hash_entry_t* hashmap_buffer;
-
-static hashmap_t hashmap;
-
-static void hashmap_insert(hashmap_t map, zobrist_t key, node_t* value)
-{
-    unsigned int index = hash(key);
-    // hash_entry_t* new_entry =
-    // (hashmap_entry_t*)malloc(sizeof(hashmap_entry_t));
-    hash_entry_t* new_entry = hashmap_buffer + hashmap_tot++;
-    new_entry->key = key;
-    new_entry->value = value;
-    new_entry->next = map.table[index];
-    map.table[index] = new_entry;
-}
-
-static node_t* hashmap_get(hashmap_t map, zobrist_t key)
-{
-    unsigned int index = hash(key);
-    hash_entry_t* entry = map.table[index];
-    while (entry) {
-        if (entry->key == key) {
-            return entry->value;
-        }
-        entry = entry->next;
-    }
-    return NULL;
-}
-
-static void hashmap_remove(hashmap_t map, zobrist_t key)
-{
-    unsigned int index = hash(key);
-    hash_entry_t* entry = map.table[index];
-    hash_entry_t* prev = NULL;
-    while (entry) {
-        if (entry->key == key) {
-            if (prev) {
-                prev->next = entry->next;
-            } else {
-                map.table[index] = entry->next;
-            }
-            free(entry);
-            return;
-        }
-        prev = entry;
-        entry = entry->next;
-    }
-}
 
 #define MAX_TREE_SIZE 20001000
 #define NODE_LIMIT    20000000
@@ -223,7 +134,34 @@ static int compressive_check(const cprboard_t bd, point_t pos)
     return 0;
 }
 
-#define compressive_banned(...) POS_ACCEPT
+static int compressive_banned(const cprboard_t bd, point_t pos, int id)
+{
+    if (!mcts_parm.check_ban) return 0;
+    static int8_t arrow[4][2] = {{1, 1}, {1, -1}, {1, 0}, {0, 1}};
+    static int idx[4];
+    static int mid = WIN_LENGTH - 1;
+    for (int8_t i = 0, a, b; i < 4; i++) {
+        a = arrow[i][0], b = arrow[i][1];
+        static segment_t seg;
+        for (int8_t j = -WIN_LENGTH + 1; j < WIN_LENGTH; j++) {
+            point_t np = (point_t){pos.x + a * j, pos.y + b * j};
+            if (!inboard(np))
+                seg.data[mid + j] = OPPO_POS;
+            else if (!get(bd, np.x, np.y))
+                seg.data[mid + j] = EMPTY_POS;
+            else
+                seg.data[mid + j] = (get(bd, np.x, np.y)) == id ? SELF_POS : OPPO_POS;
+        }
+        seg.data[mid] = SELF_POS;
+        // print_segment(seg);
+        idx[i] = to_pattern(segment_encode(seg));
+    }
+    // printf("%s | %s | %s | %s\n", pattern_typename[idx[0]], pattern_typename[idx[1]],
+    //        pattern_typename[idx[2]], pattern_typename[idx[3]]);
+    int pat4 = to_pattern4(idx[0], idx[1], idx[2], idx[3]);
+    if (pat4 <= PAT4_WIN) return 0;
+    return pat4;
+}
 
 /// @brief get 2 positions which are winning pos for the opponent
 static void get_danger_pos(state_t* st, point_t pos)
@@ -245,8 +183,7 @@ static void get_danger_pos(state_t* st, point_t pos)
              np.x += dx, np.y += dy) {
             if (get(bd, np.x, np.y) == 3 - id) break;
             if (get(bd, np.x, np.y) == 0) {
-                if (id == first_id &&
-                    compressive_banned(bd, np, id) != POS_ACCEPT) {
+                if (id == first_id && compressive_banned(bd, np, id)) {
                     break;
                 }
                 flag++;
@@ -265,8 +202,7 @@ static void get_danger_pos(state_t* st, point_t pos)
         for (int flag = 0; inboard(np) && flag < 2; np.x -= dx, np.y -= dy) {
             if (get(bd, np.x, np.y) == 3 - id) break;
             if (get(bd, np.x, np.y) == 0) {
-                if (id == first_id &&
-                    compressive_banned(bd, np, id) != POS_ACCEPT) {
+                if (id == first_id && compressive_banned(bd, np, id)) {
                     break;
                 }
                 flag++;
@@ -312,8 +248,8 @@ static void get_danger_pos(state_t* st, point_t pos)
 /// @param cnt piece count
 /// @param begin left-top position of the area of board
 /// @param end right-bottom position of the area of board
-static state_t create_state(cprboard_t board, point_t begin, point_t end,
-                            zobrist_t hash, point_t pos, int cnt, int next_id)
+static state_t create_state(cprboard_t board, point_t begin, point_t end, point_t pos, int cnt,
+                            int next_id)
 {
     state_t st;
     memset(&st, 0, sizeof(state_t));
@@ -321,31 +257,32 @@ static state_t create_state(cprboard_t board, point_t begin, point_t end,
     memcpy(st.visited, board, sizeof(st.board));
     st.piece_cnt = cnt;
     st.visited_cnt = st.piece_cnt;
-    st.hash = hash;
     st.begin = begin;
     st.end = end;
     st.id = next_id;
     st.capacity = ((int)end.x - begin.x) * ((int)end.y - begin.y);
-    // for (int i = top; i < bottom; i++) {
-    //     for (int j = left; j < right; j++) {
-    //         if (st.id == first_id && !get(board, i, j) &&
-    //             compressive_banned(board, (point_t){i, j}, first_id) !=
-    //                 POS_ACCEPT) {
-    //             add(st.visited, i, j, 1);
-    //             st.visited_cnt++;
+    // if (st.id == first_id) {
+    //     for (int i = begin.x; i < end.x; i++) {
+    //         for (int j = begin.y; j < end.y; j++) {
+    //             if (!get(board, i, j) && compressive_banned(board, (point_t){i, j}, first_id)) {
+    //                 add(st.visited, i, j, 1);
+    //                 st.visited_cnt++;
+    //             }
     //         }
     //     }
     // }
-    // if (st.id == first_id) {
-    //     st.score = compressive_check(board, pos);
-    // } else {
-    //     if (compressive_banned(board, pos, first_id)) {
-    //         st.score = first_id == 1 ? -1 : 1;
-    //     } else {
-    //         st.score = compressive_check(board, pos);
-    //     }
-    // }
-    st.score = compressive_check(board, pos);
+
+    if (st.id == first_id) {
+        st.score = compressive_check(board, pos);
+    } else {
+        if (compressive_banned(board, pos, first_id)) {
+            st.score = first_id == 1 ? -2 : 2;
+        } else {
+            st.score = compressive_check(board, pos);
+        }
+    }
+    // st.score = compressive_check(board, pos);
+
     // if (st.score) {
     //     log("(%d, %d): %d", pos.x, pos.y, st.id);
     //     board_t bd;
@@ -372,25 +309,25 @@ static node_t* create_node(state_t state)
 {
     if (tot >= NODE_LIMIT) return NULL;
     node_t* node;
-    if ((node = hashmap_get(hashmap, state.hash)) != NULL) {
-        // exit(0);
-        // board_t bd;
-        // decode(state.board, bd);
-        // log("state"), print(bd);
-        // decode(node->state.board, bd);
-        // log("node->state"), print(bd);
-        // getchar();
-        reused_tot++;
-        node->state.pos = state.pos;
-        // get_danger_pos(&node->state, state.pos);
-        return node;
-    }
+    // if ((node = hashmap_get(hashmap, state.hash)) != NULL) {
+    //     // exit(0);
+    //     // board_t bd;
+    //     // decode(state.board, bd);
+    //     // log("state"), print(bd);
+    //     // decode(node->state.board, bd);
+    //     // log("node->state"), print(bd);
+    //     // getchar();
+    //     reused_tot++;
+    //     node->state.pos = state.pos;
+    //     // get_danger_pos(&node->state, state.pos);
+    //     return node;
+    // }
 
     // node = (node_t*)malloc(sizeof(node_t));
     node = node_buffer + tot++;
     memset(node, 0, sizeof(node_t));
     memcpy(&node->state, &state, sizeof(state_t));
-    hashmap_insert(hashmap, state.hash, node);
+    // hashmap_insert(hashmap, state.hash, node);
     return node;
 }
 
@@ -401,56 +338,23 @@ static node_t* create_node(state_t state)
 static int append_child(node_t* parent, node_t* node)
 {
     edge_t* child_edge = edge_buffer + edge_tot++;
-    edge_t* parent_edge = edge_buffer + edge_tot++;
     // edge_t* child_edge = (edge_t*)malloc(sizeof(edge_t));
     // edge_t* parent_edge = (edge_t*)malloc(sizeof(edge_t));
     memset(child_edge, 0, sizeof(edge_t));
-    memset(parent_edge, 0, sizeof(edge_t));
 
     child_edge->next = parent->child_edge;
     child_edge->to = node;
     parent->child_edge = child_edge;
     parent->child_cnt++;
 
-    parent_edge->next = node->parent_edge;
-    parent_edge->to = parent;
-    node->parent_edge = parent_edge;
-    node->parent_cnt++;
-
+    node->parent = parent;
     return parent->child_cnt;
 }
 
-/// @brief delete a subgraph of a node
-/// @return the size of deleted subgraph
-static int delete_subgraph(node_t* node)
+/// @brief disable last child (notice: doesn't change children count!)
+static void disable_last_child(node_t* parent)
 {
-    int size = 1;
-    node_t* child;
-    for (edge_t *e = node->child_edge, *nxt; e != NULL; e = nxt) {
-        nxt = e->next;
-        child = e->to;
-        for (edge_t *pe = child->parent_edge, *pnxt, *prev = NULL; pe != NULL;
-             prev = pe, pe = pnxt) {
-            pnxt = pe->next;
-            if (pe->to == node) {
-                if (pe != child->parent_edge) {
-                    prev->next = pnxt;
-                } else {
-                    child->parent_edge = NULL;
-                }
-                free(pe);
-                break;
-            }
-        }
-        child->parent_cnt--;
-        if (child->parent_cnt == 0) {
-            size += delete_subgraph(child);
-        }
-        free(e);
-    }
-    hashmap_remove(hashmap, node->state.hash);
-    free(node);
-    return size;
+    if (parent->child_edge != NULL) parent->child_edge = parent->child_edge->next;
 }
 
 #undef log
@@ -484,11 +388,10 @@ static void print_candidate(node_t* parent, int count)
     }
 #define percentage(a, b) ((double)(a) / (double)(b) * 100)
 #define get_rate(st, f)  (percentage(((double)st.count + (f) * st.result) / 2, st.count))
-#define print_stat(i, st)                                                 \
-    log("(%hhd, %hhd) => win: %.2lf%%, count: %.1lf%% (%d), eval: %.3lf", \
-        st.pos.x, st.pos.y, get_rate(st, parent->state.id == 1 ? 1 : -1), \
-        percentage(st.count, parent->state.count), st.count,              \
-        ucb_eval(parent, cand[i], st.id == 1 ? -1 : 1))
+#define print_stat(i, st)                                                                        \
+    log("(%hhd, %hhd) -> win: %.2lf%%, count: %.1lf%% (%d), eval: %.3lf", st.pos.x, st.pos.y,    \
+        get_rate(st, parent->state.id == 1 ? 1 : -1), percentage(st.count, parent->state.count), \
+        st.count, ucb_eval(parent, cand[i], st.id == 1 ? -1 : 1))
     for (int i = 0; i < cnt; i++) {
         if (cand[i] != NULL) {
             print_stat(i, cand[i]->state);
@@ -553,10 +456,8 @@ static node_t* put_piece(node_t* parent, point_t pos)
     //     BOARD_SIZE), min(max(parent->state.end.y, j + mcts_parm.wrap_rad +
     //     1), BOARD_SIZE)};
     add(parent->state.board, i, j, parent->state.id);
-    state_t st = create_state(
-        parent->state.board, parent->state.begin, parent->state.end,
-        zobrist_update(parent->state.hash, pos, 0, parent->state.id), pos,
-        parent->state.piece_cnt + 1, 3 - parent->state.id);
+    state_t st = create_state(parent->state.board, parent->state.begin, parent->state.end, pos,
+                              parent->state.piece_cnt + 1, 3 - parent->state.id);
     minus(parent->state.board, i, j, parent->state.id);
     node_t* node = create_node(st);
     if (node == NULL) return NULL;
@@ -592,42 +493,34 @@ node_t* traverse(node_t* parent)
         // getchar();
         return parent;
     }
-    // TODO: start
     point_t pp = parent->state.danger_pos[0];
-    for (edge_t* e = parent->parent_edge; e != NULL; e = e->next) {
-        node_t* grandparent = e->to;
-        point_t p0 = grandparent->state.danger_pos[0],
-                p1 = grandparent->state.danger_pos[1];
-        if (inboard(p0) && get(parent->state.board, p0.x, p0.y) == 0) {
-            // board_t dec;
-            // decode(parent->state.board, dec);
-            // print(dec);
-            // logw("dangerous pos: (%d, %d)", parent->state.danger_pos.x,
-            // parent->state.danger_pos.y); getchar(); log("exit");
-            if (parent->state.id != first_id ||
-                compressive_banned(parent->state.board, p0, first_id) ==
-                    POS_ACCEPT) {
-                return traverse(preset_piece(parent, p0));
-            }
+    node_t* grandparent = parent->parent;
+    point_t p0 = grandparent->state.danger_pos[0], p1 = grandparent->state.danger_pos[1];
+    if (inboard(p0) && get(parent->state.board, p0.x, p0.y) == 0) {
+        // board_t dec;
+        // decode(parent->state.board, dec);
+        // print(dec);
+        // logw("dangerous pos: (%d, %d)", parent->state.danger_pos.x,
+        // parent->state.danger_pos.y); getchar(); log("exit");
+        if (parent->state.id != first_id ||
+            !compressive_banned(parent->state.board, p0, first_id)) {
+            return traverse(preset_piece(parent, p0));
         }
-        if (inboard(p1) && get(parent->state.board, p1.x, p1.y) == 0) {
-            // log("exit");
-            if (parent->state.id != first_id ||
-                compressive_banned(parent->state.board, p1, first_id) ==
-                    POS_ACCEPT) {
-                return traverse(preset_piece(parent, p1));
-            }
+    }
+    if (inboard(p1) && get(parent->state.board, p1.x, p1.y) == 0) {
+        // log("exit");
+        if (parent->state.id != first_id ||
+            !compressive_banned(parent->state.board, p1, first_id)) {
+            return traverse(preset_piece(parent, p1));
         }
     }
     if (inboard(pp)) {
         // log("exit");
         if (parent->state.id != first_id ||
-            compressive_banned(parent->state.board, pp, first_id) ==
-                POS_ACCEPT) {
+            !compressive_banned(parent->state.board, pp, first_id)) {
             return traverse(preset_piece(parent, pp));
         }
     }
-    // TODO: end
     // log("%d", parent->state.id);
     int res = parent->state.capacity - parent->state.visited_cnt;
     if (res) {
@@ -651,15 +544,13 @@ node_t* traverse(node_t* parent)
     }
 }
 
-// TODO: topo optimize
 /// @brief backpropagate the score of a node to its ancestors
-void backpropagate(node_t* node, int score, node_t* end)
+void backpropagate(node_t* start, int score, node_t* end)
 {
-    node->state.result += score;
-    node->state.count++;
-    if (node == end) return;
-    for (edge_t* e = node->parent_edge; e != NULL; e = e->next) {
-        backpropagate(e->to, score, end);
+    while (start != end) {
+        start->state.result += score;
+        start->state.count++;
+        start = start->parent;
     }
 }
 
@@ -671,18 +562,13 @@ point_t mcts(const game_t game, mcts_parm_t parm)
     mcts_parm = parm;
     if (node_buffer == NULL)
         node_buffer = (node_t*)malloc(MAX_TREE_SIZE * sizeof(node_t));
-    if (edge_buffer == NULL)
-        edge_buffer = (edge_t*)malloc(MAX_TREE_SIZE * sizeof(edge_t) * 5);
-    if (hashmap_buffer == NULL)
-        hashmap_buffer =
-            (hash_entry_t*)malloc(MAX_TREE_SIZE * sizeof(hash_entry_t));
+    if (edge_buffer == NULL) edge_buffer = (edge_t*)malloc(MAX_TREE_SIZE * sizeof(edge_t) * 5);
 
     srand((unsigned)time(0));
 
     int start_time = record_time();
 
-    tot = edge_tot = reused_tot = hashmap_tot = 0;
-    hashmap = create_hashmap();
+    tot = edge_tot = 0;
     first_id = game.first_player;
 
     int id = game.cur_player;
@@ -701,8 +587,8 @@ point_t mcts(const game_t game, mcts_parm_t parm)
     } while (((wrap_end.y - wrap_begin.y) * (wrap_end.x - wrap_begin.x) < 40) &&
              ++radius);
 
-    node_t* root = create_node(create_state(
-        zip, wrap_begin, wrap_end, 0, (point_t){0, 0}, 0, game.first_player));
+    node_t* root =
+        create_node(create_state(zip, wrap_begin, wrap_end, (point_t){0, 0}, 0, game.first_player));
     node_t* pre = NULL;
     for (int i = 0; i < game.count; i++) {
         pre = root;
@@ -710,9 +596,8 @@ point_t mcts(const game_t game, mcts_parm_t parm)
     }
 
     int tim, cnt = 0;
-    log("searching... (C: %.1lf->%.1lf, time: %d-%d, count: %d, rad: %d)",
-        parm.start_c, parm.end_c, parm.min_time, parm.max_time, parm.min_count,
-        radius);
+    log("searching... (C: %.1lf~%.1lf, time: %d-%d, count: %d, rad: %d)", parm.start_c, parm.end_c,
+        parm.min_time, parm.max_time, parm.min_count, radius);
     // int base = 1;
     int wanted_count = parm.min_count * root->state.capacity;
     while ((tim = get_time(start_time)) < parm.min_time ||
@@ -720,9 +605,16 @@ point_t mcts(const game_t game, mcts_parm_t parm)
         if (tim > parm.max_time || tot >= NODE_LIMIT) break;
         mcts_parm.C = parm.start_c +
                       (parm.end_c - parm.start_c) * (double)tim / parm.max_time;
-        node_t *leaf, *start = root;
-        leaf = traverse(start);
-        if (leaf != NULL) backpropagate(leaf, leaf->state.score, root);
+        node_t* leaf = traverse(root);
+        // log("traversed");
+        if (leaf != NULL) {
+            int score = leaf->state.score;
+            if (score <= 1 && score >= -1) {
+                backpropagate(leaf, score, root->parent);
+            } else {
+                disable_last_child(leaf->parent);
+            }
+        }
         cnt++;
         // if (cnt % base == 0) {
         //     log("tried %d times.", cnt);
@@ -730,11 +622,9 @@ point_t mcts(const game_t game, mcts_parm_t parm)
         // }
     }
     log("all count: %d, speed: %.2lf", cnt, (double)cnt / get_time(start_time));
-    log("consumption: %d nodes (reused %d), %d edges, %d ms", tot, reused_tot,
-        edge_tot, get_time(start_time));
+    log("consumption: %d nodes, %d edges, %d ms", tot, edge_tot, get_time(start_time));
     print_candidate(root, 7);
     node_t* move = count_select(root);
-    free_hashmap(hashmap);
     log("clear cache");
     state_t st = move->state;
     int f = id == 1 ? 1 : -1;

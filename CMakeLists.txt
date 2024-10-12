@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 3.5)
 project (
     gomoku
-    VERSION 1.7.0
+    VERSION 1.8.0
     LANGUAGES C
 )
 set (CMAKE_VERBOSE_MAKEFILE OFF)
@@ -24,7 +24,7 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     set (VERSION_STRING "${PROJECT_VERSION} (debug)")
 else()
     message ("-- ${COLOR_GREEN}Release mode${COLOR_RESET}")
-    add_compile_options (-DRELEASE)
+    add_compile_options (-DRELEASE -O3)
     set (VERSION_STRING "${PROJECT_VERSION}")
 endif()
 add_definitions (-DVERSION="${VERSION_STRING}")
@@ -50,6 +50,7 @@ add_executable (main gomoku.c ${SRC_LIST})
 # set_source_files_properties (gomoku.c PROPERTIES COMPILE_DEFINITIONS "P1=MCTS;P2=MANUAL")
 # target_compile_definitions (main PRIVATE GAME_TIME_LIMIT=1000)
 target_compile_definitions (main PRIVATE INSTANT_LOG)
+target_compile_definitions (main PRIVATE GAME_TIME_LIMIT=1000)
 
 add_executable (botzone botzone.c ${SRC_LIST})
 set_source_files_properties (botzone.c PROPERTIES COMPILE_DEFINITIONS "ALGORITHM=MCTS")

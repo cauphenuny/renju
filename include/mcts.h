@@ -12,6 +12,7 @@ typedef struct {
     int max_time;
     int min_count;
     int8_t wrap_rad;
+    bool check_ban;
 } mcts_parm_t; // parameters for mcts
 
 point_t mcts(game_t, mcts_parm_t);

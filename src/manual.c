@@ -9,7 +9,6 @@
 
 #include "util.h"
 #include "board.h"
-#include "game.h"
 
 int parse(char s[], bool is_char)
 {
@@ -29,7 +28,7 @@ int parse(char s[], bool is_char)
 point_t manual() {
     point_t pos;
     char input_x[10], input_y[10];
-    log("waiting input. (format: H 8 or h 8)");
+    log_i("waiting input. (format: H 8 or h 8)");
     prompt();
     scanf("%s %s", input_x, input_y);
     pos.y = parse(input_x, 1), pos.x = parse(input_y, 0);
