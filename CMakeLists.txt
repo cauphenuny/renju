@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 3.5)
 project (
     gomoku
-    VERSION 1.8.0
+    VERSION 1.9.0
     LANGUAGES C
 )
 set (CMAKE_VERBOSE_MAKEFILE OFF)
