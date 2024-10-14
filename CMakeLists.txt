@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 3.5)
 project (
     gomoku
-    VERSION 1.9.0
+    VERSION 1.9.1
     LANGUAGES C
 )
 set (CMAKE_VERBOSE_MAKEFILE OFF)
@@ -9,7 +9,6 @@ set (EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 set (LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 set (CMAKE_C_STANDARD 99)
 set (CMAKE_EXPORT_COMPILE_COMMANDS True)
-add_compile_options (-Wall -Wextra -Wshadow) 
 if (NOT CMAKE_BUILD_TYPE)
     set (CMAKE_BUILD_TYPE Release CACHE STRING "No build type selected, default to Release" FORCE)
 endif()
@@ -18,6 +17,7 @@ set (COLOR_GREEN "${ESC}[1;32m")
 set (COLOR_RED "${ESC}[1;31m")
 set (COLOR_RESET "${ESC}[0m")
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_compile_options (-Wall -Wextra -Wshadow) 
     message ("-- ${COLOR_RED}Debug mode${COLOR_RESET}")
     add_compile_options (-DDEBUG -g -fno-omit-frame-pointer -fsanitize=undefined,address,leak,null,bounds)
     add_link_options (-fno-omit-frame-pointer -fsanitize=undefined,address,leak,null,bounds)
@@ -54,6 +54,7 @@ target_compile_definitions (main PRIVATE GAME_TIME_LIMIT=2000)
 
 add_executable (botzone botzone.c ${SRC_LIST})
 target_link_libraries (botzone m)
+set_target_properties(botzone PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
 # add_executable (trainer trainer.c ${SRC_LIST})
 # target_compile_definitions (trainer PRIVATE GAME_TIME_LIMIT=500)

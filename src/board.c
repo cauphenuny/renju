@@ -48,9 +48,9 @@ void emph_print(const board_t board, point_t pos)
 #undef dark
     // 0: empty, 1/2: prev p1/p2 piece, 3/4: cur p1/p2 piece
     static const char* ch[5] = {
-        " ",                         //
-        GREEN "o" NONE,              //
-        RED "x" NONE,                //
+        " ",               //
+        GREEN "o" NONE,    //
+        RED "x" NONE,      //
         L_GREEN "o" NONE,  //
         L_RED "x" NONE,    //
     };
@@ -64,9 +64,9 @@ void emph_print(const board_t board, point_t pos)
             default: line_type = 1;
         }
 #ifdef DEBUG
-        printf("%2d ", i);
+        printf("%2d%c", i, " ["[pos.x == i && pos.y == 0]);
 #else
-        printf("%2d ", i + 1);
+        printf("%2d%c", i + 1, " ["[pos.x == i && pos.y == 0]);
 #endif
         for (int j = 0; j < 2 * BOARD_SIZE - 1; j++) {
             switch (j) {
@@ -82,7 +82,7 @@ void emph_print(const board_t board, point_t pos)
                 printf("%s", ((j & 1) || !board[i][j / 2]) ? border_line[line_type][col_type]
                                                            : ch[board[i][j / 2]]);
         }
-        printf("\n");
+        printf("%c\n", " ]"[pos.x == i && pos.y == BOARD_SIZE - 1]);
     }
     printf("   ");
     for (int i = 0; i < 2 * BOARD_SIZE - 1; i++) {
@@ -258,7 +258,6 @@ int segment_encode(segment_t s)
     for (int i = 0; i < PATTERN_LEN; i++) {
         result = result * 3 + a[i];
     }
-    s.val = result;
     return result;
 }
 
@@ -281,8 +280,9 @@ static void print_segment(segment_t s)
         printf(" %c", ch[s.data[i]]);
     }
     int idx = segment_encode(s);
-    printf("]: level = %s, \tcols: [%d, %d, %d]\n", pattern_typename[pattern_mem[idx]],
-           from_col[s.val][0], from_col[s.val][1], from_col[s.val][2]);
+    // printf("]: level = %s, \tcols: [%d, %d, %d]\n", pattern_typename[pattern_mem[idx]],
+    //        from_col[idx][0], from_col[idx][1], from_col[idx][2]);
+    printf("]: level = %s\n", pattern_typename[pattern_mem[idx]]);
 }
 
 static int update(int prev, int pos, int new_piece)
@@ -510,13 +510,13 @@ void pattern_init()
     // test_ban();
 }
 
-void get_critical_column(int pattern, int* danger_col, int limit)
+void get_critical_column(int pattern, int* cols, int limit)
 {
     assert(pattern_initialized);
-    memset(danger_col, -1, limit * sizeof(int));
+    memset(cols, -1, limit * sizeof(int));
     for (int i = 0, cur = 0; i < 3 && cur < limit; i++) {
         if (from_col[pattern][i] != -1) {
-            danger_col[cur++] = from_col[pattern][i];
+            cols[cur++] = from_col[pattern][i];
         }
     }
 };
