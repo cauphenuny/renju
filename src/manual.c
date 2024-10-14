@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 #include "util.h"
+#include "game.h"
 #include "board.h"
 
 int parse(char s[], bool is_char)
@@ -25,7 +26,7 @@ int parse(char s[], bool is_char)
     }
 }
 
-point_t manual() {
+point_t manual(const game_t game, void* assets) {
     point_t pos;
     char input_x[10], input_y[10];
     log_i("waiting input. (format: H 8 or h 8)");

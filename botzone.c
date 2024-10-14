@@ -23,7 +23,7 @@ int main()
 {
     init();
 
-    game_t game = new_game(1);
+    game_t game = new_game(1, 990);
 
     int n;
     scanf("%d", &n);
@@ -32,13 +32,11 @@ int main()
     if (inboard(p)) {
         game_add_step(&game, p);
     }
+    player_t player = preset_players[MCTS];
 
     while (1) {
-#ifdef ALGORITHM
-        p = move(ALGORITHM, NULL, game);
-#else
-        p = move(MCTS, NULL, game);
-#endif
+        p = player.move(game, player.assets);
+
         game_add_step(&game, p);
 
         print_pos(p);

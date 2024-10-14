@@ -12,47 +12,50 @@
 #include <stdlib.h>
 #include <string.h>
 
-game_t start_game(int player1, int player2, int first_player)
+static game_t start_game(player_t p1, player_t p2, int first_id, int time_limit)
 {
-    log("start game: %s vs %s, first player: %s", player_name[player1], player_name[player2],
-        player_name[first_player]);
-    game_t game = new_game(first_player);
+    player_t players[] = {{}, p1, p2};
+    const char* colors[] = {"", L_GREEN, L_RED};
+    log("start game: %s vs %s, first player: %s", p1.name, p2.name, players[first_id].name);
+    game_t game = new_game(first_id, time_limit);
     point_t pos;
     game_print(game);
     while (1) {
-        int id = game.cur_player;
+        int id = game.cur_id;
         int tim;
-        if (id == 1) {
-            log_i("------ step " L_GREEN "#%d" NONE ", player1's turn ------", game.count + 1);
-            tim = record_time(), pos = move(player1, NULL, game);
-        } else {
-            log_i("------ step " L_RED "#%d" NONE ", player2's turn ------", game.count + 1);
-            tim = record_time(), pos = move(player2, NULL, game);
-        }
+        log_i("------ step %s#%d" NONE ", player1's turn ------", colors[id], game.count + 1);
+        tim = record_time();
+        pos = players[id].move(game, players[id].assets);
         log_i("time: %dms, chose " BOLD UNDERLINE "(%c, %d)" NONE, get_time(tim), pos.y + 'A',
               pos.x + 1);
 
         if (!available(game.board, pos)) {
             log_e("invalid position!");
             // game_export(game, "game->");
-            // prompt_getch();
+            // prompt_pause();
             continue;
         }
         extern int _is_banned_enable_log;
-        _is_banned_enable_log = 1;
-        int ban = is_banned(game.board, pos, id);
-        _is_banned_enable_log = 0;
-        if (game.cur_player == game.first_player) {
+        if (game.cur_id == game.first_id) {
+            _is_banned_enable_log = 1;
+            int ban = is_banned(game.board, pos, id);
+            _is_banned_enable_log = 0;
             if (ban) {
                 log_e("banned position! (%s)", pattern4_typename[ban]);
-                prompt();
-                char c = 0;
-                while (c != 'q' && c != 'c') c = getchar();
-                if (c == 'c') continue;
-                else {
-                    game.winner = 3 - id;
-                    return game;
-                }
+                game.winner = 3 - id;
+                return game;
+                // if (game.cur_player == 2) {
+                //     game.winner = 1;
+                //     return game;
+                // }
+                // prompt();
+                // char c = 0;
+                // while (c != 'q' && c != 'c') c = getchar();
+                // if (c == 'c') continue;
+                // else {
+                //     game.winner = 3 - id;
+                //     return game;
+                // }
             }
         }
 
@@ -60,12 +63,10 @@ game_t start_game(int player1, int player2, int first_player)
         game_print(game);
 
         if (check_draw(game.board)) {
-            log_i("draw.");
             game.winner = 0;
             return game;
         }
         if (check(game.board, pos)) {
-            log_i("player%d wins.", id);
             game.winner = id;
             return game;
         }
@@ -94,7 +95,9 @@ void signal_handler(int signum)
 // }
 
 #define PRESET_SIZE 3
-const int presets[PRESET_SIZE][2] = {{MCTS, MANUAL}, {MANUAL, MCTS}, {MCTS, MCTS}};
+const int preset_modes[PRESET_SIZE][3] = {{MCTS, MANUAL, GAME_TIME_LIMIT},
+                                          {MANUAL, MCTS, GAME_TIME_LIMIT},
+                                          {MCTS, MCTS, GAME_TIME_LIMIT}};
 
 int main(void)
 {
@@ -106,7 +109,8 @@ int main(void)
 
     log_i("available modes: ");
     for (int i = 0; i < PRESET_SIZE; i++) {
-        log_i("#%d: %s vs %s", i + 1, player_name[presets[i][0]], player_name[presets[i][1]]);
+        log_i("#%d: %s vs %s\t%dms", i + 1, preset_players[preset_modes[i][0]].name,
+              preset_players[preset_modes[i][1]].name, preset_modes[i][2]);
     }
     log_i("#0: custom");
 
@@ -115,20 +119,29 @@ int main(void)
         prompt(), scanf("%d", &mode);
     } while (mode < 0 || mode > PRESET_SIZE);
 
-    int player1, player2;
+    int player1, player2, time_limit;
     if (!mode) {
         log_i("available players:");
-        for (int i = 0; i < PLAYER_CNT; i++) log_i("#%d: %s", i, player_name[i]);
+        for (int i = 0; i < PLAYER_CNT; i++) log_i("#%d: %s", i, preset_players[i].name);
         log_i("input P1 P2:");
         do prompt(), scanf("%d%d", &player1, &player2);
         while (player1 < 0 || player1 >= PLAYER_CNT || player2 < 0 || player2 >= PLAYER_CNT);
+        log_i("input time limitation: ");
+        do prompt(), scanf("%d", &time_limit);
+        while (time_limit < 0);
     } else {
-        player1 = presets[mode - 1][0], player2 = presets[mode - 1][1];
+        player1 = preset_modes[mode - 1][0], player2 = preset_modes[mode - 1][1];
+        time_limit = preset_modes[mode - 1][2];
     }
 
     int id = 1;
     while (1) {
-        game_t game = start_game(player1, player2, id);
+        game_t game = start_game(preset_players[player1], preset_players[player2], id, time_limit);
+        if (game.winner) {
+            log_i("player %d wins", game.winner);
+        } else {
+            log_i("draw");
+        }
         results[game.winner]++;
         if (game.winner == id) {
             results[3]++;

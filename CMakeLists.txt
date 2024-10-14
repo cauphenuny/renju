@@ -50,11 +50,9 @@ add_executable (main gomoku.c ${SRC_LIST})
 # set_source_files_properties (gomoku.c PROPERTIES COMPILE_DEFINITIONS "P1=MCTS;P2=MANUAL")
 # target_compile_definitions (main PRIVATE GAME_TIME_LIMIT=1000)
 target_compile_definitions (main PRIVATE INSTANT_LOG)
-target_compile_definitions (main PRIVATE GAME_TIME_LIMIT=1000)
+target_compile_definitions (main PRIVATE GAME_TIME_LIMIT=2000)
 
 add_executable (botzone botzone.c ${SRC_LIST})
-set_source_files_properties (botzone.c PROPERTIES COMPILE_DEFINITIONS "ALGORITHM=MCTS")
-# target_compile_definitions (botzone PRIVATE INSTANT_LOG)
 target_link_libraries (botzone m)
 
 # add_executable (trainer trainer.c ${SRC_LIST})

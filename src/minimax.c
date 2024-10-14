@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-int ab_evaluate(board_t board, point_t pos, int sgn)
+static int evaluate(board_t board, point_t pos, int sgn)
 {
     int id = sgn == 1 ? 1 : 2;
     static const int8_t dir[4][2] = {{1, 0}, {0, 1}, {1, 1}, {1, -1}};
@@ -56,16 +56,16 @@ typedef struct {
     int id;
     int result;
     point_t pos;
-} abstate_t;
+} status_t;
 
-abstate_t ab_put_piece(abstate_t state, point_t pos, int id)
+static status_t put_piece(status_t status, point_t pos, int id)
 {
-    abstate_t ret = state;
+    status_t ret = status;
     int put_id = id == 1 ? 1 : 2;
     ret.hash = zobrist_update(ret.hash, pos, ret.board[pos.x][pos.y], put_id);
     ret.board[pos.x][pos.y] = put_id;
     ret.pos = pos;
-    ret.value = ab_evaluate(ret.board, pos, id);
+    ret.value = evaluate(ret.board, pos, id);
     ret.result = check(ret.board, pos);
     // print(ret.board);
     // getchar();
@@ -73,9 +73,9 @@ abstate_t ab_put_piece(abstate_t state, point_t pos, int id)
     return ret;
 }
 
-abstate_t ab_remove_piece(abstate_t state, point_t pos)
+static status_t remove_piece(status_t status, point_t pos)
 {
-    abstate_t ret = state;
+    status_t ret = status;
     ret.hash = zobrist_update(ret.hash, pos, ret.board[pos.x][pos.y], 0);
     ret.board[pos.x][pos.y] = 0;
     ret.pos = pos;
@@ -84,7 +84,7 @@ abstate_t ab_remove_piece(abstate_t state, point_t pos)
     return ret;
 }
 
-bool ab_available(board_t board, point_t pos)
+static bool adjacent(board_t board, point_t pos)
 {
     if (board[pos.x][pos.y]) return false;
     point_t np;
@@ -99,23 +99,23 @@ bool ab_available(board_t board, point_t pos)
 typedef struct {
     int value;
     point_t pos;
-} abresult_t;
+} result_t;
 
 typedef struct {
     int depth;
-    abresult_t result;
-} abcache_t;
+    result_t result;
+} cache_t;
 
-abstate_t abstate;
+static status_t cur_status;
 
-int eval_reuse_cnt;
+static int eval_reuse_cnt;
 
 #define EVAL_CACHE_SIZE       10000019
 #define EVAL_CACHE_ENTRY_SIZE EVAL_CACHE_SIZE * 5
 
 typedef struct eval_cache_entry_t {
     zobrist_t key;
-    abcache_t value;
+    cache_t value;
     struct eval_cache_entry_t* next;
 } eval_cache_entry_t;
 
@@ -125,19 +125,19 @@ typedef struct {
     eval_cache_entry_t** table;
 } eval_cache_t;
 
-eval_cache_t eval_cache;
+static eval_cache_t eval_cache;
 
-eval_cache_entry_t* eval_cache_buffer;
-int eval_cache_size;
+static eval_cache_entry_t* eval_cache_buffer;
+static int eval_cache_size;
 
-int abclock;
+static int clock, time_limit;
 
-unsigned int eval_cache_hash(zobrist_t key)
+static unsigned int eval_cache_hash(zobrist_t key)
 {
     return key % EVAL_CACHE_SIZE;
 }
 
-eval_cache_t create_eval_cache()
+static eval_cache_t create_eval_cache()
 {
     eval_cache_t map;
     size_t table_size = sizeof(eval_cache_entry_t*) * EVAL_CACHE_SIZE;
@@ -146,7 +146,7 @@ eval_cache_t create_eval_cache()
     return map;
 }
 
-abcache_t* eval_cache_insert(eval_cache_t map, zobrist_t key, abcache_t value)
+static cache_t* eval_cache_insert(eval_cache_t map, zobrist_t key, cache_t value)
 {
     unsigned int index = eval_cache_hash(key);
     eval_cache_entry_t* new_entry = eval_cache_buffer + eval_cache_size++;
@@ -158,9 +158,9 @@ abcache_t* eval_cache_insert(eval_cache_t map, zobrist_t key, abcache_t value)
     return &(map.table[index]->value);
 }
 
-int max_cnt = 0;
+static int max_cnt = 0;
 
-abcache_t* eval_cache_search(eval_cache_t map, zobrist_t key)
+static cache_t* eval_cache_search(eval_cache_t map, zobrist_t key)
 {
     unsigned int index = eval_cache_hash(key);
     eval_cache_entry_t* entry = map.table[index];
@@ -176,7 +176,7 @@ abcache_t* eval_cache_search(eval_cache_t map, zobrist_t key)
     return NULL;
 }
 
-void free_eval_cache(eval_cache_t map)
+static void free_eval_cache(eval_cache_t map)
 {
     // for (size_t i = 0; i < EVAL_CACHE_SIZE; i++) {
     //     eval_cache_entry_t* entry = map.table[i];
@@ -189,33 +189,33 @@ void free_eval_cache(eval_cache_t map)
     free(map.table);
 }
 
-abresult_t minimax_search(int depth, int alpha, int beta)
+static result_t minimax_search(int depth, int alpha, int beta)
 {
-    if (depth == 0 || abstate.result || get_time(abclock) > GAME_TIME_LIMIT)
-        return (abresult_t){abstate.value, abstate.pos};
-    // print(abstate.board);
+    if (depth == 0 || cur_status.result || get_time(clock) > time_limit)
+        return (result_t){cur_status.value, cur_status.pos};
+    // print(abstatus.board);
     // log("depth = %d, alpha = %d, beta = %d, is_max = %d", depth, alpha, beta,
-    // is_max); prompt_getch(); log("depth = %d", depth);
-    abcache_t* entry = eval_cache_search(eval_cache, abstate.hash);
+    // is_max); prompt_pause(); log("depth = %d", depth);
+    cache_t* entry = eval_cache_search(eval_cache, cur_status.hash);
     if (entry != NULL) {
         if (entry->depth >= depth) {
             eval_reuse_cnt++;
             return entry->result;
         }
     } else {
-        abcache_t new_cache = {depth, (abresult_t){0, (point_t){0, 0}}};
-        entry = eval_cache_insert(eval_cache, abstate.hash, new_cache);
+        cache_t new_cache = {depth, (result_t){0, (point_t){0, 0}}};
+        entry = eval_cache_insert(eval_cache, cur_status.hash, new_cache);
     }
-    int id = abstate.id;
-    abresult_t ret;
+    int id = cur_status.id;
+    result_t ret;
     ret.value = -0x7f7f7f7f * id;
     for (int i = 0; i < BOARD_SIZE; i++) {
         for (int j = 0; j < BOARD_SIZE; j++) {
             point_t pos = (point_t){i, j};
-            if (ab_available(abstate.board, pos)) {
-                abstate = ab_put_piece(abstate, pos, id);
-                abresult_t child = minimax_search(depth - 1, alpha, beta);
-                abstate = ab_remove_piece(abstate, pos);
+            if (adjacent(cur_status.board, pos)) {
+                cur_status = put_piece(cur_status, pos, id);
+                result_t child = minimax_search(depth - 1, alpha, beta);
+                cur_status = remove_piece(cur_status, pos);
                 if (id == 1) {
                     if (child.value > alpha) {
                         alpha = child.value;
@@ -242,27 +242,28 @@ abresult_t minimax_search(int depth, int alpha, int beta)
     return ret;
 }
 
-point_t minimax(const game_t game)
+point_t minimax(const game_t game, void* assets)
 {
     max_cnt = 0;
+    time_limit = game.time_limit - 10;
     if (game.count == 0) return (point_t){BOARD_SIZE / 2, BOARD_SIZE / 2};
-    abclock = record_time();
+    clock = record_time();
     eval_cache = create_eval_cache();
     eval_reuse_cnt = 0, eval_cache_size = 0;
     if (eval_cache_buffer == NULL) {
         eval_cache_buffer = (eval_cache_entry_t*)malloc(
             sizeof(eval_cache_entry_t) * EVAL_CACHE_ENTRY_SIZE);
     }
-    memcpy(abstate.board, game.board, sizeof(board_t));
-    abstate.id = game.cur_player == 1 ? 1 : -1;
-    abstate.pos = game.steps[game.count - 1];
-    abstate.result = 0;
-    abstate.value = ab_evaluate(abstate.board, abstate.pos, -abstate.id);
+    memcpy(cur_status.board, game.board, sizeof(board_t));
+    cur_status.id = game.cur_id == 1 ? 1 : -1;
+    cur_status.pos = game.steps[game.count - 1];
+    cur_status.result = 0;
+    cur_status.value = evaluate(cur_status.board, cur_status.pos, -cur_status.id);
     point_t pos;
     int maxdepth = 0;
     for (int i = 2;; i += 2) {
-        abresult_t ret = minimax_search(i, -0x7f7f7f7f, 0x7f7f7f7f);
-        if (get_time(abclock) < GAME_TIME_LIMIT)
+        result_t ret = minimax_search(i, -0x7f7f7f7f, 0x7f7f7f7f);
+        if (get_time(clock) < time_limit)
             pos = ret.pos, maxdepth = i;
         else
             break;

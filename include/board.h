@@ -53,10 +53,12 @@ typedef struct {
 
 typedef struct {
     int data[PATTERN_LEN];
+    int val;
 } segment_t;
 
 typedef int board_t[BOARD_SIZE][BOARD_SIZE];
 
+void emph_print(const board_t, point_t pos);
 void print(const board_t);
 void wrap_area(const board_t, point_t*, point_t*, int8_t);
 bool inboard(point_t);
@@ -71,5 +73,6 @@ int to_pattern4(int, int, int, int);
 void pattern_init();
 int segment_encode(segment_t s);
 segment_t segment_decode(int v);
+void get_critical_column(int pattern, int* danger_col, int limit);
 
 #endif

@@ -7,8 +7,8 @@
 
 typedef struct {
     neural_network_t* network;
-} mcts_nn_parm_t;
+} mcts_nn_param_t;
 
-point_t mcts_nn(game_t game, mcts_nn_parm_t parm);
+point_t mcts_nn(game_t game, void* assets);
 
 #endif

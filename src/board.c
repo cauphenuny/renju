@@ -38,11 +38,8 @@ void wrap_area(const board_t board, point_t* begin, point_t* end, int8_t radius)
 
 /// @brief print board
 /// @param board board
-void print(const board_t board)
+void emph_print(const board_t board, point_t pos)
 {
-    // static const char* border_line[3] = {"┏━┯━┓",  //
-    //                                      "┠─┼─┨",  //
-    //                                      "┗━┷━┛"}; //
 #define dark(x) DARK x NONE
     static const char* border_line[3][5] = {
         {dark("╔"), dark("═"), dark("╤"), dark("═"), dark("╗")},   //
@@ -54,8 +51,8 @@ void print(const board_t board)
         " ",                         //
         GREEN "o" NONE,              //
         RED "x" NONE,                //
-        UNDERLINE L_GREEN "o" NONE,  //
-        UNDERLINE L_RED "x" NONE,    //
+        L_GREEN "o" NONE,  //
+        L_RED "x" NONE,    //
     };
     // point_t begin = {0, 0}, end = {BOARD_SIZE, BOARD_SIZE};
     // wrap_area(board, &begin, &end, 3);
@@ -66,23 +63,41 @@ void print(const board_t board)
             case 0: line_type = 2; break;
             default: line_type = 1;
         }
+#ifdef DEBUG
+        printf("%2d ", i);
+#else
         printf("%2d ", i + 1);
+#endif
         for (int j = 0; j < 2 * BOARD_SIZE - 1; j++) {
             switch (j) {
                 case 0: col_type = 0; break;
                 case 2 * BOARD_SIZE - 2: col_type = 4; break;
                 default: col_type = 2 + (j & 1);
             }
-            printf("%s", ((j & 1) || !board[i][j / 2]) ? border_line[line_type][col_type]
-                                                       : ch[board[i][j / 2]]);
+            if ((j & 1) && pos.x == i && pos.y == j / 2)
+                printf("]");
+            else if ((j & 1) && pos.x == i && pos.y == (j + 1) / 2)
+                printf("[");
+            else
+                printf("%s", ((j & 1) || !board[i][j / 2]) ? border_line[line_type][col_type]
+                                                           : ch[board[i][j / 2]]);
         }
         printf("\n");
     }
     printf("   ");
     for (int i = 0; i < 2 * BOARD_SIZE - 1; i++) {
+#ifdef DEBUG
+        if (!(i & 1)) printf("%-2d", i / 2);
+#else
         printf("%c", (i & 1) ? ' ' : 'A' + i / 2);
+#endif
     }
     printf("\n");
+}
+
+void print(const board_t board)
+{
+    return emph_print(board, (point_t){-1, -1});
 }
 
 /// @brief check if a pos is in board
@@ -122,7 +137,7 @@ int check_draw(const board_t board)
     return 1;
 }
 
-/* void test_ban(void)
+void test_ban(void)
 {
     int n = 5;
     struct {
@@ -144,7 +159,7 @@ int check_draw(const board_t board)
                 {0, 0, 0, 0, 0, 0, 0},
             },
             {5, 3},
-            POS_BANNED_LONG,
+            PAT4_TL,
         },
         {
             {
@@ -160,7 +175,7 @@ int check_draw(const board_t board)
                 {0, 0, 0, 0, 0, 0, 0},
             },
             {4, 3},
-            POS_BANNED_LONG,
+            PAT4_TL,
         },
         {
             {
@@ -176,7 +191,7 @@ int check_draw(const board_t board)
                 {0, 0, 0, 0, 0, 0, 0},
             },
             {4, 3},
-            POS_BANNED_44,
+            PAT4_44,
         },
         {{
              {0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -191,7 +206,7 @@ int check_draw(const board_t board)
              {0, 0, 0, 0, 0, 0, 0, 0, 0},
          },
          {4, 4},
-         POS_BANNED_33},
+         PAT4_A33},
         {{
              {0, 0, 0, 0, 0, 0, 0, 0, 0},
              {0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -205,32 +220,36 @@ int check_draw(const board_t board)
              {0, 0, 0, 0, 0, 0, 0, 0, 0},
          },
          {4, 4},
-         POS_ACCEPT},
+         PAT4_OTHERS},
     };
     for (int i = 0; i < n; i++) {
         log("i = %d", i);
         int ban = is_banned(tests[i].board, tests[i].pos, 1);
-        log("ban = %d (%s), expected %s", ban, pattern4_typename[ban], pos_ban_info[tests[i].id]);
-        // assert(ban == tests[i].id);
+        log("ban = %d (%s), expected %s", ban, pattern4_typename[ban],
+            pattern4_typename[tests[i].id]);
+        assert(ban == tests[i].id);
     }
 }
-*/
 
 const char* pattern_typename[] = {
-    [PAT_ETY] = "empty",   [PAT_44] = "double 4", [PAT_ATL] = "almost too long",
-    [PAT_TL] = "too long", [PAT_D1] = "dead 1",   [PAT_A1] = "alive 1",
+    [PAT_ETY] = "empty",   [PAT_44] = "double 4", [PAT_ATL] = "almost overline",
+    [PAT_TL] = "overline", [PAT_D1] = "dead 1",   [PAT_A1] = "alive 1",
     [PAT_D2] = "dead 2",   [PAT_A2] = "alive 2",  [PAT_D3] = "dead 3",
     [PAT_A3] = "alive 3",  [PAT_D4] = "dead 4",   [PAT_A4] = "alive 4",
     [PAT_5] = "connect 5",
 };
 
 const char* pattern4_typename[] = {
-    [PAT4_OTHERS] = "others",    [PAT4_43] = "4 and 3", [PAT4_WIN] = "win",
-    [PAT4_A33] = "double 3", [PAT4_44] = "double 4", [PAT4_TL] = "overline "};
+    [PAT4_OTHERS] = "others", [PAT4_43] = "4 and 3",  [PAT4_WIN] = "win",
+    [PAT4_A33] = "double 3",  [PAT4_44] = "double 4", [PAT4_TL] = "overline"};
 
 static int power3[PATTERN_LEN];
+#define FROM_COL_SIZE 3
+static int from_col[PATTERN_SIZE][FROM_COL_SIZE];
+static int count[PATTERN_SIZE];
 static int pattern_mem[PATTERN_SIZE];
 static int pattern4_mem[PAT_SIZE][PAT_SIZE][PAT_SIZE][PAT_SIZE];
+static int pattern_initialized;
 
 int segment_encode(segment_t s)
 {
@@ -239,12 +258,14 @@ int segment_encode(segment_t s)
     for (int i = 0; i < PATTERN_LEN; i++) {
         result = result * 3 + a[i];
     }
+    s.val = result;
     return result;
 }
 
 segment_t segment_decode(int v)
 {
     segment_t result;
+    result.val = v;
     for (int i = PATTERN_LEN - 1; i >= 0; i--) {
         result.data[i] = v % 3;
         v /= 3;
@@ -260,7 +281,8 @@ static void print_segment(segment_t s)
         printf(" %c", ch[s.data[i]]);
     }
     int idx = segment_encode(s);
-    printf("]: level = %s\n", pattern_typename[pattern_mem[idx]]);
+    printf("]: level = %s, \tcols: [%d, %d, %d]\n", pattern_typename[pattern_mem[idx]],
+           from_col[s.val][0], from_col[s.val][1], from_col[s.val][2]);
 }
 
 static int update(int prev, int pos, int new_piece)
@@ -270,11 +292,13 @@ static int update(int prev, int pos, int new_piece)
 
 int to_pattern(int x)
 {
+    assert(pattern_initialized);
     return pattern_mem[x];
 }
 
 int to_pattern4(int x, int y, int u, int v)
 {
+    assert(pattern_initialized);
     return pattern4_mem[x][y][u][v];
 }
 
@@ -318,6 +342,7 @@ int _is_banned_enable_log;
 /// @return 0 for accept, 1 for banned long, 2 for banned 33, 3 for banned 44
 int is_banned(const board_t board, point_t pos, int id)
 {
+    assert(pattern_initialized);
     // print(board);
     static int8_t arrow[4][2] = {{1, 1}, {1, -1}, {1, 0}, {0, 1}};
     int idx[4];
@@ -340,6 +365,7 @@ int is_banned(const board_t board, point_t pos, int id)
     }
     int pat4 = to_pattern4(idx[0], idx[1], idx[2], idx[3]);
     if (pat4 <= PAT4_WIN) return 0;
+    log("forbidden pos, reason: %s", pattern4_typename[pat4]);
     if (_is_banned_enable_log) {
         for (int i = 0; i < 4; i++) {
             print_segment(seg[i]);
@@ -356,11 +382,11 @@ void pattern_init()
     for (int i = 1; i < PATTERN_LEN; i++) {
         power3[i] = power3[i - 1] * 3;
     }
-#define print_array(...)                     \
-    for (int i = 0; i < PATTERN_SIZE; i++) { \
-        if (pattern_mem[i]) {                \
-            print_segment(decode(i));        \
-        }                                    \
+#define print_array(...)                      \
+    for (int i = 0; i < PATTERN_SIZE; i++) {  \
+        if (pattern_mem[i]) {                 \
+            print_segment(segment_decode(i)); \
+        }                                     \
     }
 
     for (int idx = 0; idx < PATTERN_SIZE; idx++) {
@@ -387,15 +413,17 @@ void pattern_init()
         }
     }
     // print_array();
-    // prompt_getch();
+    // prompt_pause();
 
     for (int idx = PATTERN_SIZE - 1, left, right; idx >= 0; idx--) {
         // log("round %d, idx %d", round, idx);
         if (pattern_mem[idx]) continue;
         segment_t line = segment_decode(idx);
-        int parent_pattern = 0, count = 0;
-        // fprintf(stderr, "cur: "), print_segment(line, cur_layer);
-        // prompt_getch();
+        int parent_pattern = 0;
+        count[idx] = 0;
+        memset(from_col[idx], -1, sizeof(from_col[idx]));
+        // fprintf(stderr, "cur: "), print_segment(line);
+        // prompt_pause();
 
         for (left = 0, right = 1; left < PATTERN_LEN; left = right + 1) {
             while (left < PATTERN_LEN && line.data[left] == OPPO_POS) (left)++;
@@ -404,7 +432,7 @@ void pattern_init()
             if (right - left >= WIN_LENGTH) break;
         }
         // log("left = %d, right = %d", left, right);
-        // prompt_getch();
+        // prompt_pause();
 
         if (left >= PATTERN_LEN) continue;
 
@@ -417,9 +445,14 @@ void pattern_init()
                 if (pos_cnt < 2) win_pos[pos_cnt++] = col;
             }
             if (pattern_mem[new_idx] > parent_pattern) {
-                parent_pattern = pattern_mem[new_idx], count = 0;
+                parent_pattern = pattern_mem[new_idx], count[idx] = 0;
+                memset(from_col[idx], -1, sizeof(from_col[idx]));
             }
-            if (pattern_mem[new_idx] == parent_pattern) count++;
+            if (pattern_mem[new_idx] == parent_pattern) {
+                if (count[idx] < 3) from_col[idx][count[idx]] = col;
+                count[idx]++;
+                // log("write col %d", col);
+            }
         }
         switch (parent_pattern) {
             case PAT_TL:
@@ -429,7 +462,7 @@ void pattern_init()
                     pattern_mem[idx] = PAT_44;
                 break;
             case PAT_5:
-                if (count == 1)
+                if (count[idx] == 1)
                     pattern_mem[idx] = PAT_D4;
                 else {
                     if (win_pos[1] - win_pos[0] >= WIN_LENGTH) {
@@ -449,7 +482,7 @@ void pattern_init()
         }
     }
     // print_array();
-    // prompt_getch();
+    // prompt_pause();
     for (int i = 0; i < PAT_SIZE; i++) {
         for (int j = 0; j < PAT_SIZE; j++) {
             for (int k = 0; k < PAT_SIZE; k++) {
@@ -472,6 +505,18 @@ void pattern_init()
             }
         }
     }
+    pattern_initialized = 1;
 #undef print_array
     // test_ban();
 }
+
+void get_critical_column(int pattern, int* danger_col, int limit)
+{
+    assert(pattern_initialized);
+    memset(danger_col, -1, limit * sizeof(int));
+    for (int i = 0, cur = 0; i < 3 && cur < limit; i++) {
+        if (from_col[pattern][i] != -1) {
+            danger_col[cur++] = from_col[pattern][i];
+        }
+    }
+};

@@ -11,62 +11,36 @@
 
 #include <string.h>
 
-mcts_parm_t mcts_preset = {
+static mcts_param_t mcts_preset = {
     .C = 1.414,
     .start_c = 3,
     .end_c = 0.5,
     .min_time = 200,
-    .max_time = GAME_TIME_LIMIT - 50,
-    .min_count = 200,
+    .min_count = 300,
+    .wrap_rad = 3,
+    .check_ban = true,
+};
+static mcts_param_t mcts2_preset = {
+    .C = 1.414,
+    .start_c = 3,
+    .end_c = 0.5,
+    .min_time = 200,
+    .min_count = 300,
     .wrap_rad = 2,
-    .check_ban = true, 
+    .check_ban = true,
 };
 
-const char* player_name[PLAYER_CNT] = {
-    "manual",
-    "mcts",
-    "mcts, without checking forbidden pos",
-    "mcts, with neural network",
-    "minimax",
-    "mix",
+player_t preset_players[MAX_PLAYERS] = {
+    [MANUAL] = {"human", manual, NULL},      //
+    [MCTS]  = {"AI (MCTS)", mcts, &mcts_preset},  //
+    [MCTS2] = {"AI (MCTS, radius 2)", mcts, &mcts2_preset}, //
+    [MCTS_NN] = {"AI (MCTS, with NN)", mcts_nn, NULL},    //
+    [MINIMAX] = {"AI (minimax)", minimax, NULL},    //
 };
 
-/// @brief generate next step by playerid and game info
-point_t move(int player_type, void* player_assets, const game_t game)
+point_t move(game_t game, player_t player)
 {
-    switch (player_type) {
-    case MANUAL: {
-        return manual();
-    }
-    case MCTS: {
-        if (player_assets == NULL)
-            return mcts(game, mcts_preset);
-        else
-            return mcts(game, *(mcts_parm_t*)player_assets);
-    }
-    case MCTS2: {
-        if (player_assets == NULL) {
-            mcts_parm_t parm = mcts_preset;
-            parm.check_ban = false;
-            return mcts(game, parm);
-        } else {
-            return mcts(game, *(mcts_parm_t*)player_assets);
-        }
-    }
-    case MCTS_NN: {
-        mcts_nn_parm_t parm;
-        parm.network = player_assets;
-        return mcts_nn(game, parm);
-    }
-    case MINIMAX: {
-        return minimax(game);
-    }
-    case MIX: {
-        if (game.count < 20)
-            return minimax(game);
-        else
-            return mcts(game, mcts_preset);
-    }
-    }
-    return (point_t){-1, -1};
+    return player.move(game, player.assets);
 }
+
+int player_cnt = 4;

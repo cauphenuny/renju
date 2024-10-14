@@ -7,23 +7,24 @@
 
 #include <stdio.h>
 
-game_t new_game(int first_id)
+game_t new_game(int first_id, int time_limit)
 {
     game_t game = {0};
-    game.first_player = game.cur_player = first_id;
+    game.first_id = game.cur_id = first_id;
+    game.time_limit = time_limit;
     return game;
 }
 
 void game_add_step(game_t* game, point_t pos)
 {
-    put(game->board, game->cur_player, pos);
+    put(game->board, game->cur_id, pos);
     game->steps[game->count++] = pos;
-    game->cur_player = 3 - game->cur_player;
+    game->cur_id = 3 - game->cur_id;
 }
 
 game_t game_backward(game_t game, int after_step)
 {
-    game_t subgame = new_game(game.first_player);
+    game_t subgame = new_game(game.first_id, game.time_limit);
     for (int i = 0; i < after_step; i++) {
         game_add_step(&subgame, game.steps[i]);
     }
@@ -38,13 +39,13 @@ void game_print(game_t game)
     }
     point_t pos = game.steps[game.count - 1];
     game.board[pos.x][pos.y] += 2;
-    print(game.board);
+    emph_print(game.board, pos);
     game.board[pos.x][pos.y] -= 2;
 }
 
 void game_export(game_t game, const char* name)
 {
-    int id = game.first_player;
+    int id = game.first_id;
     log("start export");
     printf("%sfirst_id=%d;", name, id);
     printf("%sstep_cnt=%d", name, game.count);

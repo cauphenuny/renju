@@ -11,14 +11,21 @@ enum {
     MCTS2,    // for test
     MCTS_NN,  // MCTS with neural network
     MINIMAX,
-    MIX,
     PLAYER_CNT,
 };
 
-extern const char* player_name[PLAYER_CNT];
+#define MAX_PLAYERS 20
 
-extern mcts_parm_t mcts_preset;
+typedef struct {
+    const char* name;
+    point_t (*move)(const game_t, void* assets);
+    void* assets;
+} player_t;
 
-point_t move(int, void* player_assets, const game_t);
+extern player_t preset_players[MAX_PLAYERS];
+
+extern int player_cnt;
+
+point_t move(const game_t, player_t);
 
 #endif

@@ -13,13 +13,14 @@
 typedef struct {
     board_t board;
     point_t steps[BOARD_SIZE * BOARD_SIZE];
+    int time_limit;
     int count;
-    int cur_player;
-    int first_player;
+    int cur_id;
+    int first_id;
     int winner;
 } game_t;
 
-game_t new_game(int first_player);
+game_t new_game(int first_id, int time_limit);
 
 void game_add_step(game_t* game, point_t pos);
 

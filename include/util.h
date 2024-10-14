@@ -5,8 +5,8 @@
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
 #define max(x, y) ((x) > (y) ? (x) : (y))
-#define chkmin(x, y) (x) = min(x, y)
-#define chkmax(x, y) (x) = max(x, y)
+#define chkmin(x, y) ((y) < (x) ? ((x) = (y), 1) : 0)
+#define chkmax(x, y) ((y) > (x) ? ((x) = (y), 1) : 0)
 
 #define debugf(...) fprintf(stderr, __VA_ARGS__)
 /* output style: 16 color mode */
@@ -54,7 +54,7 @@
 #define NONE                 "\e[0m"
 
 const char* basename(const char*);
-#define LOG_BUFFER_SIZE 1024
+#define LOG_BUFFER_SIZE 512
 extern char log_buffer[LOG_BUFFER_SIZE];
 void log_flush();
 
@@ -139,7 +139,7 @@ void log_flush();
 
 #endif
 
-#define prompt_getch() fprintf(stderr, "(%s) ", __func__), getchar()
+#define prompt_pause() fprintf(stderr, "(%s) ", __func__), getchar()
 #define prompt()       fprintf(stderr, "(%s) ", __func__)
 
 int record_time(void);

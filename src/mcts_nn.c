@@ -4,7 +4,7 @@
 
 #include "board.h"
 #include "game.h"
-#include "neuro.h"
+#include "util.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -84,7 +84,9 @@
 //     return root;
 // }
 
-point_t mcts_nn(game_t game, mcts_nn_parm_t parm)
+point_t mcts_nn(game_t game, void* assets)
 {
-    return (point_t){0, 0};
+    mcts_nn_param_t param = *((mcts_nn_param_t*)assets);
+    log_e("not implemented!");
+    return (point_t){-1, -1};
 }
