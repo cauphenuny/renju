@@ -55,6 +55,13 @@ int get_time(int start_time) {
     return (int)(get_raw_time() - start_time);
 }
 
+void pause()
+{
+    int tim = record_time();
+    char c = getchar();
+    if (get_time(tim) < 10) return pause();
+}
+
 const char* basename(const char* fullname) {
     const char* pos = fullname;
     char ch;

@@ -48,14 +48,15 @@ enum {
 void log_flush();
 int log_add(int level, const char* fmt, ...);
 
-#define log(...)   log_add(PROMPT_LOG, __VA_ARGS__)
-#define log_l(...) log_add(PROMPT_LOG, __VA_ARGS__)
-#define log_i(...) log_add(PROMPT_INFO, __VA_ARGS__)
-#define log_w(...) log_add(PROMPT_WARN, __VA_ARGS__)
-#define log_e(...) log_add(PROMPT_ERROR, __VA_ARGS__)
-#define log_s(...) log_add(PROMPT_EMPTY, __VA_ARGS__)
+#define log(fmt, ...)   log_add(PROMPT_LOG,   DARK "%s/%s/%d: " NONE fmt, basename(__FILE__), __func__, __LINE__, ##__VA_ARGS__)
+#define log_l(fmt, ...) log_add(PROMPT_LOG,   DARK "%s/%s/%d: " NONE fmt, basename(__FILE__), __func__, __LINE__, ##__VA_ARGS__)
+#define log_i(fmt, ...) log_add(PROMPT_INFO,  DARK "%s/%s/%d: " NONE fmt, basename(__FILE__), __func__, __LINE__, ##__VA_ARGS__)
+#define log_w(fmt, ...) log_add(PROMPT_WARN,  DARK "%s/%s/%d: " NONE fmt, basename(__FILE__), __func__, __LINE__, ##__VA_ARGS__)
+#define log_e(fmt, ...) log_add(PROMPT_ERROR, DARK "%s/%s/%d: " NONE fmt, basename(__FILE__), __func__, __LINE__, ##__VA_ARGS__)
+#define log_s(...)      log_add(PROMPT_EMPTY, __VA_ARGS__)
 
-#define prompt_pause() fprintf(stderr, "(%s) ", __func__), getchar()
+void pause();
+#define prompt_pause() fprintf(stderr, "(%s) ", __func__), pause()
 #define prompt()       fprintf(stderr, "(%s) ", __func__)
 
 int record_time(void);

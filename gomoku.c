@@ -32,7 +32,7 @@ static game_t start_game(player_t p1, player_t p2, int first_id, int time_limit)
         if (!available(game.board, pos)) {
             log_e("invalid position!");
             // game_export(game, "game->");
-            // prompt_pause();
+            prompt_pause();
             continue;
         }
         if (game.cur_id == game.first_id) {
