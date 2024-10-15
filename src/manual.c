@@ -30,16 +30,15 @@ point_t manual(const game_t game, void* assets)
     (void)game, (void)assets;
 
     point_t pos;
-    prompt();
 #ifdef DEBUG
     log_i("waiting input. (format: %%d %%d)");
     int x, y;
-    scanf("%d %d", &x, &y);
+    prompt(), scanf("%d %d", &x, &y);
     pos.x = y, pos.y = x;
 #else
     log_i("waiting input. (format: H 8 or h 8)");
     char input_x[10], input_y[10];
-    scanf("%s %s", input_x, input_y);
+    prompt(), scanf("%s %s", input_x, input_y);
     pos.y = parse(input_x, 1), pos.x = parse(input_y, 0);
 #endif
     return pos;
