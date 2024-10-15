@@ -35,14 +35,13 @@ static game_t start_game(player_t p1, player_t p2, int first_id, int time_limit)
             // prompt_pause();
             continue;
         }
-        extern int _is_banned_enable_log;
         if (game.cur_id == game.first_id) {
-            _is_banned_enable_log = 1;
-            int ban = is_banned(game.board, pos, id);
-            _is_banned_enable_log = 0;
+            int ban = is_banned(game.board, pos, id, true);
             if (ban) {
                 log_e("banned position! (%s)", pattern4_typename[ban]);
+                emph_print(game.board, pos);
                 game.winner = 3 - id;
+                prompt_pause();
                 return game;
                 // if (game.cur_player == 2) {
                 //     game.winner = 1;
@@ -78,7 +77,7 @@ int results[5];
 
 void signal_handler(int signum)
 {
-    log_s("\n");
+    log_s("");
     log("received signal %d, terminate.", signum);
     int r1 = results[1], r2 = results[2];
     if (r1 + r2) {
@@ -94,16 +93,15 @@ void signal_handler(int signum)
 // //clang-format on
 // }
 
-#define PRESET_SIZE 3
+#define PRESET_SIZE 2
 const int preset_modes[PRESET_SIZE][3] = {{MCTS, MANUAL, GAME_TIME_LIMIT},
-                                          {MANUAL, MCTS, GAME_TIME_LIMIT},
-                                          {MCTS, MCTS, GAME_TIME_LIMIT}};
+                                          {MANUAL, MCTS, GAME_TIME_LIMIT}};
 
 int main(void)
 {
     signal(SIGINT, signal_handler);
 
-    log_i("gomoku v%s", VERSION);
+    log("gomoku v%s", VERSION);
 
     init();
 

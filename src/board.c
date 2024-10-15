@@ -137,100 +137,6 @@ int check_draw(const board_t board)
     return 1;
 }
 
-void test_ban(void)
-{
-    int n = 5;
-    struct {
-        board_t board;
-        point_t pos;
-        int id;
-    } tests[10] = {
-        {
-            {
-                {0, 0, 0, 0, 0, 0, 0},
-                {0, 0, 0, 0, 0, 0, 0},
-                {0, 0, 0, 1, 0, 0, 0},
-                {0, 0, 0, 1, 0, 0, 0},
-                {0, 0, 0, 1, 0, 0, 0},
-                {0, 0, 0, 0, 0, 0, 0},
-                {0, 0, 0, 1, 0, 0, 0},
-                {0, 0, 0, 1, 0, 0, 0},
-                {0, 0, 0, 0, 0, 0, 0},
-                {0, 0, 0, 0, 0, 0, 0},
-            },
-            {5, 3},
-            PAT4_TL,
-        },
-        {
-            {
-                {0, 0, 0, 0, 0, 0, 0},
-                {1, 0, 0, 0, 0, 0, 0},
-                {0, 1, 0, 0, 0, 0, 0},
-                {0, 0, 1, 0, 0, 0, 0},
-                {0, 0, 0, 0, 0, 0, 0},
-                {0, 0, 0, 0, 1, 0, 0},
-                {0, 0, 0, 0, 0, 1, 0},
-                {0, 0, 0, 0, 0, 0, 0},
-                {0, 0, 0, 0, 0, 0, 0},
-                {0, 0, 0, 0, 0, 0, 0},
-            },
-            {4, 3},
-            PAT4_TL,
-        },
-        {
-            {
-                {0, 0, 0, 0, 0, 0, 0},
-                {1, 0, 0, 0, 0, 0, 0},
-                {0, 1, 0, 0, 0, 0, 0},
-                {0, 0, 1, 0, 0, 0, 0},
-                {0, 0, 0, 0, 0, 0, 0},
-                {0, 0, 0, 0, 0, 0, 0},
-                {0, 0, 0, 0, 0, 1, 0},
-                {0, 0, 0, 0, 0, 0, 1},
-                {0, 0, 0, 0, 0, 0, 0, 1},
-                {0, 0, 0, 0, 0, 0, 0},
-            },
-            {4, 3},
-            PAT4_44,
-        },
-        {{
-             {0, 0, 0, 0, 0, 0, 0, 0, 0},
-             {0, 0, 0, 0, 0, 0, 0, 0, 0},
-             {0, 0, 0, 0, 0, 0, 0, 0, 0},
-             {0, 0, 0, 0, 0, 0, 0, 0, 0},
-             {0, 0, 1, 1, 0, 0, 0, 0, 0},
-             {0, 0, 0, 0, 0, 1, 0, 0, 0},
-             {0, 0, 0, 0, 0, 0, 1, 0, 0},
-             {0, 0, 0, 0, 0, 0, 0, 0, 0},
-             {0, 0, 0, 0, 0, 0, 0, 0, 0},
-             {0, 0, 0, 0, 0, 0, 0, 0, 0},
-         },
-         {4, 4},
-         PAT4_A33},
-        {{
-             {0, 0, 0, 0, 0, 0, 0, 0, 0},
-             {0, 0, 0, 0, 0, 0, 0, 0, 0},
-             {0, 0, 0, 0, 0, 0, 0, 0, 0},
-             {0, 0, 0, 0, 0, 0, 0, 0, 0},
-             {0, 2, 1, 1, 0, 0, 0, 0, 0},
-             {0, 0, 0, 0, 0, 1, 0, 0, 0},
-             {0, 0, 0, 0, 0, 0, 1, 0, 0},
-             {0, 0, 0, 0, 0, 0, 0, 0, 0},
-             {0, 0, 0, 0, 0, 0, 0, 0, 0},
-             {0, 0, 0, 0, 0, 0, 0, 0, 0},
-         },
-         {4, 4},
-         PAT4_OTHERS},
-    };
-    for (int i = 0; i < n; i++) {
-        log("i = %d", i);
-        int ban = is_banned(tests[i].board, tests[i].pos, 1);
-        log("ban = %d (%s), expected %s", ban, pattern4_typename[ban],
-            pattern4_typename[tests[i].id]);
-        assert(ban == tests[i].id);
-    }
-}
-
 const char* pattern_typename[] = {
     [PAT_ETY] = "empty",   [PAT_44] = "double 4", [PAT_ATL] = "almost overline",
     [PAT_TL] = "overline", [PAT_D1] = "dead 1",   [PAT_A1] = "alive 1",
@@ -264,7 +170,6 @@ int segment_encode(segment_t s)
 segment_t segment_decode(int v)
 {
     segment_t result;
-    result.val = v;
     for (int i = PATTERN_LEN - 1; i >= 0; i--) {
         result.data[i] = v % 3;
         v /= 3;
@@ -333,14 +238,12 @@ int check(const board_t board, point_t pos)
     return 0;
 }
 
-int _is_banned_enable_log;
-
 /// @brief check whether position is banned
 /// @param board current board
 /// @param pos position to check
 /// @param id current id
 /// @return 0 for accept, 1 for banned long, 2 for banned 33, 3 for banned 44
-int is_banned(const board_t board, point_t pos, int id)
+int is_banned(const board_t board, point_t pos, int id, bool enable_log)
 {
     assert(pattern_initialized);
     // print(board);
@@ -365,8 +268,8 @@ int is_banned(const board_t board, point_t pos, int id)
     }
     int pat4 = to_pattern4(idx[0], idx[1], idx[2], idx[3]);
     if (pat4 <= PAT4_WIN) return 0;
-    log("forbidden pos, reason: %s", pattern4_typename[pat4]);
-    if (_is_banned_enable_log) {
+    if (enable_log) {
+        log("forbidden pos, reason: %s", pattern4_typename[pat4]);
         for (int i = 0; i < 4; i++) {
             print_segment(seg[i]);
         }

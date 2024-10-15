@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 3.5)
 project (
     gomoku
-    VERSION 1.9.1
+    VERSION 1.10.0
     LANGUAGES C
 )
 set (CMAKE_VERBOSE_MAKEFILE OFF)
@@ -29,28 +29,36 @@ else()
 endif()
 add_definitions (-DVERSION="${VERSION_STRING}")
 aux_source_directory (src SRC_LIST)
+list(REMOVE_ITEM SRC_LIST "src/util.c")
 include_directories (include)
 file(GLOB_RECURSE INCLUDE_LIST "*.h")
 
-add_library (gomoku SHARED ${SRC_LIST})
-target_compile_definitions (gomoku PRIVATE GAME_TIME_LIMIT=1000)
-target_compile_definitions (gomoku PRIVATE DISABLE_LOG)
-target_link_libraries(gomoku m)
+add_library(gomoku_objects OBJECT ${SRC_LIST})
+target_link_libraries(gomoku_objects m)
+
+add_library(libgomoku_nolog SHARED $<TARGET_OBJECTS:gomoku_objects> src/util.c)
+target_compile_definitions(libgomoku_nolog PRIVATE DISABLE_LOG)
+set_target_properties(libgomoku_nolog PROPERTIES OUTPUT_NAME "gomoku")
+
+add_library(libgomoku STATIC $<TARGET_OBJECTS:gomoku_objects> src/util.c)
+target_compile_definitions(libgomoku PRIVATE INSTANT_LOG)
+set_target_properties(libgomoku PROPERTIES OUTPUT_NAME "gomoku")
 
 add_custom_command(
     OUTPUT ${PROJECT_SOURCE_DIR}/lib/gomoku.py
-    COMMAND ctypesgen -lgomoku ./include/* -o lib/gomoku.py
+    COMMAND ctypesgen -Llib -lgomoku ./include/* -o lib/gomoku.py
     DEPENDS ${INCLUDE_LIST}
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
     COMMENT "Running ctypesgen to generate Python bindings"
 )
-add_custom_target(generate_bindings ALL DEPENDS ${PROJECT_SOURCE_DIR}/lib/gomoku.py)
+add_custom_target(generate_bindings ALL DEPENDS lib/gomoku.py)
 
-add_executable (main gomoku.c ${SRC_LIST})
-# set_source_files_properties (gomoku.c PROPERTIES COMPILE_DEFINITIONS "P1=MCTS;P2=MANUAL")
-# target_compile_definitions (main PRIVATE GAME_TIME_LIMIT=1000)
-target_compile_definitions (main PRIVATE INSTANT_LOG)
-target_compile_definitions (main PRIVATE GAME_TIME_LIMIT=2000)
+add_executable (main gomoku.c)
+target_link_libraries(main libgomoku)
+
+add_executable (test tests/main.c)
+target_link_libraries(test libgomoku)
+set_target_properties(test PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
 add_executable (botzone botzone.c ${SRC_LIST})
 target_link_libraries (botzone m)

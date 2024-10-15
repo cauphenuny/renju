@@ -244,6 +244,8 @@ static result_t minimax_search(int depth, int alpha, int beta)
 
 point_t minimax(const game_t game, void* assets)
 {
+    (void)assets;
+
     max_cnt = 0;
     time_limit = game.time_limit - 10;
     if (game.count == 0) return (point_t){BOARD_SIZE / 2, BOARD_SIZE / 2};

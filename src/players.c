@@ -42,5 +42,3 @@ point_t move(game_t game, player_t player)
 {
     return player.move(game, player.assets);
 }
-
-int player_cnt = 4;

@@ -53,7 +53,6 @@ typedef struct {
 
 typedef struct {
     int data[PATTERN_LEN];
-    int val;
 } segment_t;
 
 typedef int board_t[BOARD_SIZE][BOARD_SIZE];
@@ -66,8 +65,7 @@ bool available(board_t board, point_t pos);
 void put(board_t board, int id, point_t pos);
 int  check_draw(const board_t);
 int  check(const board_t, point_t);
-int is_banned(const board_t, point_t, int);
-void test_ban(void);
+int is_banned(const board_t, point_t, int, bool);
 int to_pattern(int);
 int to_pattern4(int, int, int, int);
 void pattern_init();

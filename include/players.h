@@ -24,8 +24,6 @@ typedef struct {
 
 extern player_t preset_players[MAX_PLAYERS];
 
-extern int player_cnt;
-
 point_t move(const game_t, player_t);
 
 #endif

@@ -7,7 +7,7 @@
 #define GAMECTRL_EXPORT -3
 
 #ifndef GAME_TIME_LIMIT
-#    define GAME_TIME_LIMIT 15000
+#    define GAME_TIME_LIMIT 2000
 #endif
 
 typedef struct {

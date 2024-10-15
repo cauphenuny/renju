@@ -5,27 +5,8 @@
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
 #define max(x, y) ((x) > (y) ? (x) : (y))
-#define chkmin(x, y) ((y) < (x) ? ((x) = (y), 1) : 0)
-#define chkmax(x, y) ((y) > (x) ? ((x) = (y), 1) : 0)
-
-#define debugf(...) fprintf(stderr, __VA_ARGS__)
-/* output style: 16 color mode */
-#define CLI_STYLE_NORMAL     "0"
-#define CLI_STYLE_BOLD       "1"
-#define CLI_STYLE_DARK       "2"
-#define CLI_STYLE_BACKGROUND "3"
-#define CLI_STYLE_UNDERLINE  "4"
-
-/* output color: 16 color mode */
-#define CLI_COLOR_BLACK    "30"
-#define CLI_COLOR_RED      "31"
-#define CLI_COLOR_GREEN    "32"
-#define CLI_COLOR_YELLOW   "33"
-#define CLI_COLOR_BLUE     "34"
-#define CLI_COLOR_PURPLE   "35"
-#define CLI_COLOR_SKYBLUE  "36"
-#define CLI_COLOR_WHITE    "37"
-#define CLI_COLOR_NORMAL   "38"
+#define chkmin(x, y) (x = min(x, y))
+#define chkmax(x, y) (x = max(x, y))
 
 #define BLACK                "\e[0;30m"
 #define L_BLACK              "\e[1;30m"
@@ -33,8 +14,8 @@
 #define L_RED                "\e[1;31m"
 #define GREEN                "\e[0;32m"
 #define L_GREEN              "\e[1;32m"
-#define BROWN                "\e[0;33m"
-#define YELLOW               "\e[1;33m"
+#define YELLOW               "\e[0;33m"
+#define L_YELLOW             "\e[1;33m"
 #define BLUE                 "\e[0;34m"
 #define L_BLUE               "\e[1;34m"
 #define PURPLE               "\e[0;35m"
@@ -54,90 +35,25 @@
 #define NONE                 "\e[0m"
 
 const char* basename(const char*);
+
+enum {
+    PROMPT_EMPTY, 
+    PROMPT_LOG,
+    PROMPT_INFO,
+    PROMPT_WARN,
+    PROMPT_ERROR,
+};
+
 #define LOG_BUFFER_SIZE 512
-extern char log_buffer[LOG_BUFFER_SIZE];
 void log_flush();
+int log_add(int level, const char* fmt, ...);
 
-#ifdef DISABLE_LOG
-
-#    define log(...)   1
-#    define log_l(...) 1
-#    define log_w(...) 1
-#    define log_e(...) 1
-#    define log_i(...) 1
-
-#else
-
-#    ifdef INSTANT_LOG
-
-// log-named log
-
-#        define log_l(fmt, ...)                                 \
-            fprintf(stderr,                                     \
-                    "\033[" CLI_STYLE_NORMAL ";" CLI_COLOR_BLUE \
-                    "m[LOG] \033[0m"                            \
-                    "\033[" CLI_STYLE_DARK ";" CLI_COLOR_NORMAL \
-                    "m%s/%s/%d: \033[0m" fmt "\n",              \
-                    basename(__FILE__), __func__, __LINE__, ##__VA_ARGS__)
-
-#        define log log_l
-
-// simplified log
-
-#        define log_s(...) fprintf(stderr, __VA_ARGS__)
-
-// info-named log
-#        define log_i(fmt, ...)                                  \
-            fprintf(stderr,                                      \
-                    "\033[" CLI_STYLE_NORMAL ";" CLI_COLOR_GREEN \
-                    "m[INFO] \033[0m"                            \
-                    "\033[" CLI_STYLE_DARK ";" CLI_COLOR_NORMAL  \
-                    "m%s/%s/%d: \033[0m" fmt "\n",               \
-                    basename(__FILE__), __func__, __LINE__, ##__VA_ARGS__)
-
-// warning-named log
-#        define log_w(fmt, ...)                                   \
-            fprintf(stderr,                                       \
-                    "\033[" CLI_STYLE_NORMAL ";" CLI_COLOR_YELLOW \
-                    "m[WARN] \033[0m"                             \
-                    "\033[" CLI_STYLE_DARK ";" CLI_COLOR_NORMAL   \
-                    "m%s/%s/%d: \033[0m" fmt "\n",                \
-                    basename(__FILE__), __func__, __LINE__, ##__VA_ARGS__)
-
-// error-named log
-#        define log_e(fmt, ...)                                 \
-            fprintf(stderr,                                     \
-                    "\033[" CLI_STYLE_NORMAL ";" CLI_COLOR_RED  \
-                    "m[ERROR] \033[0m"                          \
-                    "\033[" CLI_STYLE_DARK ";" CLI_COLOR_NORMAL \
-                    "m%s/%s/%d: \033[0m" fmt "\n",              \
-                    basename(__FILE__), __func__, __LINE__, ##__VA_ARGS__)
-#    else
-
-#        define log_l(fmt, ...)                                                \
-            snprintf(log_buffer, LOG_BUFFER_SIZE, "%s[LOG] %s/%d: " fmt " | ", \
-                     log_buffer, __func__, __LINE__, ##__VA_ARGS__)
-#        define log log_l
-
-#        define log_s(fmt, ...)                                               \
-            snprintf(log_buffer, LOG_BUFFER_SIZE, "%s" fmt " | ", log_buffer, \
-                     ##__VA_ARGS__)
-#        define log_i(fmt, ...)                                          \
-            snprintf(log_buffer, LOG_BUFFER_SIZE,                        \
-                     "%s[INFO] %s/%d: " fmt " | ", log_buffer, __func__, \
-                     __LINE__, ##__VA_ARGS__)
-#        define log_w(fmt, ...)                                          \
-            snprintf(log_buffer, LOG_BUFFER_SIZE,                        \
-                     "%s[WARN] %s/%d: " fmt " | ", log_buffer, __func__, \
-                     __LINE__, ##__VA_ARGS__)
-#        define log_e(fmt, ...)                                           \
-            snprintf(log_buffer, LOG_BUFFER_SIZE,                         \
-                     "%s[ERROR] %s/%d: " fmt " | ", log_buffer, __func__, \
-                     __LINE__, ##__VA_ARGS__)
-
-#    endif
-
-#endif
+#define log(...)   log_add(PROMPT_LOG, __VA_ARGS__)
+#define log_l(...) log_add(PROMPT_LOG, __VA_ARGS__)
+#define log_i(...) log_add(PROMPT_INFO, __VA_ARGS__)
+#define log_w(...) log_add(PROMPT_WARN, __VA_ARGS__)
+#define log_e(...) log_add(PROMPT_ERROR, __VA_ARGS__)
+#define log_s(...) log_add(PROMPT_EMPTY, __VA_ARGS__)
 
 #define prompt_pause() fprintf(stderr, "(%s) ", __func__), getchar()
 #define prompt()       fprintf(stderr, "(%s) ", __func__)

@@ -1,7 +1,6 @@
 **/.DS_Store
 bin/
 lib/
-test/
 build/
 model/
 export/

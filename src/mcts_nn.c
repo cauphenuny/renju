@@ -86,7 +86,8 @@
 
 point_t mcts_nn(game_t game, void* assets)
 {
-    mcts_nn_param_t param = *((mcts_nn_param_t*)assets);
+    (void)game, (void)assets;
+
     log_e("not implemented!");
     return (point_t){-1, -1};
 }
