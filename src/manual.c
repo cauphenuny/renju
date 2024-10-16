@@ -13,10 +13,10 @@
 
 int parse(char s[])
 {
-    if (strcmp(s, "re") == 0 || strcmp(s, "regret") == 0) {
+    if (strcmp(s, "back") == 0 || strcmp(s, "withdraw") == 0) {
         return GAMECTRL_REGRET;
     }
-    if (strcmp(s, "ex") == 0 || strcmp(s, "export") == 0) {
+    if (strcmp(s, "export") == 0) {
         return GAMECTRL_EXPORT;
     }
     if (isupper(s[0])) return s[0] - 'A';
@@ -38,7 +38,7 @@ point_t manual(const game_t game, void* assets)
     prompt(), scanf("%d %d", &x, &y);
     pos.x = y, pos.y = x;
 #else
-    log_i("waiting input. (format: H 8 or h 8)");
+    log_i("input (eg. \"H 8\" / \"h 8\" for pos (H, 8), \"back 1\" for withdraw one move):");
     char input_x[10], input_y[10];
     prompt(), scanf("%s %s", input_x, input_y);
     int first = parse(input_x), second = parse(input_y);

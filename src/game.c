@@ -48,7 +48,8 @@ void game_export(game_t game, const char* name)
 {
     int id = game.first_id;
     printf("%sfirst_id=%d;", name, id);
-    printf("%sstep_cnt=%d;", name, game.count);
+    printf("%scount=%d;", name, game.count);
+    printf("%stime_limit=%d;", name, game.time_limit);
     for (int i = 0, x, y; i < game.count; i++) {
         x = game.steps[i].x;
         y = game.steps[i].y;
@@ -56,5 +57,5 @@ void game_export(game_t game, const char* name)
         printf("%ssteps[%d]=(point_t){%d, %d};", name, i, x, y);
         id = 3 - id;
     }
-    printf("%scurrent_id=%d;\n", name, id);
+    printf("%scur_id=%d;\n", name, id);
 }

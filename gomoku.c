@@ -31,13 +31,13 @@ static game_t start_game(player_t p1, player_t p2, int first_id, int time_limit)
             if (pos.y > 0 && pos.y <= game.count) {
                 game = game_backward(game, game.count - pos.y);
                 game_print(game);
-            }
+            } else log("invalid input");
             continue;
         }
         if (pos.x == GAMECTRL_EXPORT) {
             if (pos.y > 0 && pos.y <= game.count) {
                 game_export(game_backward(game, pos.y), "game->");
-            }
+            } else log("invalid input");
             continue;
         }
         if (!available(game.board, pos)) {
