@@ -8,6 +8,7 @@
 #define chkmin(x, y) (x = min(x, y))
 #define chkmax(x, y) (x = max(x, y))
 
+#ifndef NOCOLOR
 #define BLACK                "\e[0;30m"
 #define L_BLACK              "\e[1;30m"
 #define RED                  "\e[0;31m"
@@ -33,10 +34,40 @@
 #define CLEAR                "\e[2J"
 #define CLRLINE              "\r\e[K"
 #define NONE                 "\e[0m"
+#    else
+#define BLACK     "" 
+#define L_BLACK   "" 
+#define RED       "" 
+#define L_RED     "" 
+#define GREEN     "" 
+#define L_GREEN   "" 
+#define YELLOW    "" 
+#define L_YELLOW  "" 
+#define BLUE      "" 
+#define L_BLUE    "" 
+#define PURPLE    "" 
+#define L_PURPLE  "" 
+#define CYAN      "" 
+#define L_CYAN    "" 
+#define GRAY      "" 
+#define WHITE     "" 
+#define BOLD      ""
+#define DARK      ""
+#define UNDERLINE ""
+#define BLINK     ""
+#define REVERSE   ""
+#define HIDE      ""
+#define CLEAR     ""
+#define NONE      ""
+#endif
+
+void pause();
+#define prompt_pause() fprintf(stderr, "(%s) ", __func__), pause()
+#define prompt()       fprintf(stderr, "(%s) ", __func__)
 
 const char* basename(const char*);
 
-enum {
+enum log_prompts {
     PROMPT_EMPTY, 
     PROMPT_LOG,
     PROMPT_INFO,
@@ -45,19 +76,18 @@ enum {
 };
 
 #define LOG_BUFFER_SIZE 512
-void log_flush();
-int log_add(int level, const char* fmt, ...);
+void log_flush(void);
+int log_write(int level, const char* fmt, ...);
 
-#define log(fmt, ...)   log_add(PROMPT_LOG,   DARK "%s/%s/%d: " NONE fmt, basename(__FILE__), __func__, __LINE__, ##__VA_ARGS__)
-#define log_l(fmt, ...) log_add(PROMPT_LOG,   DARK "%s/%s/%d: " NONE fmt, basename(__FILE__), __func__, __LINE__, ##__VA_ARGS__)
-#define log_i(fmt, ...) log_add(PROMPT_INFO,  DARK "%s/%s/%d: " NONE fmt, basename(__FILE__), __func__, __LINE__, ##__VA_ARGS__)
-#define log_w(fmt, ...) log_add(PROMPT_WARN,  DARK "%s/%s/%d: " NONE fmt, basename(__FILE__), __func__, __LINE__, ##__VA_ARGS__)
-#define log_e(fmt, ...) log_add(PROMPT_ERROR, DARK "%s/%s/%d: " NONE fmt, basename(__FILE__), __func__, __LINE__, ##__VA_ARGS__)
-#define log_s(...)      log_add(PROMPT_EMPTY, __VA_ARGS__)
+#define log_add(level, fmt, ...) \
+    log_write(level, DARK "%s/%s/%d: " NONE fmt, basename(__FILE__), __func__, __LINE__, ##__VA_ARGS__)
 
-void pause();
-#define prompt_pause() fprintf(stderr, "(%s) ", __func__), pause()
-#define prompt()       fprintf(stderr, "(%s) ", __func__)
+#define log(...)   log_add(PROMPT_LOG,   __VA_ARGS__)
+#define log_l(...) log_add(PROMPT_LOG,   __VA_ARGS__)
+#define log_i(...) log_add(PROMPT_INFO,  __VA_ARGS__)
+#define log_w(...) log_add(PROMPT_WARN,  __VA_ARGS__)
+#define log_e(...) log_add(PROMPT_ERROR, __VA_ARGS__), prompt_pause()
+#define log_s(...) log_write(PROMPT_EMPTY, __VA_ARGS__)
 
 int record_time(void);
 int get_time(int);

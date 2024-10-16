@@ -100,6 +100,7 @@ void print(const board_t board)
     return emph_print(board, (point_t){-1, -1});
 }
 
+/*
 /// @brief check if a pos is in board
 /// @param pos
 /// @return
@@ -108,6 +109,7 @@ bool inboard(point_t pos)
     int n = BOARD_SIZE;
     return pos.x >= 0 && pos.x < n && pos.y >= 0 && pos.y < n;
 }
+*/
 
 bool available(board_t board, point_t pos)
 {
@@ -150,16 +152,16 @@ const char* pattern4_typename[] = {
     [PAT4_A33] = "double 3",  [PAT4_44] = "double 4", [PAT4_TL] = "overline"};
 
 static int power3[PATTERN_LEN];
-#define FROM_COL_SIZE 3
-static int from_col[PATTERN_SIZE][FROM_COL_SIZE];
+#define UP_COL_SIZE 3
+static int upgrade_col[PATTERN_SIZE][UP_COL_SIZE];
 static int count[PATTERN_SIZE];
-static int pattern_mem[PATTERN_SIZE];
-static int pattern4_mem[PAT_SIZE][PAT_SIZE][PAT_SIZE][PAT_SIZE];
+static pattern_t pattern_mem[PATTERN_SIZE];
+static pattern4_t pattern4_mem[PAT_TYPE_SIZE][PAT_TYPE_SIZE][PAT_TYPE_SIZE][PAT_TYPE_SIZE];
 static int pattern_initialized;
 
 int segment_encode(segment_t s)
 {
-    int* a = s.data;
+    piece_t* a = s.data;
     int result = 0;
     for (int i = 0; i < PATTERN_LEN; i++) {
         result = result * 3 + a[i];
@@ -177,7 +179,7 @@ segment_t segment_decode(int v)
     return result;
 }
 
-static void print_segment(segment_t s)
+void print_segment(segment_t s)
 {
     char ch[3] = {'.', 'o', 'x'};
     printf("%5d [%c", segment_encode(s), ch[s.data[0]]);
@@ -190,18 +192,18 @@ static void print_segment(segment_t s)
     printf("]: level = %s\n", pattern_typename[pattern_mem[idx]]);
 }
 
-static int update(int prev, int pos, int new_piece)
+static int update(int prev, int pos, piece_t new_piece)
 {
     return prev + new_piece * power3[PATTERN_LEN - 1 - pos];
 }
 
-int to_pattern(int x)
+pattern_t to_pattern(int x)
 {
     assert(pattern_initialized);
     return pattern_mem[x];
 }
 
-int to_pattern4(int x, int y, int u, int v)
+pattern4_t to_pattern4(int x, int y, int u, int v)
 {
     assert(pattern_initialized);
     return pattern4_mem[x][y][u][v];
@@ -238,12 +240,12 @@ int check(const board_t board, point_t pos)
     return 0;
 }
 
-/// @brief check whether position is banned
+/// @brief check whether position is forbidden
 /// @param board current board
 /// @param pos position to check
 /// @param id current id
-/// @return 0 for accept, 1 for banned long, 2 for banned 33, 3 for banned 44
-int is_banned(const board_t board, point_t pos, int id, bool enable_log)
+/// @return 0 for accept, pat4 if forbidden
+int is_forbidden(const board_t board, point_t pos, int id, bool enable_log)
 {
     assert(pattern_initialized);
     // print(board);
@@ -270,11 +272,11 @@ int is_banned(const board_t board, point_t pos, int id, bool enable_log)
     if (pat4 <= PAT4_WIN) return 0;
     if (enable_log) {
         log("forbidden pos, reason: %s", pattern4_typename[pat4]);
+        log("detailed infomation:");
+        emph_print(board, pos);
         for (int i = 0; i < 4; i++) {
             print_segment(seg[i]);
         }
-        printf("%s | %s | %s | %s\n", pattern_typename[idx[0]], pattern_typename[idx[1]],
-            pattern_typename[idx[2]], pattern_typename[idx[3]]);
     }
     return pat4;
 }
@@ -324,7 +326,7 @@ void pattern_init()
         segment_t line = segment_decode(idx);
         int parent_pattern = 0;
         count[idx] = 0;
-        memset(from_col[idx], -1, sizeof(from_col[idx]));
+        memset(upgrade_col[idx], -1, sizeof(upgrade_col[idx]));
         // fprintf(stderr, "cur: "), print_segment(line);
         // prompt_pause();
 
@@ -349,10 +351,10 @@ void pattern_init()
             }
             if (pattern_mem[new_idx] > parent_pattern) {
                 parent_pattern = pattern_mem[new_idx], count[idx] = 0;
-                memset(from_col[idx], -1, sizeof(from_col[idx]));
+                memset(upgrade_col[idx], -1, sizeof(upgrade_col[idx]));
             }
             if (pattern_mem[new_idx] == parent_pattern) {
-                if (count[idx] < 3) from_col[idx][count[idx]] = col;
+                if (count[idx] < 3) upgrade_col[idx][count[idx]] = col;
                 count[idx]++;
                 // log("write col %d", col);
             }
@@ -386,11 +388,11 @@ void pattern_init()
     }
     // print_array();
     // prompt_pause();
-    for (int i = 0; i < PAT_SIZE; i++) {
-        for (int j = 0; j < PAT_SIZE; j++) {
-            for (int k = 0; k < PAT_SIZE; k++) {
-                for (int u = 0; u < PAT_SIZE; u++) {
-                    int cnt[PAT_SIZE] = {0};
+    for (int i = 0; i < PAT_TYPE_SIZE; i++) {
+        for (int j = 0; j < PAT_TYPE_SIZE; j++) {
+            for (int k = 0; k < PAT_TYPE_SIZE; k++) {
+                for (int u = 0; u < PAT_TYPE_SIZE; u++) {
+                    int cnt[PAT_TYPE_SIZE] = {0};
                     cnt[i]++, cnt[j]++, cnt[k]++, cnt[u]++;
                     if (cnt[PAT_5])
                         pattern4_mem[i][j][k][u] = PAT4_WIN;
@@ -410,16 +412,16 @@ void pattern_init()
     }
     pattern_initialized = 1;
 #undef print_array
-    // test_ban();
+    // test_forbid();
 }
 
-void get_critical_column(int pattern, int* cols, int limit)
+void get_upgrade_column(int pattern, int* cols, int limit)
 {
     assert(pattern_initialized);
     memset(cols, -1, limit * sizeof(int));
     for (int i = 0, cur = 0; i < 3 && cur < limit; i++) {
-        if (from_col[pattern][i] != -1) {
-            cols[cur++] = from_col[pattern][i];
+        if (upgrade_col[pattern][i] != -1) {
+            cols[cur++] = upgrade_col[pattern][i];
         }
     }
 };

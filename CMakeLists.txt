@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 3.5)
 project (
     gomoku
-    VERSION 1.10.2
+    VERSION 1.11.0
     LANGUAGES C
 )
 set (CMAKE_VERBOSE_MAKEFILE OFF)
@@ -24,34 +24,42 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     set (VERSION_STRING "${PROJECT_VERSION} (debug)")
 else()
     message ("-- ${COLOR_GREEN}Release mode${COLOR_RESET}")
-    add_compile_options (-DRELEASE -O3)
+    if (MSVC)
+        add_compile_options (/O2 /DRELEASE)
+    else()
+        add_compile_options (-DRELEASE -O3)
+    endif()
     set (VERSION_STRING "${PROJECT_VERSION}")
 endif()
 add_definitions (-DVERSION="${VERSION_STRING}")
 aux_source_directory (src SRC_LIST)
-list(REMOVE_ITEM SRC_LIST "src/util.c")
+list(REMOVE_ITEM SRC_LIST "src/util.c") # exclude util.c for controlling log
 include_directories (include)
 file(GLOB_RECURSE INCLUDE_LIST "*.h")
 
 add_library(gomoku_objects OBJECT ${SRC_LIST})
 target_link_libraries(gomoku_objects m)
 
-add_library(libgomoku_nolog SHARED $<TARGET_OBJECTS:gomoku_objects> src/util.c)
-target_compile_definitions(libgomoku_nolog PRIVATE DISABLE_LOG)
-set_target_properties(libgomoku_nolog PROPERTIES OUTPUT_NAME "gomoku")
+add_library(libgomoku_shared SHARED $<TARGET_OBJECTS:gomoku_objects> src/util.c)
+# disable log
+target_compile_definitions(libgomoku_shared PRIVATE DISABLE_LOG)
+set_target_properties(libgomoku_shared PROPERTIES OUTPUT_NAME "gomoku")
+set_target_properties(libgomoku_shared PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
 add_library(libgomoku STATIC $<TARGET_OBJECTS:gomoku_objects> src/util.c)
+# instant log
 target_compile_definitions(libgomoku PRIVATE INSTANT_LOG)
 set_target_properties(libgomoku PROPERTIES OUTPUT_NAME "gomoku")
 
 add_custom_command(
     OUTPUT ${PROJECT_SOURCE_DIR}/lib/gomoku.py
     COMMAND ctypesgen -Llib -lgomoku ./include/* -o lib/gomoku.py
-    DEPENDS ${INCLUDE_LIST}
+    DEPENDS ${INCLUDE_LIST} libgomoku_shared
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
     COMMENT "Running ctypesgen to generate Python bindings"
 )
 add_custom_target(generate_bindings ALL DEPENDS lib/gomoku.py)
+set_target_properties(generate_bindings PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
 add_executable (main gomoku.c)
 target_link_libraries(main libgomoku)
@@ -60,10 +68,7 @@ add_executable (test tests/main.c)
 target_link_libraries(test libgomoku)
 set_target_properties(test PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
-add_executable (botzone botzone.c ${SRC_LIST})
+add_executable (botzone botzone.c ${SRC_LIST} src/util.c)
+target_compile_definitions(botzone PRIVATE NOCOLOR)
 target_link_libraries (botzone m)
 set_target_properties(botzone PROPERTIES EXCLUDE_FROM_ALL TRUE)
-
-# add_executable (trainer trainer.c ${SRC_LIST})
-# target_compile_definitions (trainer PRIVATE GAME_TIME_LIMIT=500)
-# target_link_libraries (trainer m)

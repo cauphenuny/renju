@@ -3,7 +3,6 @@
 
 #include "board.h"
 #include "game.h"
-#include "mcts.h"
 
 enum {
     MANUAL,

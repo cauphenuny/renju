@@ -3,7 +3,7 @@
 #include "init.h"
 #include "util.h"
 
-static int test_ban(void)
+static int test_forbid(void)
 {
     int n = 6;
     struct {
@@ -105,12 +105,22 @@ static int test_ban(void)
     for (int i = 0; i < n; i++) {
         log("i = %d", i);
         emph_print(tests[i].board, tests[i].pos);
-        int ban = is_banned(tests[i].board, tests[i].pos, 1, true);
-        log("got %s, expected %s", pattern4_typename[ban], pattern4_typename[tests[i].id]);
-        if (ban != tests[i].id) {
+        int forbid = is_forbidden(tests[i].board, tests[i].pos, 1, true);
+        log("got %s, expected %s", pattern4_typename[forbid], pattern4_typename[tests[i].id]);
+        if (forbid != tests[i].id) {
             log_e("failed.");
             return 1;
         }
+    }
+    return 0;
+}
+
+static int test_pattern(void)
+{
+    for (int idx = 0; idx < PATTERN_SIZE; idx++) {
+        segment_t seg = segment_decode(idx);
+        if (seg.data[WIN_LENGTH - 1] != SELF_POS) continue;
+        print_segment(segment_decode(idx));
     }
     return 0;
 }
@@ -122,10 +132,13 @@ int main()
     int ret = 0;
     log("running test");
 
-    log("test ban");
-    ret = test_ban();
+    log("test pattern");
+    test_pattern();
+
+    log("test forbid");
+    ret = test_forbid();
     if (ret) return ret;
 
-    log("done.");
+    log("tests passed.");
     return 0;
 }

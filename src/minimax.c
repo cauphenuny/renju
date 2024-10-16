@@ -56,11 +56,11 @@ typedef struct {
     int id;
     int result;
     point_t pos;
-} status_t;
+} mmstatus_t;
 
-static status_t put_piece(status_t status, point_t pos, int id)
+static mmstatus_t put_piece(mmstatus_t status, point_t pos, int id)
 {
-    status_t ret = status;
+    mmstatus_t ret = status;
     int put_id = id == 1 ? 1 : 2;
     ret.hash = zobrist_update(ret.hash, pos, ret.board[pos.x][pos.y], put_id);
     ret.board[pos.x][pos.y] = put_id;
@@ -73,9 +73,9 @@ static status_t put_piece(status_t status, point_t pos, int id)
     return ret;
 }
 
-static status_t remove_piece(status_t status, point_t pos)
+static mmstatus_t remove_piece(mmstatus_t status, point_t pos)
 {
-    status_t ret = status;
+    mmstatus_t ret = status;
     ret.hash = zobrist_update(ret.hash, pos, ret.board[pos.x][pos.y], 0);
     ret.board[pos.x][pos.y] = 0;
     ret.pos = pos;
@@ -106,7 +106,7 @@ typedef struct {
     result_t result;
 } cache_t;
 
-static status_t cur_status;
+static mmstatus_t cur_status;
 
 static int eval_reuse_cnt;
 
@@ -130,7 +130,7 @@ static eval_cache_t eval_cache;
 static eval_cache_entry_t* eval_cache_buffer;
 static int eval_cache_size;
 
-static int clock, time_limit;
+static int tim, time_limit;
 
 static unsigned int eval_cache_hash(zobrist_t key)
 {
@@ -191,7 +191,7 @@ static void free_eval_cache(eval_cache_t map)
 
 static result_t minimax_search(int depth, int alpha, int beta)
 {
-    if (depth == 0 || cur_status.result || get_time(clock) > time_limit)
+    if (depth == 0 || cur_status.result || get_time(tim) > time_limit)
         return (result_t){cur_status.value, cur_status.pos};
     // print(abstatus.board);
     // log("depth = %d, alpha = %d, beta = %d, is_max = %d", depth, alpha, beta,
@@ -249,7 +249,7 @@ point_t minimax(const game_t game, void* assets)
     max_cnt = 0;
     time_limit = game.time_limit - 10;
     if (game.count == 0) return (point_t){BOARD_SIZE / 2, BOARD_SIZE / 2};
-    clock = record_time();
+    tim = record_time();
     eval_cache = create_eval_cache();
     eval_reuse_cnt = 0, eval_cache_size = 0;
     if (eval_cache_buffer == NULL) {
@@ -263,9 +263,10 @@ point_t minimax(const game_t game, void* assets)
     cur_status.value = evaluate(cur_status.board, cur_status.pos, -cur_status.id);
     point_t pos;
     int maxdepth = 0;
+    log("searching");
     for (int i = 2;; i += 2) {
         result_t ret = minimax_search(i, -0x7f7f7f7f, 0x7f7f7f7f);
-        if (get_time(clock) < time_limit)
+        if (get_time(tim) < time_limit)
             pos = ret.pos, maxdepth = i;
         else
             break;

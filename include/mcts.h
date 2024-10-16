@@ -11,7 +11,8 @@ typedef struct {
     int min_time;
     int min_count;
     int8_t wrap_rad;
-    bool check_ban;
+    bool check_forbid;
+    bool dynamic_area;
 } mcts_param_t;  // parameters for mcts
 
 point_t mcts(game_t, void*);

@@ -20,9 +20,10 @@ void log_flush()
 {
     printf("%s\n", log_buffer);
     log_buffer[0] = '\0', cur_len = 0;
+    fflush(stdout);
 }
 
-int log_add(int log_level, const char* fmt, ...)
+int log_write(int log_level, const char* fmt, ...)
 {
 #ifdef DISABLE_LOG
     return 1;

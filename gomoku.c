@@ -16,7 +16,7 @@ static game_t start_game(player_t p1, player_t p2, int first_id, int time_limit)
 {
     player_t players[] = {{}, p1, p2};
     const char* colors[] = {"", L_GREEN, L_RED};
-    log("start game: %s vs %s, first player: %s", p1.name, p2.name, players[first_id].name);
+    log("start game: %s vs %s, first player: %d", p1.name, p2.name, first_id);
     game_t game = new_game(first_id, time_limit);
     point_t pos;
     game_print(game);
@@ -26,35 +26,36 @@ static game_t start_game(player_t p1, player_t p2, int first_id, int time_limit)
         log_i("------ step %s#%d" NONE ", player1's turn ------", colors[id], game.count + 1);
         tim = record_time();
         pos = players[id].move(game, players[id].assets);
-        log_i("time: %dms, chose " BOLD UNDERLINE "(%c, %d)" NONE, get_time(tim), pos.y + 'A',
-              pos.x + 1);
 
-        if (!available(game.board, pos)) {
-            log_e("invalid position!");
-            // game_export(game, "game->");
-            prompt_pause();
+        if (pos.x == GAMECTRL_REGRET) {
+            if (pos.y > 0 && pos.y <= game.count) {
+                game = game_backward(game, game.count - pos.y);
+                game_print(game);
+            }
             continue;
         }
+        if (pos.x == GAMECTRL_EXPORT) {
+            if (pos.y > 0 && pos.y <= game.count) {
+                game_export(game_backward(game, pos.y), "game->");
+            }
+            continue;
+        }
+        if (!available(game.board, pos)) {
+            log_i("time: %dms", get_time(tim));
+            log_e("invalid position (%d, %d)!", pos.x, pos.y);
+            // game_export(game, "game->");
+            continue;
+        } else {
+            log_i("time: %dms, chose " BOLD UNDERLINE "(%c, %d)" NONE, get_time(tim), pos.y + 'A',
+                  pos.x + 1);
+        }
         if (game.cur_id == game.first_id) {
-            int ban = is_banned(game.board, pos, id, true);
-            if (ban) {
-                log_e("banned position! (%s)", pattern4_typename[ban]);
-                emph_print(game.board, pos);
-                game.winner = 3 - id;
-                prompt_pause();
-                return game;
-                // if (game.cur_player == 2) {
-                //     game.winner = 1;
-                //     return game;
-                // }
-                // prompt();
-                // char c = 0;
-                // while (c != 'q' && c != 'c') c = getchar();
-                // if (c == 'c') continue;
-                // else {
-                //     game.winner = 3 - id;
-                //     return game;
-                // }
+            int forbid = is_forbidden(game.board, pos, id, true);
+            if (forbid) {
+                log_e("forbidden position! (%s)", pattern4_typename[forbid]);
+                continue;
+                // game.winner = 3 - id;
+                // return game;
             }
         }
 
@@ -93,9 +94,15 @@ void signal_handler(int signum)
 // //clang-format on
 // }
 
-#define PRESET_SIZE 2
-const int preset_modes[PRESET_SIZE][3] = {{MCTS, MANUAL, GAME_TIME_LIMIT},
-                                          {MANUAL, MCTS, GAME_TIME_LIMIT}};
+#define PRESET_SIZE 3
+struct {
+    int p1, p2;
+    int time_limit;
+} preset_modes[PRESET_SIZE] = {
+    {MANUAL, MCTS, GAME_TIME_LIMIT},
+    {MCTS, MANUAL, GAME_TIME_LIMIT},
+    {MANUAL, MANUAL, -1},
+};
 
 int main(void)
 {
@@ -107,8 +114,12 @@ int main(void)
 
     log_i("available modes: ");
     for (int i = 0; i < PRESET_SIZE; i++) {
-        log_i("#%d: %s vs %s\t%dms", i + 1, preset_players[preset_modes[i][0]].name,
-              preset_players[preset_modes[i][1]].name, preset_modes[i][2]);
+        if (preset_modes[i].time_limit > 0)
+            log_i("#%d: %s vs %s\t%dms", i + 1, preset_players[preset_modes[i].p1].name,
+                  preset_players[preset_modes[i].p2].name, preset_modes[i].time_limit);
+        else
+            log_i("#%d: %s vs %s", i + 1, preset_players[preset_modes[i].p1].name,
+                  preset_players[preset_modes[i].p2].name);
     }
     log_i("#0: custom");
 
@@ -121,22 +132,21 @@ int main(void)
     if (!mode) {
         log_i("available players:");
         for (int i = 0; i < PLAYER_CNT; i++) log_i("#%d: %s", i, preset_players[i].name);
-        log_i("input P1 P2:");
+        log_i("input player1 player2:");
         do prompt(), scanf("%d%d", &player1, &player2);
         while (player1 < 0 || player1 >= PLAYER_CNT || player2 < 0 || player2 >= PLAYER_CNT);
-        log_i("input time limitation: ");
-        do prompt(), scanf("%d", &time_limit);
-        while (time_limit < 0);
+        log_i("input time limit (-1 if no limit): ");
+        prompt(), scanf("%d", &time_limit);
     } else {
-        player1 = preset_modes[mode - 1][0], player2 = preset_modes[mode - 1][1];
-        time_limit = preset_modes[mode - 1][2];
+        player1 = preset_modes[mode - 1].p1, player2 = preset_modes[mode - 1].p2;
+        time_limit = preset_modes[mode - 1].time_limit;
     }
 
     int id = 1;
     while (1) {
         game_t game = start_game(preset_players[player1], preset_players[player2], id, time_limit);
         if (game.winner) {
-            log_i("player %d wins", game.winner);
+            log_i("player%d wins", game.winner);
         } else {
             log_i("draw");
         }
@@ -148,41 +158,6 @@ int main(void)
         }
         log_i("results: p1/p2/draw: %d/%d/%d, 1st/2nd: %d/%d", results[1], results[2], results[0],
               results[3], results[4]);
-        // #ifdef DEBUG
-        //         char ch[3];
-        //         do {
-        //             prompt();
-        //             int step;
-        //             char identifier[64];
-        //             scanf("%s", ch);
-        //             switch (ch[0]) {
-        //             case 'p':
-        //                 scanf("%d%s", &step, identifier);
-        //                 for (int i = 0, x, y; i < step; i++) {
-        //                     x = game.steps[i].x;
-        //                     y = game.steps[i].y;
-        //                     printf("%s.board[%d][%d]=%d;"
-        //                            "%s.steps[%s.steps_cnt++]=(point_t){%d, %d};",
-        //                            identifier, x, y, game.board[x][y], identifier,
-        //                            identifier, x, y);
-        //                 }
-        //                 printf("\n");
-        //                 break;
-        //             case 'r':
-        //                 scanf("%d", &step);
-        //                 memset(&game.board, 0, sizeof(game.board));
-        //                 int cur_id = game.first_id;
-        //                 for (int i = 0, x, y; i < step; i++) {
-        //                     x = game.steps[i].x;
-        //                     y = game.steps[i].y;
-        //                     game.board[x][y] = cur_id;
-        //                     cur_id = 3 - cur_id;
-        //                 }
-        //                 game.current_id = 3 - cur_id;
-        //                 goto start_game;
-        //             }
-        //         } while (ch[0] != 'n');
-        // #endif
         id = 3 - id;
     }
     return 0;

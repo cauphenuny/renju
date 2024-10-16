@@ -7,7 +7,7 @@
 #define GAMECTRL_EXPORT -3
 
 #ifndef GAME_TIME_LIMIT
-#    define GAME_TIME_LIMIT 2000
+#    define GAME_TIME_LIMIT 15000
 #endif
 
 typedef struct {
@@ -21,13 +21,9 @@ typedef struct {
 } game_t;
 
 game_t new_game(int first_id, int time_limit);
-
 void game_add_step(game_t* game, point_t pos);
-
 game_t game_backward(game_t game, int after_step);
-
 void game_print(game_t);
-
 void game_export(game_t, const char* name);
 
 #endif

@@ -13,29 +13,31 @@
 
 static mcts_param_t mcts_preset = {
     .C = 1.414,
-    .start_c = 3,
-    .end_c = 0.5,
+    .start_c = 2,
+    .end_c = 1,
     .min_time = 200,
-    .min_count = 300,
-    .wrap_rad = 3,
-    .check_ban = true,
+    .min_count = 1000,
+    .wrap_rad = 2,
+    .check_forbid = true,
+    .dynamic_area = false,
 };
 static mcts_param_t mcts2_preset = {
     .C = 1.414,
-    .start_c = 3,
-    .end_c = 0.5,
+    .start_c = 2,
+    .end_c = 1,
     .min_time = 200,
-    .min_count = 300,
+    .min_count = 1000,
     .wrap_rad = 2,
-    .check_ban = true,
+    .check_forbid = false,
+    .dynamic_area = false,
 };
 
 player_t preset_players[MAX_PLAYERS] = {
-    [MANUAL] = {"human", manual, NULL},      //
-    [MCTS]  = {"AI (MCTS)", mcts, &mcts_preset},  //
-    [MCTS2] = {"AI (MCTS, radius 2)", mcts, &mcts2_preset}, //
-    [MCTS_NN] = {"AI (MCTS, with NN)", mcts_nn, NULL},    //
-    [MINIMAX] = {"AI (minimax)", minimax, NULL},    //
+    [MANUAL] = {"human", manual, NULL},                              //
+    [MCTS] = {"AI (MCTS)", mcts, &mcts_preset},                      //
+    [MCTS2] = {"AI (MCTS, without checking)", mcts, &mcts2_preset},  //
+    [MCTS_NN] = {"AI (MCTS, with neural network)", mcts_nn, NULL},   //
+    [MINIMAX] = {"AI (minimax)", minimax, NULL},                     //
 };
 
 point_t move(game_t game, player_t player)

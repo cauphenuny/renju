@@ -17,14 +17,14 @@
 #include <time.h>
 
 #if BOARD_SIZE <= 16
-typedef uint32_t cpr_t;
+typedef uint32_t line_t;
 #elif BOARD_SIZE <= 32
-typedef uint64_t cpr_t;
+typedef uint64_t line_t;
 #else
 #    error "board size too large!"
 #endif
 
-typedef cpr_t cprboard_t[BOARD_SIZE];
+typedef line_t cprboard_t[BOARD_SIZE];
 
 typedef struct {
     cprboard_t board;
@@ -77,7 +77,7 @@ static void encode(const board_t src, cprboard_t dest)
 static void decode(const cprboard_t src, board_t dest)
 {
     for (int i = 0; i < BOARD_SIZE; i++) {
-        cpr_t tmp = src[i];
+        line_t tmp = src[i];
         for (int j = 0; j < BOARD_SIZE; j++) {
             dest[i][j] = tmp & 3;
             tmp >>= 2;
@@ -88,15 +88,15 @@ static void decode(const cprboard_t src, board_t dest)
 /// @brief read and modify compressed board
 #define get_xy(arr, x, y)      (int)((arr[x] >> ((y) * 2)) & 3)
 #define set_xy(arr, x, y, v)   arr[x] += ((v) - get_xy(arr, x, y)) * (1 << ((y) * 2))
-#define add_xy(arr, x, y, v)   arr[x] += ((v) * (1 << ((y) * 2)))
-#define minus_xy(arr, x, y, v) arr[x] -= ((v) * (1 << ((y) * 2)))
+#define add_xy(arr, x, y, v)   arr[x] += (((v) << ((y) * 2)))
+#define minus_xy(arr, x, y, v) arr[x] -= (((v) << ((y) * 2)))
 #define get(arr, p)            get_xy(arr, p.x, p.y)
 #define set(arr, p, v)         set_xy(arr, p.x, p.y, v)
 #define add(arr, p, v)         add_xy(arr, p.x, p.y, v)
 #define minus(arr, p, v)       minus_xy(arr, p.x, p.y, v)
 
-#define MAX_TREE_SIZE 20001000
-#define NODE_LIMIT    20000000
+#define MAX_TREE_SIZE 30001000
+#define NODE_LIMIT    30000000
 
 // node_t* memory_pool;
 
@@ -127,12 +127,12 @@ static void print_status(const status_t st)
     log("done.");
 }
 
-static int get_pattern4(const cprboard_t bd, point_t pos)
+static pattern4_t get_pattern4(const cprboard_t bd, point_t pos)
 {
     int id;
     if (!inboard(pos) || !(id = get(bd, pos))) return PAT4_OTHERS;
-    static int8_t arrows[4][2] = {{1, 1}, {1, -1}, {1, 0}, {0, 1}};
-    static int idx[4];
+    const int8_t arrows[4][2] = {{1, 1}, {1, -1}, {1, 0}, {0, 1}};
+    int idx[4];
     int piece, val;
     for (int8_t i = 0, dx, dy; i < 4; i++) {
         dx = arrows[i][0], dy = arrows[i][1];
@@ -148,8 +148,8 @@ static int get_pattern4(const cprboard_t bd, point_t pos)
         }
         idx[i] = to_pattern(val);
     }
-    int pat4 = to_pattern4(idx[0], idx[1], idx[2], idx[3]);
-    if (!param.check_ban) {
+    pattern4_t pat4 = to_pattern4(idx[0], idx[1], idx[2], idx[3]);
+    if (!param.check_forbid) {
         if (pat4 > PAT4_WIN) {
             if (pat4 == PAT4_TL) {
                 pat4 = PAT4_WIN;
@@ -161,7 +161,7 @@ static int get_pattern4(const cprboard_t bd, point_t pos)
     return pat4;
 }
 
-static int get_virtual_pattern4(cprboard_t bd, point_t pos, int id)
+static pattern4_t get_virtual_pattern4(cprboard_t bd, point_t pos, int id)
 {
     assert(inboard(pos) && !get(bd, pos));
     add(bd, pos, id);
@@ -170,10 +170,10 @@ static int get_virtual_pattern4(cprboard_t bd, point_t pos, int id)
     return pat4;
 }
 
-static int compressive_banned(cprboard_t bd, point_t pos, int id)
+static int compressive_forbidden(cprboard_t bd, point_t pos, int id)
 {
     assert(inboard(pos));
-    if (!param.check_ban) return 0;
+    if (!param.check_forbid) return 0;
     if (id != first_id) return 0;
     int pat4 = get_virtual_pattern4(bd, pos, id);
     if (pat4 <= PAT4_WIN) return 0;
@@ -183,9 +183,8 @@ static int compressive_banned(cprboard_t bd, point_t pos, int id)
 /// @brief get 2 positions which are winning pos for the opponent
 static void get_win_pos(status_t* st, point_t pos)
 {
-    cpr_t* board = st->board;
+    line_t* board = st->board;
     int id = st->id, oppo = 3 - st->id;
-    // st->danger_pos[0] = st->danger_pos[1] = (point_t){-1, -1};
     if (!id) {
         return;
     }
@@ -206,12 +205,12 @@ static void get_win_pos(status_t* st, point_t pos)
         pattern = to_pattern(val);
         if (pattern == PAT_D4 || pattern == PAT_A4) {
             int col[2];
-            get_critical_column(val, col, 2);
+            get_upgrade_column(val, col, 2);
             for (int j = 0; j < 2; j++) {
                 if (col[j] != -1) {
                     tmp = (point_t){pos.x + dx * (col[j] - mid), pos.y + dy * (col[j] - mid)};
                     assert(inboard(tmp) && !get(board, tmp));
-                    if (!compressive_banned(st->board, tmp, id)) {
+                    if (!compressive_forbidden(st->board, tmp, id)) {
                         for (int k = 0; k < 2; k++) {
                             if (st->win_pos[k].x == -1) {
                                 st->win_pos[k] = tmp;
@@ -223,15 +222,6 @@ static void get_win_pos(status_t* st, point_t pos)
             }
         }
     }
-    // if (inboard(pos0)) {
-    //     log("origin pos: (%d, %d)", st->pos.x, st->pos.y);
-    //     for (int i = 0; i < 2; i++) {
-    //         if (inboard(st->win_pos[i])) {
-    //             log("get win pos for %d: (%d, %d)", id, st->danger_pos[i].x,
-    //             st->danger_pos[i].y); print_cprboard(st->board, st->win_pos[i]); prompt_pause();
-    //         }
-    //     }
-    // }
 }
 
 /// @brief create status from given info
@@ -273,6 +263,12 @@ static status_t update_status(status_t status, point_t pos, int pattern)
     add(status.board, pos, status.id);
     memcpy(status.visited, status.board, sizeof(status.board));
     status.pos = pos;
+    if (param.dynamic_area) {
+        chkmin(status.begin.x, max(0, pos.x - param.wrap_rad));
+        chkmin(status.begin.y, max(0, pos.y - param.wrap_rad));
+        chkmax(status.end.x, min(BOARD_SIZE - 1, pos.x + param.wrap_rad));
+        chkmax(status.end.y, min(BOARD_SIZE, pos.y + param.wrap_rad));
+    }
     status.piece_cnt++;
     status.visited_cnt = status.piece_cnt;
     if (status.id != first_id && pattern == PAT4_TL) pattern = PAT4_WIN;
@@ -301,22 +297,20 @@ static node_t* create_node(status_t status)
 }
 
 /// @brief append a child node to parent node
-/// @param parent parent node
-/// @param node child node
 /// @return the count of children of parent node
-static int append_child(node_t* parent, node_t* node)
+static int append_child(node_t* node, node_t* child)
 {
     edge_t* child_edge = edge_buffer + edge_tot++;
     // edge_t* child_edge = (edge_t*)malloc(sizeof(edge_t));
     memset(child_edge, 0, sizeof(edge_t));
 
-    child_edge->next = parent->child_edge;
-    child_edge->to = node;
-    parent->child_edge = child_edge;
-    parent->child_cnt++;
+    child_edge->next = node->child_edge;
+    child_edge->to = child;
+    node->child_edge = child_edge;
+    node->child_cnt++;
 
-    node->parent = parent;
-    return parent->child_cnt;
+    child->parent = node;
+    return node->child_cnt;
 }
 
 #undef log
@@ -367,34 +361,34 @@ static void print_candidate(node_t* parent, int count)
 }
 
 /// @brief select best child by count
-static node_t* count_select(node_t* parent)
+static node_t* count_select(node_t* node)
 {
-    if (parent->child_edge == NULL) return parent;
-    edge_t* cur = parent->child_edge;
-    node_t* sel = cur->to;
+    if (node->child_edge == NULL) return node;
+    edge_t* cur = node->child_edge;
+    node_t* child = cur->to;
     while (cur != NULL) {
-        if (cur->to->status.count > sel->status.count) {
-            sel = cur->to;
+        if (cur->to->status.count > child->status.count) {
+            child = cur->to;
         }
         cur = cur->next;
     }
-    return sel;
+    return child;
 }
 
 /// @brief select best child by ucb value, return parent if no child
-static node_t* ucb_select(node_t* parent)
+static node_t* ucb_select(node_t* node)
 {
-    if (parent->child_edge == NULL) return parent;
-    edge_t* cur = parent->child_edge;
-    node_t* sel = cur->to;
-    int flag = (parent->status.id == 1) ? 1 : -1;
+    if (node->child_edge == NULL) return node;
+    edge_t* cur = node->child_edge;
+    node_t* child = cur->to;
+    int flag = (node->status.id == 1) ? 1 : -1;
     while (cur != NULL) {
-        if (ucb_eval(parent, cur->to, flag) > ucb_eval(parent, sel, flag)) {
-            sel = cur->to;
+        if (ucb_eval(node, cur->to, flag) > ucb_eval(node, child, flag)) {
+            child = cur->to;
         }
         cur = cur->next;
     }
-    return sel;
+    return child;
 }
 
 /// @brief check if status is terminated
@@ -405,61 +399,61 @@ static bool terminated(status_t st)
 }
 
 /// @brief put a piece at pos
-/// @param parent current node
+/// @param node current node
 /// @param pos position of the piece
-/// @return pointer to the new node, NULL if requests banned position or no space
-static node_t* put_piece(node_t* parent, point_t pos)
+/// @return pointer to the new node, NULL if requests forbidden position or no more memory space
+static node_t* put_piece(node_t* node, point_t pos)
 {
-    add(parent->status.visited, pos, 1);
-    parent->status.visited_cnt++;
+    add(node->status.visited, pos, 1);
+    node->status.visited_cnt++;
 
-    add(parent->status.board, pos, parent->status.id);
-    int new_pattern = get_pattern4(parent->status.board, pos);
-    minus(parent->status.board, pos, parent->status.id);
-    if (parent->status.id == first_id && new_pattern > PAT4_WIN) return NULL;
+    add(node->status.board, pos, node->status.id);
+    int new_pattern = get_pattern4(node->status.board, pos);
+    minus(node->status.board, pos, node->status.id);
+    if (node->status.id == first_id && new_pattern > PAT4_WIN) return NULL;
 
-    node_t* node = create_node(update_status(parent->status, pos, new_pattern));
-    if (node != NULL) append_child(parent, node);
-    return node;
+    node_t* child = create_node(update_status(node->status, pos, new_pattern));
+    if (child != NULL) append_child(node, child);
+    return child;
 }
 
 /// @brief if parent has a child at pos, return the child, else create a new one
-static node_t* find_piece(node_t* parent, point_t pos)
+static node_t* find_piece(node_t* node, point_t pos)
 {
     // print_cprboard(parent->status.board, pos);
     // log("id: %d", parent->status.id);
     // prompt_pause();
-    for (edge_t* edge = parent->child_edge; edge != NULL; edge = edge->next) {
+    for (edge_t* edge = node->child_edge; edge != NULL; edge = edge->next) {
         if (edge->to->status.pos.x == pos.x && edge->to->status.pos.y == pos.y) {
             return edge->to;
         }
     }
-    return put_piece(parent, pos);
+    return put_piece(node, pos);
 }
 
 /// @brief traverse the tree to find a leaf node (terminate status), create new
 /// nodes if needed
-static node_t* traverse(node_t* parent)
+static node_t* traverse(node_t* node)
 {
-    if (parent == NULL || terminated(parent->status)) {
-        return parent;
+    if (node == NULL || terminated(node->status)) {
+        return node;
     }
-    status_t status = parent->status;
+    status_t status = node->status;
     int id = status.id;
-    node_t* grandparent = parent->parent;
+    node_t* parent = node->parent;
     point_t danger_pos, win_pos;
     for (int i = 0; i < 2; i++) {
-        win_pos = grandparent->status.win_pos[i];
+        win_pos = parent->status.win_pos[i];
         if (inboard(win_pos) && get(status.board, win_pos) == 0) {
-            assert(!compressive_banned(status.board, win_pos, id));
-            return traverse(find_piece(parent, win_pos));
+            assert(!compressive_forbidden(status.board, win_pos, id));
+            return traverse(find_piece(node, win_pos));
         }
     }
     for (int i = 0; i < 2; i++) {
         danger_pos = status.win_pos[i];
         if (inboard(danger_pos)) {
-            if (!compressive_banned(status.board, danger_pos, id)) {
-                return traverse(find_piece(parent, danger_pos));
+            if (!compressive_forbidden(status.board, danger_pos, id)) {
+                return traverse(find_piece(node, danger_pos));
             }
         }
     }
@@ -470,15 +464,16 @@ static node_t* traverse(node_t* parent)
         int8_t i = status.begin.x, j = status.begin.y;
         for (int t = 0, cnt = 0; t < status.capacity; t++, j++) {
             if (j >= status.end.y) i++, j = status.begin.y;
-            if (!get_xy(status.visited, i, j)) cnt++;
+            point_t pos = (point_t){i, j};
+            if (!get(status.visited, pos)) cnt++;
             if (cnt == index) {
                 // log("res = %d, pos = %d, choose %d, %d", res, pos, i, j);
-                return traverse(put_piece(parent, (point_t){i, j}));
+                return traverse(put_piece(node, pos));
             }
         }
-        return parent;
+        return node;
     } else {
-        return traverse(ucb_select(parent));
+        return traverse(ucb_select(node));
     }
 }
 
@@ -501,23 +496,26 @@ point_t mcts(const game_t game, void* assets)
         return (point_t){BOARD_SIZE / 2, BOARD_SIZE / 2};
     }
 
+    int start_time = record_time();
+
     param = *((mcts_param_t*)assets);
     if (node_buffer == NULL) node_buffer = (node_t*)malloc(MAX_TREE_SIZE * sizeof(node_t));
-    if (edge_buffer == NULL) edge_buffer = (edge_t*)malloc(MAX_TREE_SIZE * sizeof(edge_t) * 5);
+    if (edge_buffer == NULL) edge_buffer = (edge_t*)malloc(MAX_TREE_SIZE * sizeof(edge_t));
 
     srand((unsigned)time(0));
-
-    int start_time = record_time();
 
     tot = edge_tot = 0;
     first_id = game.first_id;
 
     point_t wrap_begin, wrap_end;
     int8_t radius = param.wrap_rad;
-    do {
+    if (param.dynamic_area)
         wrap_area(game.board, &wrap_begin, &wrap_end, radius);
-    } while (((wrap_end.y - wrap_begin.y) * (wrap_end.x - wrap_begin.x) < 40) &&
-             ++radius);
+    else {
+        do {
+            wrap_area(game.board, &wrap_begin, &wrap_end, radius);
+        } while (((wrap_end.y - wrap_begin.y) * (wrap_end.x - wrap_begin.x) < 40) && ++radius);
+    }
 
     node_t* root = create_node(
         create_status((cprboard_t){0}, wrap_begin, wrap_end, (point_t){0, 0}, 0, game.first_id));
@@ -533,7 +531,7 @@ point_t mcts(const game_t game, void* assets)
     // int base = 1;
     while ((tim = get_time(start_time)) < param.min_time ||
            (count_select(root)->status.count < wanted_count)) {
-        if (tim > game.time_limit - 30 || tot >= NODE_LIMIT) break;
+        if (tim > game.time_limit - 10 || tot >= NODE_LIMIT) break;
         param.C = param.start_c + (param.end_c - param.start_c) * (double)tim / game.time_limit;
         node_t* leaf = traverse(root);
         // log("traversed");
@@ -543,7 +541,7 @@ point_t mcts(const game_t game, void* assets)
         }
     }
     log("all count: %d, speed: %.2lf", cnt, (double)cnt / get_time(start_time));
-    log("consumption: %d nodes, %d edges, %d ms", tot, edge_tot, get_time(start_time));
+    log("consumption: %d nodes, %d ms", tot, get_time(start_time));
     print_candidate(root, 5);
     node_t* move = count_select(root);
     status_t st = move->status;
