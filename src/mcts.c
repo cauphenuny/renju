@@ -363,7 +363,7 @@ static void print_candidate(node_t* parent, int count)
 /// @brief select best child by count
 static node_t* count_select(node_t* node)
 {
-    if (node->child_edge == NULL) return node;
+    assert(node->child_edge);
     edge_t* cur = node->child_edge;
     node_t* child = cur->to;
     while (cur != NULL) {
@@ -378,7 +378,7 @@ static node_t* count_select(node_t* node)
 /// @brief select best child by ucb value, return parent if no child
 static node_t* ucb_select(node_t* node)
 {
-    if (node->child_edge == NULL) return node;
+    assert(node->child_edge);
     edge_t* cur = node->child_edge;
     node_t* child = cur->to;
     int flag = (node->status.id == 1) ? 1 : -1;
@@ -473,7 +473,13 @@ static node_t* traverse(node_t* node)
         }
         return node;
     } else {
+        if (node->child_cnt)
         return traverse(ucb_select(node));
+        else {
+            node->status.score = id == 1 ? -1 : 1;  // no available space
+            // print_status(node->status), log("no available space"), prompt_pause();
+            return node;
+        }
     }
 }
 
