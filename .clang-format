@@ -8,9 +8,8 @@ AlignConsecutiveMacros: 'true'
 AlignEscapedNewlines: 'Left'
 AllowAllParametersOfDeclarationOnNextLine: true
 #AlignConsecutiveAssignments: 'true'
-#AlignConsecutiveDeclarations: 'true'
+AllowShortFunctionsOnASingleLine: All
 SpacesBeforeTrailingComments: 2
-AllowShortFunctionsOnASingleLine: InlineOnly
 AlwaysBreakTemplateDeclarations: MultiLine
 AllowShortCaseLabelsOnASingleLine: true
 AllowShortIfStatementsOnASingleLine: true

@@ -14,10 +14,13 @@
 int parse(char s[])
 {
     if (strcmp(s, "back") == 0 || strcmp(s, "withdraw") == 0) {
-        return GAMECTRL_REGRET;
+        return GAMECTRL_WITHDRAW;
     }
     if (strcmp(s, "export") == 0) {
         return GAMECTRL_EXPORT;
+    }
+    if (strcmp(s, "giveup") == 0) {
+        return GAMECTRL_GIVEUP;
     }
     if (isupper(s[0])) return s[0] - 'A';
     if (islower(s[0])) return s[0] - 'a';
@@ -31,21 +34,21 @@ point_t manual(const game_t game, void* assets)
 {
     (void)game, (void)assets;
 
-    point_t pos;
 #ifdef DEBUG
     log_i("waiting input. (format: %%d %%d)");
     int x, y;
     prompt(), scanf("%d %d", &x, &y);
-    pos.x = y, pos.y = x;
+    return (point_t){x, y};
 #else
-    log_i("input (eg. \"H 8\" / \"h 8\" for pos (H, 8), \"back 1\" for withdraw one move):");
+    log_i("input (eg. \"H 8\" / \"h 8\" for pos (H, 8), \"back 2\" for withdraw two move):");
     char input_x[10], input_y[10];
     prompt(), scanf("%s %s", input_x, input_y);
     int first = parse(input_x), second = parse(input_y);
-    if (first == GAMECTRL_EXPORT || first == GAMECTRL_REGRET)
-        return (point_t){first, second};
-    else
-        return (point_t){second - 1, first};
+    switch (first) {
+        case GAMECTRL_GIVEUP:
+        case GAMECTRL_EXPORT:
+        case GAMECTRL_WITHDRAW: return (point_t){first, second};
+        default: return (point_t){second - 1, first};
+    }
 #endif
-    return pos;
 }

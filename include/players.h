@@ -3,11 +3,12 @@
 
 #include "board.h"
 #include "game.h"
+#include "mcts.h"
 
 enum {
     MANUAL,
     MCTS,     // default MCTS
-    MCTS2,    // for test
+    MCTS_BZ,  // for test
     MCTS_NN,  // MCTS with neural network
     MINIMAX,
     PLAYER_CNT,
@@ -23,6 +24,10 @@ typedef struct {
 
 extern player_t preset_players[MAX_PLAYERS];
 
+extern mcts_param_t mcts_params_default;
+
 point_t move(const game_t, player_t);
+
+void player_init(void);
 
 #endif

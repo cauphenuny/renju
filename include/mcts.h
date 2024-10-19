@@ -4,7 +4,6 @@
 #include "board.h"
 #include "game.h"
 #include "neuro.h"
-#include "zobrist.h"
 
 typedef struct {
     double C, start_c, end_c;
@@ -13,8 +12,10 @@ typedef struct {
     int8_t wrap_rad;
     bool check_forbid;
     bool dynamic_area;
+    neural_network_t* network;
 } mcts_param_t;  // parameters for mcts
 
-point_t mcts(game_t, void*);
+point_t mcts(const game_t game, void* assets);
+point_t mcts_nn(const game_t game, void* assets);
 
 #endif

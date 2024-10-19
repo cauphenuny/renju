@@ -1,10 +1,12 @@
 #include "board.h"
-#include "util.h"
+#include "players.h"
 #include "zobrist.h"
+
+/// @brief initialize
 void init()
 {
     zobrist_init();
-    // log("initialized zobrist");
     pattern_init();
-    // log("initialized pattern");
+    player_init();
+    // log("initialized");
 }

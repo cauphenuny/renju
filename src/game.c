@@ -3,11 +3,11 @@
 
 #include "game.h"
 
-#include "util.h"
-
 #include <stdio.h>
+#include <string.h>
 
-game_t new_game(int first_id, int time_limit)
+/// @brief create a new game, player{first_id} moves first, time limit {time_limit}ms
+game_t game_new(int first_id, int time_limit)
 {
     game_t game = {0};
     game.first_id = game.cur_id = first_id;
@@ -16,6 +16,7 @@ game_t new_game(int first_id, int time_limit)
     return game;
 }
 
+/// @brief add a step to {game} at {pos}
 void game_add_step(game_t* game, point_t pos)
 {
     put(game->board, game->cur_id, pos);
@@ -23,15 +24,18 @@ void game_add_step(game_t* game, point_t pos)
     game->cur_id = 3 - game->cur_id;
 }
 
-game_t game_backward(game_t game, int after_step)
+/// @brief generate a game with the first {count} steps of {game}
+/// @return generated game
+game_t game_backward(game_t game, int count)
 {
-    game_t subgame = new_game(game.first_id, game.time_limit);
-    for (int i = 0; i < after_step; i++) {
+    game_t subgame = game_new(game.first_id, game.time_limit);
+    for (int i = 0; i < count; i++) {
         game_add_step(&subgame, game.steps[i]);
     }
     return subgame;
 }
 
+/// @brief print the current board of {game}
 void game_print(game_t game)
 {
     if (game.count == 0) {
@@ -44,18 +48,38 @@ void game_print(game_t game)
     game.board[pos.x][pos.y] -= 2;
 }
 
-void game_export(game_t game, const char* name)
+/// @brief create a game of given parameters
+/// @param time_limit time limit
+/// @param first_id first player
+/// @param count count of existed pieces
+/// @param moves positions of each piece
+game_t game_import(int time_limit, int first_id, int count, point_t moves[])
 {
-    int id = game.first_id;
-    printf("%sfirst_id=%d;", name, id);
-    printf("%scount=%d;", name, game.count);
-    printf("%stime_limit=%d;", name, game.time_limit);
-    for (int i = 0, x, y; i < game.count; i++) {
-        x = game.steps[i].x;
-        y = game.steps[i].y;
-        printf("%sboard[%d][%d]=%d;", name, x, y, id);
-        printf("%ssteps[%d]=(point_t){%d, %d};", name, i, x, y);
-        id = 3 - id;
+    game_t game = game_new(first_id, time_limit);
+    for (int i = 0; i < count; i++) {
+        game_add_step(&game, moves[i]);
     }
-    printf("%scur_id=%d;\n", name, id);
+    return game;
+}
+
+/// @brief export the status of {game} to {file}
+/// @param file file to export, empty if uses stdout
+void game_export(game_t game, const char* file)
+{
+    FILE* fp;
+    if (strlen(file)) {
+        fp = fopen(file, "w");
+        if (fp == NULL) {
+            perror("failed to open file");
+            return;
+        }
+    } else {
+        fp = stdout;
+    }
+    fprintf(fp, "game_import(%d,%d,%d,(point_t[]){", game.time_limit, game.first_id, game.count);
+    for (int i = 0; i < game.count; i++) {
+        fprintf(fp, "{%d,%d}%c", game.steps[i].x, game.steps[i].y, ","[i == game.count - 1]);
+    }
+    fprintf(fp, "});\n");
+    fclose(fp);
 }

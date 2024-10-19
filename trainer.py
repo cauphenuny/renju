@@ -1,11 +1,13 @@
-import lib.gomoku as gomoku
+from lib import libgomoku as gomoku
 import ctypes
 import signal
 import sys
 
-nullptr = ctypes.POINTER(ctypes.c_int)()
+def signal_handler(sig, frame):
+    print('exit server')
+    sys.exit(0)
 
-gomoku.init()
+nullptr = ctypes.POINTER(ctypes.c_int)()
 
 def start_game(player1_id, player2_id, first_player): 
     game = gomoku.new_game(first_player, 1000)
@@ -17,16 +19,14 @@ def start_game(player1_id, player2_id, first_player):
         pos = gomoku.move(game, player)
         gomoku.game_add_step(ctypes.pointer(game), pos)
         gomoku.game_print(game)
-        if gomoku.check_draw(game.board):
+        if gomoku.is_draw(game.board):
             print('draw')
             return game
         if gomoku.check(game.board, pos):
             print('player %d win' % id)
             return game
 
-def signal_handler(sig, frame):
-    print('exit trainer')
-    sys.exit(0)
-
-signal.signal(signal.SIGINT, signal_handler)
-start_game(gomoku.MCTS, gomoku.MCTS, 1)
+if __name__ == "__main__":
+    signal.signal(signal.SIGINT, signal_handler)
+    gomoku.init()
+    start_game()

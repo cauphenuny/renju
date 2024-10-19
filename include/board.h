@@ -7,13 +7,14 @@
 #define BOARD_SIZE 15
 
 #define WIN_LENGTH 5
-#define PATTERN_LEN  9      // 2 * WIN_LENGTH - 1
-#define PATTERN_SIZE 19683  // 3 ** PATTERN_LEN
+#define SEGMENT_LEN  9      // 2 * WIN_LENGTH - 1
+#define PATTERN_SIZE 19683  // 3 ** SEGMENT_LEN
 
 typedef enum {
-    EMPTY_POS,
-    SELF_POS,
-    OPPO_POS,
+    EMPTY_PIECE,
+    SELF_PIECE,
+    OPPO_PIECE,
+    PIECE_SIZE,
 } piece_t;
 
 typedef enum {
@@ -53,32 +54,33 @@ typedef struct {
 
 typedef int board_t[BOARD_SIZE][BOARD_SIZE];
 
-void emph_print(const board_t, point_t pos);
-void print(const board_t);
+void emph_print(const board_t board, point_t emph_pos);
+void print(const board_t board);
 
-void wrap_area(const board_t, point_t*, point_t*, int8_t);
+void wrap_area(const board_t board, point_t* begin, point_t* end, int8_t margin);
 
 #define inboard(pos) (pos.x >= 0 && pos.x < BOARD_SIZE && pos.y >= 0 && pos.y < BOARD_SIZE)
-// bool inboard(point_t);
-bool available(board_t board, point_t pos);
-int is_forbidden(const board_t, point_t, int, bool);
+bool available(const board_t board, point_t pos);
+int is_forbidden(const board_t board, point_t pos, int id, bool enable_log);
 
 void put(board_t board, int id, point_t pos);
 
-int check_draw(const board_t);
-int check(const board_t, point_t);
+int check(const board_t board, point_t pos);
+bool is_draw(const board_t board);
+bool have_space(const board_t board, int id);
+bool is_equal(const board_t b1, const board_t b2);
 
 typedef struct {
-    piece_t data[PATTERN_LEN];
+    piece_t pieces[SEGMENT_LEN];  // something like . . o . . x . o .
 } segment_t;
 
 int segment_encode(segment_t s);
 segment_t segment_decode(int v);
 void print_segment(segment_t s);
 
-pattern_t to_pattern(int);
-pattern4_t to_pattern4(int, int, int, int);
+pattern_t to_pattern(int segment_value);
+pattern4_t to_pattern4(int x, int y, int u, int v);
 void pattern_init(void);
-void get_upgrade_column(int pattern, int* col, int limit);
+void get_upgrade_columns(int segment_value, int* cols, int limit);
 
 #endif

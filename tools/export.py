@@ -52,6 +52,9 @@ def process_files(c_files, export_filename):
             print(f"File {c_file} does not exist")
     
     with open(export_filename, 'w') as export_file:
+        export_file.write('#define NOCOLOR\n')
+        export_file.write('#define BOTZONE\n')
+        export_file.write('#define VERSION\n')
         for include in sorted(all_includes):
             export_file.write(include + '\n')
         export_file.write('\n')
@@ -66,9 +69,7 @@ def main():
     else: 
         ext_file = 'botzone.c'
 
-    # 获取 ./src/ 目录下的所有 .c 文件
     src_files = [os.path.join('src', f) for f in os.listdir('src') if f.endswith('.c')]
-    # 添加 ./botzone.c 文件
     c_files = src_files + [ext_file]
     
     os.makedirs('export', exist_ok=True)

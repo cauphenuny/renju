@@ -1,9 +1,9 @@
 # gomoku
 
-`cmake -Bbuild && cmake --build build`
+`cmake -Bbuild && cmake --build build main`
 
 targets: 
-- main: game launcher `bin/main` (default)
+- main: game launcher `bin/main`
 - botzone: bot for botzone.org.cn `bin/botzone`
 - test: unit tests `bin/test`
-- generate_bindings: generate python binding
+- generate_bindings: generate python bindings

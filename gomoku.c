@@ -1,9 +1,9 @@
 // author: Cauphenuny
 // date: 2024/07/27
-#include "board.h"
 #include "game.h"
 #include "init.h"
 #include "players.h"
+#include "server.h"
 #include "util.h"
 
 #include <signal.h>
@@ -12,81 +12,41 @@
 #include <stdlib.h>
 #include <string.h>
 
-static game_t start_game(player_t p1, player_t p2, int first_id, int time_limit)
+int statistics[3][3];
+// [0][0]: draw count [0][1/2]: normal / reverse count
+// [1][0/1/2]: p1 win count (all / 1st / 2nd)
+// [2][0/1/2]: p2 win count (all / 1st / 2nd)
+
+static void print_statistics(void)
 {
-    player_t players[] = {{}, p1, p2};
-    const char* colors[] = {"", L_GREEN, L_RED};
-    log("start game: %s vs %s, first player: %d", p1.name, p2.name, first_id);
-    game_t game = new_game(first_id, time_limit);
-    point_t pos;
-    game_print(game);
-    while (1) {
-        int id = game.cur_id;
-        int tim;
-        log_i("------ step %s#%d" NONE ", player1's turn ------", colors[id], game.count + 1);
-        tim = record_time();
-        pos = players[id].move(game, players[id].assets);
-
-        if (pos.x == GAMECTRL_REGRET) {
-            if (pos.y > 0 && pos.y <= game.count) {
-                game = game_backward(game, game.count - pos.y);
-                game_print(game);
-            } else log("invalid input");
-            continue;
-        }
-        if (pos.x == GAMECTRL_EXPORT) {
-            if (pos.y > 0 && pos.y <= game.count) {
-                game_export(game_backward(game, pos.y), "game->");
-            } else log("invalid input");
-            continue;
-        }
-        if (!available(game.board, pos)) {
-            log_i("time: %dms", get_time(tim));
-            log_e("invalid position (%d, %d)!", pos.x, pos.y);
-            // game_export(game, "game->");
-            continue;
-        } else {
-            log_i("time: %dms, chose " BOLD UNDERLINE "(%c, %d)" NONE, get_time(tim), pos.y + 'A',
-                  pos.x + 1);
-        }
-        if (game.cur_id == game.first_id) {
-            int forbid = is_forbidden(game.board, pos, id, true);
-            if (forbid) {
-                log_e("forbidden position! (%s)", pattern4_typename[forbid]);
-                continue;
-                // game.winner = 3 - id;
-                // return game;
-            }
-        }
-
-        game_add_step(&game, pos);
-        game_print(game);
-
-        if (check_draw(game.board)) {
-            game.winner = 0;
-            return game;
-        }
-        if (check(game.board, pos)) {
-            game.winner = id;
-            return game;
-        }
+    int sum = statistics[0][1] + statistics[0][2];
+    if (sum) {
+        double total_base = 100.0 / sum;
+        log_i("statistics:");
+        log_i("winner: p1/p2/draw: %d/%d/%d (%.2lf%% - %.2lf%%)", statistics[1][0],
+              statistics[2][0], statistics[0][0], statistics[1][0] * total_base,
+              statistics[2][0] * total_base);
+        double normal_base = 100.0 / statistics[0][1], reverse_base = 100.0 / statistics[0][2];
+        log_i("player1: win when play as 1st: %d/%d (%.2lf%%), 2nd: %d/%d (%.2lf%%)",
+              statistics[1][1], statistics[0][1], statistics[1][1] * normal_base, statistics[1][2],
+              statistics[0][2], statistics[1][2] * reverse_base);
+        log_i("player2: win when play as 1st: %d/%d (%.2lf%%), 2nd: %d/%d (%.2lf%%)",
+              statistics[2][1], statistics[0][2], statistics[2][1] * reverse_base, statistics[2][2],
+              statistics[0][1], statistics[2][2] * normal_base);
     }
-    return game;
 }
 
-int results[5];
-
-void signal_handler(int signum)
+static void signal_handler(int signum)
 {
-    log_s("");
-    log("received signal %d, terminate.", signum);
-    int r1 = results[1], r2 = results[2];
-    if (r1 + r2) {
-        log_i("results: p1/p2/draw: %d/%d/%d (%.2lf%%), 1st/2nd: %d/%d (%.2lf%%)", r1, r2,
-              results[0], (double)r1 / (r1 + r2) * 100, results[3], results[4],
-              (double)results[3] / (r1 + r2) * 100);
+    switch (signum) {
+        case SIGINT:
+            log_s("");
+            log("received signal SIGINT, terminate.");
+            print_statistics();
+            exit(0);
+        default: log_e("unexpected signal %d", signum);
     }
-    exit(0);
+    exit(signum);
 }
 
 // void load_preset(game_t* game) {
@@ -107,6 +67,7 @@ struct {
 int main(void)
 {
     signal(SIGINT, signal_handler);
+    // signal(SIGSEGV, signal_handler);
 
     log("gomoku v%s", VERSION);
 
@@ -144,20 +105,17 @@ int main(void)
 
     int id = 1;
     while (1) {
-        game_t game = start_game(preset_players[player1], preset_players[player2], id, time_limit);
-        if (game.winner) {
-            log_i("player%d wins", game.winner);
+        int winner = start_game(preset_players[player1], preset_players[player2], id, time_limit);
+        statistics[0][id]++;
+        if (winner) {
+            log_i("player%d wins", winner);
+            statistics[winner][0]++;
+            statistics[winner][(winner != id) + 1]++;
         } else {
             log_i("draw");
+            statistics[0][0]++;
         }
-        results[game.winner]++;
-        if (game.winner == id) {
-            results[3]++;
-        } else if (game.winner == 3 - id) {
-            results[4]++;
-        }
-        log_i("results: p1/p2/draw: %d/%d/%d, 1st/2nd: %d/%d", results[1], results[2], results[0],
-              results[3], results[4]);
+        print_statistics();
         id = 3 - id;
     }
     return 0;

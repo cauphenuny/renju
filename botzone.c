@@ -8,44 +8,54 @@
 #include "util.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 
 void read_pos(point_t* p)
 {
-    scanf("%hhd%hhd", &(p->x), &(p->y));
+    int x, y;
+    scanf("%d%d", &x, &y);
+    p->x = x, p->y = y;
 }
 
 void print_pos(point_t p)
 {
-    printf("%hhd %hhd\n", p.x, p.y);
+    printf("%d %d\n", p.x, p.y);
 }
 
 int main()
 {
+    int tim = record_time();
+    log_lock();
     init();
 
-    game_t game = new_game(1, 990);
+    game_t game = game_new(1, 990 - get_time(tim));
 
     int n;
     scanf("%d", &n);
     point_t p;
-    read_pos(&p);
-    if (inboard(p)) {
-        game_add_step(&game, p);
-    }
-    player_t player = preset_players[MCTS];
-
-    while (1) {
-        p = player.move(game, player.assets);
-
-        game_add_step(&game, p);
-
-        print_pos(p);
-        log_flush();
-
-        printf("\n>>>BOTZONE_REQUEST_KEEP_RUNNING<<<\n");
-        fflush(stdout);
-
+    for (int i = 0; i < 2 * n - 1; i++) {
         read_pos(&p);
-        game_add_step(&game, p);
+        if (inboard(p)) {
+            game_add_step(&game, p);
+        }
     }
+    player_t player = preset_players[MCTS_BZ];
+    p = player.move(game, player.assets);
+    print_pos(p);
+    log_flush();
+
+    // while (1) {
+    //     p = player.move(game, player.assets);
+
+    //     game_add_step(&game, p);
+
+    //     print_pos(p);
+    //     log_flush();
+
+    //     printf("\n\n>>>BOTZONE_REQUEST_KEEP_RUNNING<<<\n");
+    //     fflush(stdout);
+
+    //     read_pos(&p);
+    //     game_add_step(&game, p);
+    // }
 }

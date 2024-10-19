@@ -1,14 +1,15 @@
-// author: Cauphenuny <
+// author: Cauphenuny
 #include "board.h"
 #include "game.h"
 #include "util.h"
 #include "zobrist.h"
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-static int evaluate(board_t board, point_t pos, int sgn)
+static int evaluate_pos(board_t board, point_t pos, int sgn)
 {
     int id = sgn == 1 ? 1 : 2;
     static const int8_t dir[4][2] = {{1, 0}, {0, 1}, {1, 1}, {1, -1}};
@@ -49,6 +50,18 @@ static int evaluate(board_t board, point_t pos, int sgn)
     return score;
 }
 
+static int evaluate(board_t board, int sgn)
+{
+    int sum = 0;
+    for (int x = 0; x < BOARD_SIZE; x++) {
+        for (int y = 0; y < BOARD_SIZE; y++) {
+            if (!board[x][y]) continue;
+            sum += evaluate_pos(board, (point_t){x, y}, sgn);
+        }
+    }
+    return sum;
+}
+
 typedef struct {
     board_t board;
     zobrist_t hash;
@@ -58,14 +71,14 @@ typedef struct {
     point_t pos;
 } mmstatus_t;
 
-static mmstatus_t put_piece(mmstatus_t status, point_t pos, int id)
+static mmstatus_t mm_put_piece(mmstatus_t status, point_t pos, int id)
 {
     mmstatus_t ret = status;
     int put_id = id == 1 ? 1 : 2;
     ret.hash = zobrist_update(ret.hash, pos, ret.board[pos.x][pos.y], put_id);
     ret.board[pos.x][pos.y] = put_id;
     ret.pos = pos;
-    ret.value = evaluate(ret.board, pos, id);
+    ret.value = evaluate(ret.board, id);
     ret.result = check(ret.board, pos);
     // print(ret.board);
     // getchar();
@@ -73,7 +86,7 @@ static mmstatus_t put_piece(mmstatus_t status, point_t pos, int id)
     return ret;
 }
 
-static mmstatus_t remove_piece(mmstatus_t status, point_t pos)
+static mmstatus_t mm_remove_piece(mmstatus_t status, point_t pos)
 {
     mmstatus_t ret = status;
     ret.hash = zobrist_update(ret.hash, pos, ret.board[pos.x][pos.y], 0);
@@ -104,6 +117,9 @@ typedef struct {
 typedef struct {
     int depth;
     result_t result;
+#ifdef TEST
+    board_t board;
+#endif
 } cache_t;
 
 static mmstatus_t cur_status;
@@ -198,24 +214,35 @@ static result_t minimax_search(int depth, int alpha, int beta)
     // is_max); prompt_pause(); log("depth = %d", depth);
     cache_t* entry = eval_cache_search(eval_cache, cur_status.hash);
     if (entry != NULL) {
+#ifdef TEST
+        if (!is_equal(entry->board, cur_status.board)) {
+            log_e("zobrist hash conflict!");
+            print(entry->board);
+            print(cur_status.board);
+            prompt_pause();
+        }
+#endif
         if (entry->depth >= depth) {
             eval_reuse_cnt++;
             return entry->result;
         }
     } else {
         cache_t new_cache = {depth, (result_t){0, (point_t){0, 0}}};
+#ifdef TEST
+        memcpy(new_cache.board, cur_status.board, sizeof(board_t));
+#endif
         entry = eval_cache_insert(eval_cache, cur_status.hash, new_cache);
     }
     int id = cur_status.id;
-    result_t ret;
-    ret.value = -0x7f7f7f7f * id;
+    result_t ret = {-0x7f7f7f7f * id, {-1, -1}};
     for (int i = 0; i < BOARD_SIZE; i++) {
         for (int j = 0; j < BOARD_SIZE; j++) {
             point_t pos = (point_t){i, j};
-            if (adjacent(cur_status.board, pos)) {
-                cur_status = put_piece(cur_status, pos, id);
+            if (adjacent(cur_status.board, pos) &&
+                !is_forbidden(cur_status.board, pos, id == 1 ? 1 : 2, false)) {
+                cur_status = mm_put_piece(cur_status, pos, id);
                 result_t child = minimax_search(depth - 1, alpha, beta);
-                cur_status = remove_piece(cur_status, pos);
+                cur_status = mm_remove_piece(cur_status, pos);
                 if (id == 1) {
                     if (child.value > alpha) {
                         alpha = child.value;
@@ -260,19 +287,30 @@ point_t minimax(const game_t game, void* assets)
     cur_status.id = game.cur_id == 1 ? 1 : -1;
     cur_status.pos = game.steps[game.count - 1];
     cur_status.result = 0;
-    cur_status.value = evaluate(cur_status.board, cur_status.pos, -cur_status.id);
+    cur_status.value = evaluate(cur_status.board, -cur_status.id);
     point_t pos;
+    for (int8_t i = 0; i < BOARD_SIZE; i++) {
+        for (int8_t j = 0; j < BOARD_SIZE; j++) {
+            point_t p = {i, j};
+            if (available(game.board, p) && !is_forbidden(game.board, p, game.cur_id, false)) {
+                pos = p;
+                break;
+            }
+        }
+    }
     int maxdepth = 0;
-    log("searching");
+    log("searching...");
     for (int i = 2;; i += 2) {
         result_t ret = minimax_search(i, -0x7f7f7f7f, 0x7f7f7f7f);
-        if (get_time(tim) < time_limit)
+        if (get_time(tim) < time_limit - 10 && inboard(ret.pos))
             pos = ret.pos, maxdepth = i;
         else
             break;
     }
     free_eval_cache(eval_cache);
-    log("max conflict: %d", max_cnt);
-    log("maxdepth %d, total %d, reused %d", maxdepth, eval_cache_size, eval_reuse_cnt);
+    log("max hash conflict: %d", max_cnt);
+    log("maxdepth %d, total %d, reused %d, speed: %.2lf", maxdepth, eval_cache_size, eval_reuse_cnt,
+        (double)eval_cache_size / get_time(tim));
+    assert(inboard(pos) && available(game.board, pos));
     return pos;
 }
