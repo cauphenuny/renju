@@ -1,5 +1,6 @@
 // author: Cauphenuny
 // date: 2024/07/26
+
 #include "util.h"
 
 #include <stdarg.h>
@@ -78,7 +79,7 @@ char pause()
 {
     int tim = record_time();
     char ch = getchar();
-    if (get_time(tim) < 10) return pause();
+    if (get_time(tim) < 10 && ch != EOF) return pause();
     else return ch;
 }
 

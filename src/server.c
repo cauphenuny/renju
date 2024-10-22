@@ -1,3 +1,6 @@
+// author: Cauphenuny
+// date: 2024/10/19
+
 #include "players.h"
 #include "util.h"
 

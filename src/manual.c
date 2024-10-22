@@ -1,5 +1,6 @@
 // author: Cauphenuny
 // date: 2024/07/26
+
 #include "board.h"
 #include "game.h"
 #include "util.h"
@@ -40,7 +41,7 @@ point_t manual(const game_t game, void* assets)
     prompt(), scanf("%d %d", &x, &y);
     return (point_t){x, y};
 #else
-    log_i("input (eg. \"H 8\" / \"h 8\" for pos (H, 8), \"back 2\" for withdraw two move):");
+    log_i("input (eg. \"H 8\" / \"h 8\" for pos (H, 8), \"back 2\" for withdraw two moves):");
     char input_x[10], input_y[10];
     prompt(), scanf("%s %s", input_x, input_y);
     int first = parse(input_x), second = parse(input_y);

@@ -1,5 +1,6 @@
 // author: Cauphenuny
 // date: 2024/07/27
+
 #include "board.h"
 
 #include "util.h"
@@ -110,7 +111,6 @@ void put(board_t board, int id, point_t pos)
 }
 
 /// @brief check if {board} is a draw situation
-/// @return 0 for not draw, 1 for draw
 bool is_draw(const board_t board)
 {
     for (int i = 0; i < BOARD_SIZE; i++) {
@@ -144,7 +144,7 @@ bool have_space(const board_t board, int id)
             }
         }
     }
-    print(board), prompt_pause();
+    // print(board), prompt_pause();
     return false;
 }
 
@@ -296,6 +296,7 @@ int is_forbidden(const board_t board, point_t pos, int id, bool enable_log)
     return pat4;
 }
 
+/// @brief calculate pattern type and store it
 void pattern_init()
 {
     powers[0] = 1;
@@ -309,6 +310,7 @@ void pattern_init()
         }                                     \
     }
 
+    /// terminate state: overline
     for (int idx = 0; idx < PATTERN_SIZE; idx++) {
         for (int cover_start = 0; cover_start < SEGMENT_LEN - WIN_LENGTH; cover_start++) {
             segment_t line = segment_decode(idx);
@@ -322,6 +324,7 @@ void pattern_init()
             }
         }
     }
+    /// terminate state: win
     for (int idx = 0; idx < PATTERN_SIZE; idx++) {
         for (int cover_start = 0; cover_start <= SEGMENT_LEN - WIN_LENGTH; cover_start++) {
             segment_t line = segment_decode(idx);
@@ -335,11 +338,13 @@ void pattern_init()
     // print_array();
     // prompt_pause();
 
+    /// in a reverse order,
+    /// to calculate states that can be transferred to current state {idx} before visiting {idx}
     for (int idx = PATTERN_SIZE - 1, left, right; idx >= 0; idx--) {
         // log("round %d, idx %d", round, idx);
-        if (pattern_memo[idx]) continue;
+        if (pattern_memo[idx]) continue; /// is terminate state PAT_TL/PAT_5
         segment_t line = segment_decode(idx);
-        pattern_t parent_pattern = PAT_ETY;
+        pattern_t parent_pattern = PAT_ETY; /// best parent pattern
         count[idx] = 0;
         memset(upgrade_col[idx], -1, sizeof(upgrade_col[idx]));
         // fprintf(stderr, "cur: "), print_segment(line);

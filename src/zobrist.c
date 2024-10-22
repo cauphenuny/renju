@@ -1,3 +1,6 @@
+// author: Cauphenuny
+// date: 2024/09/19
+
 #include "zobrist.h"
 #include "board.h"
 

@@ -1,4 +1,6 @@
 // author: Cauphenuny
+// date: 2024/09/21
+
 #include "board.h"
 #include "game.h"
 #include "util.h"
@@ -69,11 +71,11 @@ typedef struct {
     int id;
     int result;
     point_t pos;
-} mmstatus_t;
+} mmstate_t;
 
-static mmstatus_t mm_put_piece(mmstatus_t status, point_t pos, int id)
+static mmstate_t mm_put_piece(mmstate_t state, point_t pos, int id)
 {
-    mmstatus_t ret = status;
+    mmstate_t ret = state;
     int put_id = id == 1 ? 1 : 2;
     ret.hash = zobrist_update(ret.hash, pos, ret.board[pos.x][pos.y], put_id);
     ret.board[pos.x][pos.y] = put_id;
@@ -86,9 +88,9 @@ static mmstatus_t mm_put_piece(mmstatus_t status, point_t pos, int id)
     return ret;
 }
 
-static mmstatus_t mm_remove_piece(mmstatus_t status, point_t pos)
+static mmstate_t mm_remove_piece(mmstate_t state, point_t pos)
 {
-    mmstatus_t ret = status;
+    mmstate_t ret = state;
     ret.hash = zobrist_update(ret.hash, pos, ret.board[pos.x][pos.y], 0);
     ret.board[pos.x][pos.y] = 0;
     ret.pos = pos;
@@ -122,7 +124,7 @@ typedef struct {
 #endif
 } cache_t;
 
-static mmstatus_t cur_status;
+static mmstate_t cur_state;
 
 static int eval_reuse_cnt;
 
@@ -207,18 +209,18 @@ static void free_eval_cache(eval_cache_t map)
 
 static result_t minimax_search(int depth, int alpha, int beta)
 {
-    if (depth == 0 || cur_status.result || get_time(tim) > time_limit)
-        return (result_t){cur_status.value, cur_status.pos};
-    // print(abstatus.board);
+    if (depth == 0 || cur_state.result || get_time(tim) > time_limit)
+        return (result_t){cur_state.value, cur_state.pos};
+    // print(abstate.board);
     // log("depth = %d, alpha = %d, beta = %d, is_max = %d", depth, alpha, beta,
     // is_max); prompt_pause(); log("depth = %d", depth);
-    cache_t* entry = eval_cache_search(eval_cache, cur_status.hash);
+    cache_t* entry = eval_cache_search(eval_cache, cur_state.hash);
     if (entry != NULL) {
 #ifdef TEST
-        if (!is_equal(entry->board, cur_status.board)) {
+        if (!is_equal(entry->board, cur_state.board)) {
             log_e("zobrist hash conflict!");
             print(entry->board);
-            print(cur_status.board);
+            print(cur_state.board);
             prompt_pause();
         }
 #endif
@@ -229,20 +231,20 @@ static result_t minimax_search(int depth, int alpha, int beta)
     } else {
         cache_t new_cache = {depth, (result_t){0, (point_t){0, 0}}};
 #ifdef TEST
-        memcpy(new_cache.board, cur_status.board, sizeof(board_t));
+        memcpy(new_cache.board, cur_state.board, sizeof(board_t));
 #endif
-        entry = eval_cache_insert(eval_cache, cur_status.hash, new_cache);
+        entry = eval_cache_insert(eval_cache, cur_state.hash, new_cache);
     }
-    int id = cur_status.id;
+    int id = cur_state.id;
     result_t ret = {-0x7f7f7f7f * id, {-1, -1}};
     for (int i = 0; i < BOARD_SIZE; i++) {
         for (int j = 0; j < BOARD_SIZE; j++) {
             point_t pos = (point_t){i, j};
-            if (adjacent(cur_status.board, pos) &&
-                !is_forbidden(cur_status.board, pos, id == 1 ? 1 : 2, false)) {
-                cur_status = mm_put_piece(cur_status, pos, id);
+            if (adjacent(cur_state.board, pos) &&
+                !is_forbidden(cur_state.board, pos, id == 1 ? 1 : 2, false)) {
+                cur_state = mm_put_piece(cur_state, pos, id);
                 result_t child = minimax_search(depth - 1, alpha, beta);
-                cur_status = mm_remove_piece(cur_status, pos);
+                cur_state = mm_remove_piece(cur_state, pos);
                 if (id == 1) {
                     if (child.value > alpha) {
                         alpha = child.value;
@@ -283,11 +285,11 @@ point_t minimax(const game_t game, void* assets)
         eval_cache_buffer = (eval_cache_entry_t*)malloc(
             sizeof(eval_cache_entry_t) * EVAL_CACHE_ENTRY_SIZE);
     }
-    memcpy(cur_status.board, game.board, sizeof(board_t));
-    cur_status.id = game.cur_id == 1 ? 1 : -1;
-    cur_status.pos = game.steps[game.count - 1];
-    cur_status.result = 0;
-    cur_status.value = evaluate(cur_status.board, -cur_status.id);
+    memcpy(cur_state.board, game.board, sizeof(board_t));
+    cur_state.id = game.cur_id == 1 ? 1 : -1;
+    cur_state.pos = game.steps[game.count - 1];
+    cur_state.result = 0;
+    cur_state.value = evaluate(cur_state.board, -cur_state.id);
     point_t pos;
     for (int8_t i = 0; i < BOARD_SIZE; i++) {
         for (int8_t j = 0; j < BOARD_SIZE; j++) {
@@ -300,7 +302,7 @@ point_t minimax(const game_t game, void* assets)
     }
     int maxdepth = 0;
     log("searching...");
-    for (int i = 2;; i += 2) {
+    for (int i = game.cur_id;; i += 2) {
         result_t ret = minimax_search(i, -0x7f7f7f7f, 0x7f7f7f7f);
         if (get_time(tim) < time_limit - 10 && inboard(ret.pos))
             pos = ret.pos, maxdepth = i;

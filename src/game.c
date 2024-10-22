@@ -62,7 +62,7 @@ game_t game_import(int time_limit, int first_id, int count, point_t moves[])
     return game;
 }
 
-/// @brief export the status of {game} to {file}
+/// @brief export the state of {game} to {file}
 /// @param file file to export, empty if uses stdout
 void game_export(game_t game, const char* file)
 {
@@ -78,7 +78,8 @@ void game_export(game_t game, const char* file)
     }
     fprintf(fp, "game_import(%d,%d,%d,(point_t[]){", game.time_limit, game.first_id, game.count);
     for (int i = 0; i < game.count; i++) {
-        fprintf(fp, "{%d,%d}%c", game.steps[i].x, game.steps[i].y, ","[i == game.count - 1]);
+        fprintf(fp, "{%d,%d}", game.steps[i].x, game.steps[i].y);
+        if (i != game.count - 1) fprintf(fp, ",");
     }
     fprintf(fp, "});\n");
     fclose(fp);
