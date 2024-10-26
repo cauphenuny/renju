@@ -25,13 +25,13 @@ int parse(char s[])
     }
     if (isupper(s[0])) return s[0] - 'A';
     if (islower(s[0])) return s[0] - 'a';
-    if (!isdigit(s[0])) return -1;
-    int tmp = 0, i = 0;
+    if (!isdigit(s[0]) && s[0] != '-') return -1;
+    int tmp = 0, i = 0, flag = s[0] == '-' ? -1 : 1;
     while (isdigit(s[i])) tmp = tmp * 10 + s[i] - '0', i++;
-    return tmp;
+    return tmp * flag;
 }
 
-point_t manual(const game_t game, void* assets)
+point_t manual(const game_t game, const void* assets)
 {
     (void)game, (void)assets;
 
