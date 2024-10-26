@@ -16,7 +16,7 @@
 /// @param margin min margin
 void wrap_area(const board_t board, point_t* begin, point_t* end, int8_t margin)
 {
-    int8_t n = BOARD_SIZE, mid = n / 2;
+    const int8_t n = BOARD_SIZE, mid = n / 2;
     begin->x = begin->y = mid - margin;
     end->x = end->y = mid + margin + 1;
     chkmin(end->y, n), chkmin(end->x, n);
@@ -199,7 +199,7 @@ static int pattern_initialized;
 /// @brief generate a int value from segment
 int segment_encode(segment_t s)
 {
-    piece_t* a = s.pieces;
+    const piece_t* a = s.pieces;
     int result = 0;
     for (int i = 0; i < SEGMENT_LEN; i++) {
         result = result * PIECE_SIZE + a[i];
@@ -257,9 +257,9 @@ pattern4_t to_pattern4(int x, int y, int u, int v)
 /// @return 1 for player 1 win, -1 for player 2 win, 0 for no winner
 int check(const board_t board, point_t pos)
 {
-    int id = board[pos.x][pos.y];
+    const int id = board[pos.x][pos.y];
     if (!id) return 0;
-    static const int8_t arrows[4][2] = {{0, 1}, {1, 0}, {1, 1}, {-1, 1}};
+    const int8_t arrows[4][2] = {{0, 1}, {1, 0}, {1, 1}, {-1, 1}};
     int8_t dx, dy;
     for (int i = 0, cnt; i < 4; i++) {
         dx = arrows[i][0], dy = arrows[i][1];
@@ -292,14 +292,14 @@ int is_forbidden(const board_t board, point_t pos, int id, bool enable_log)
 {
     assert(pattern_initialized);
     // print(board);
-    static const int8_t arrow[4][2] = {{1, 1}, {1, -1}, {1, 0}, {0, 1}};
+    const int8_t arrow[4][2] = {{1, 1}, {1, -1}, {1, 0}, {0, 1}};
     int idx[4];
-    int mid = WIN_LENGTH - 1;
+    const int mid = WIN_LENGTH - 1;
     segment_t seg[4];
     for (int8_t i = 0, a, b; i < 4; i++) {
         a = arrow[i][0], b = arrow[i][1];
         for (int8_t j = -WIN_LENGTH + 1; j < WIN_LENGTH; j++) {
-            point_t np = (point_t){pos.x + a * j, pos.y + b * j};
+            const point_t np = (point_t){pos.x + a * j, pos.y + b * j};
             if (!inboard(np))
                 seg[i].pieces[mid + j] = OPPO_PIECE;
             else if (!board[np.x][np.y])
@@ -311,14 +311,14 @@ int is_forbidden(const board_t board, point_t pos, int id, bool enable_log)
         // print_segment(seg);
         idx[i] = to_pattern(segment_encode(seg[i]));
     }
-    pattern4_t pat4 = to_pattern4(idx[0], idx[1], idx[2], idx[3]);
+    const pattern4_t pat4 = to_pattern4(idx[0], idx[1], idx[2], idx[3]);
     if (pat4 <= PAT4_WIN) return 0;
     if (enable_log) {
         log("forbidden pos, reason: %s", pattern4_typename[pat4]);
         log("detailed infomation:");
-        emph_print(board, pos);
+        emphasis_print(board, pos);
         for (int i = 0; i < 4; i++) {
-            print_segment(seg[i]);
+            segment_print(seg[i]);
         }
     }
     return pat4;
@@ -347,7 +347,7 @@ void pattern_init()
             }
             for (int cover_end = cover_start + WIN_LENGTH; cover_end < SEGMENT_LEN; cover_end++) {
                 line.pieces[cover_end] = SELF_PIECE;
-                int new_idx = segment_encode(line);
+                const int new_idx = segment_encode(line);
                 pattern_memo[new_idx] = PAT_TL;
             }
         }
@@ -359,7 +359,7 @@ void pattern_init()
             for (int i = 0; i < WIN_LENGTH; i++) {
                 line.pieces[cover_start + i] = SELF_PIECE;
             }
-            int new_idx = segment_encode(line);
+            const int new_idx = segment_encode(line);
             if (!pattern_memo[new_idx]) pattern_memo[new_idx] = PAT_5;
         }
     }
@@ -370,9 +370,9 @@ void pattern_init()
     /// to calculate states that can be transferred to current state {idx} before visiting {idx}
     for (int idx = PATTERN_SIZE - 1, left, right; idx >= 0; idx--) {
         // log("round %d, idx %d", round, idx);
-        if (pattern_memo[idx]) continue; /// is terminate state PAT_TL/PAT_5
-        segment_t line = segment_decode(idx);
-        pattern_t parent_pattern = PAT_ETY; /// best parent pattern
+        if (pattern_memo[idx]) continue;  /// is terminate state PAT_TL/PAT_5
+        const segment_t line = segment_decode(idx);
+        pattern_t parent_pattern = PAT_ETY;  /// best parent pattern
         count[idx] = 0;
         memset(upgrade_col[idx], -1, sizeof(upgrade_col[idx]));
         // fprintf(stderr, "cur: "), print_segment(line);
@@ -393,7 +393,7 @@ void pattern_init()
 
         for (int col = left; col < right; col++) {
             if (line.pieces[col] != EMPTY_PIECE) continue;
-            int new_idx = update(idx, col, SELF_PIECE);
+            const int new_idx = update(idx, col, SELF_PIECE);
             if (pattern_memo[new_idx] == PAT_5 || pattern_memo[new_idx] == PAT_TL) {
                 if (pos_cnt < 2) win_pos[pos_cnt++] = col;
             }

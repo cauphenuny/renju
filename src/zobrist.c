@@ -31,7 +31,7 @@ zobrist_t zobrist_create(board_t board)
     zobrist_t hash = 0;
     for (int i = 0; i < BOARD_SIZE; ++i) {
         for (int j = 0; j < BOARD_SIZE; ++j) {
-            int piece = board[i][j];
+            const int piece = board[i][j];
             if (piece != 0) {
                 hash ^= zobrist_table[i][j][piece - 1];
             }

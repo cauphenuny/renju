@@ -86,5 +86,7 @@ pattern_t to_pattern(int segment_value);
 pattern4_t to_pattern4(int x, int y, int u, int v);
 void pattern_init(void);
 void get_upgrade_columns(int segment_value, int* cols, int limit);
+void get_patterns(const board_t board, point_t pos, pattern_t arr[]);
+int evaluate_pos(const board_t board, point_t pos, int id, bool check_forbid);
 
 #endif

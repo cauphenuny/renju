@@ -11,20 +11,19 @@
 #include <stdlib.h>
 #include <string.h>
 
-static int evaluate_pos(board_t board, point_t pos, int sgn)
+static int local_evaluate_pos(board_t board, point_t pos, int sgn)
 {
-    int id = sgn == 1 ? 1 : 2;
-    static const int8_t dir[4][2] = {{1, 0}, {0, 1}, {1, 1}, {1, -1}};
+    const int id = sgn == 1 ? 1 : 2;
+    const int8_t dir[4][2] = {{1, 0}, {0, 1}, {1, 1}, {1, -1}};
     int score = 0;
     for (int k = 0; k < 4; k++) {
-        int8_t dx = dir[k][0], dy = dir[k][1];
+        const int8_t dx = dir[k][0], dy = dir[k][1];
         for (int8_t offset = -4; offset <= 0; offset++) {
             int cur_score = 0;
             int count = 0;
             int blocked = 0;
             for (int i = 0; i < 5; i++) {
-                point_t p = {pos.x + (i + offset) * dx,
-                             pos.y + (i + offset) * dy};
+                const point_t p = {pos.x + (i + offset) * dx, pos.y + (i + offset) * dy};
                 if (inboard(p)) {
                     if (board[p.x][p.y] == id) {
                         count++;
@@ -43,6 +42,7 @@ static int evaluate_pos(board_t board, point_t pos, int sgn)
                 case 3: cur_score += 100; break;
                 case 2: cur_score += 10; break;
                 case 1: cur_score += 1; break;
+                default:;
                 }
             }
             score += cur_score;
@@ -52,13 +52,19 @@ static int evaluate_pos(board_t board, point_t pos, int sgn)
     return score;
 }
 
+static int first_id;
+
 static int evaluate(board_t board, int sgn)
 {
     int sum = 0;
     for (int x = 0; x < BOARD_SIZE; x++) {
         for (int y = 0; y < BOARD_SIZE; y++) {
             if (!board[x][y]) continue;
-            sum += evaluate_pos(board, (point_t){x, y}, sgn);
+            const int pos_val = local_evaluate_pos(board, (point_t){x, y}, sgn);
+            // int pos_val = evaluate_pos(board, (point_t){x, y}, sgn, board[x][y] == first_id);
+            // if (board[x][y] == 1) pos_val *= sgn;
+            // else pos_val *= -sgn;
+            sum += pos_val;
         }
     }
     return sum;
@@ -73,18 +79,18 @@ typedef struct {
     point_t pos;
 } mmstate_t;
 
-static mmstate_t mm_put_piece(mmstate_t state, point_t pos, int id)
+static mmstate_t mm_put_piece(mmstate_t state, point_t pos, int sgn)
 {
     mmstate_t ret = state;
-    int put_id = id == 1 ? 1 : 2;
+    const int put_id = sgn == 1 ? 1 : 2;
     ret.hash = zobrist_update(ret.hash, pos, ret.board[pos.x][pos.y], put_id);
     ret.board[pos.x][pos.y] = put_id;
     ret.pos = pos;
-    ret.value = evaluate(ret.board, id);
+    ret.value = evaluate(ret.board, sgn);
     ret.result = check(ret.board, pos);
     // print(ret.board);
     // getchar();
-    ret.id = -id;
+    ret.id = -sgn;
     return ret;
 }
 
@@ -158,7 +164,7 @@ static unsigned int eval_cache_hash(zobrist_t key)
 static eval_cache_t create_eval_cache()
 {
     eval_cache_t map;
-    size_t table_size = sizeof(eval_cache_entry_t*) * EVAL_CACHE_SIZE;
+    const size_t table_size = sizeof(eval_cache_entry_t*) * EVAL_CACHE_SIZE;
     map.table = (eval_cache_entry_t**)malloc(table_size);
     memset(map.table, 0, table_size);
     return map;
@@ -166,7 +172,7 @@ static eval_cache_t create_eval_cache()
 
 static cache_t* eval_cache_insert(eval_cache_t map, zobrist_t key, cache_t value)
 {
-    unsigned int index = eval_cache_hash(key);
+    const unsigned int index = eval_cache_hash(key);
     eval_cache_entry_t* new_entry = eval_cache_buffer + eval_cache_size++;
     if (eval_cache_size > EVAL_CACHE_ENTRY_SIZE) return NULL;
     new_entry->key = key;
@@ -180,7 +186,7 @@ static int max_cnt = 0;
 
 static cache_t* eval_cache_search(eval_cache_t map, zobrist_t key)
 {
-    unsigned int index = eval_cache_hash(key);
+    const unsigned int index = eval_cache_hash(key);
     eval_cache_entry_t* entry = map.table[index];
     int cnt = 0;
     while (entry != NULL) {
@@ -235,15 +241,15 @@ static result_t minimax_search(int depth, int alpha, int beta)
 #endif
         entry = eval_cache_insert(eval_cache, cur_state.hash, new_cache);
     }
-    int id = cur_state.id;
+    const int id = cur_state.id, put_id = id == 1 ? 1 : 2;
     result_t ret = {-0x7f7f7f7f * id, {-1, -1}};
     for (int i = 0; i < BOARD_SIZE; i++) {
         for (int j = 0; j < BOARD_SIZE; j++) {
-            point_t pos = (point_t){i, j};
+            const point_t pos = (point_t){i, j};
             if (adjacent(cur_state.board, pos) &&
-                !is_forbidden(cur_state.board, pos, id == 1 ? 1 : 2, false)) {
+                ((put_id != first_id) || !is_forbidden(cur_state.board, pos, put_id, false))) {
                 cur_state = mm_put_piece(cur_state, pos, id);
-                result_t child = minimax_search(depth - 1, alpha, beta);
+                const result_t child = minimax_search(depth - 1, alpha, beta);
                 cur_state = mm_remove_piece(cur_state, pos);
                 if (id == 1) {
                     if (child.value > alpha) {
@@ -271,8 +277,9 @@ static result_t minimax_search(int depth, int alpha, int beta)
     return ret;
 }
 
-point_t minimax(const game_t game, void* assets)
+point_t minimax(const game_t game, const void* assets)
 {
+    first_id = game.first_id;
     (void)assets;
 
     max_cnt = 0;
@@ -289,11 +296,11 @@ point_t minimax(const game_t game, void* assets)
     cur_state.id = game.cur_id == 1 ? 1 : -1;
     cur_state.pos = game.steps[game.count - 1];
     cur_state.result = 0;
-    cur_state.value = evaluate(cur_state.board, -cur_state.id);
-    point_t pos;
+    cur_state.value = evaluate(cur_state.board, cur_state.id);
+    point_t pos = {-1, -1};
     for (int8_t i = 0; i < BOARD_SIZE; i++) {
         for (int8_t j = 0; j < BOARD_SIZE; j++) {
-            point_t p = {i, j};
+            const point_t p = {i, j};
             if (available(game.board, p) && !is_forbidden(game.board, p, game.cur_id, false)) {
                 pos = p;
                 break;
@@ -301,11 +308,12 @@ point_t minimax(const game_t game, void* assets)
         }
     }
     int maxdepth = 0;
+    result_t best_result = {0};
     log("searching...");
-    for (int i = game.cur_id;; i += 2) {
-        result_t ret = minimax_search(i, -0x7f7f7f7f, 0x7f7f7f7f);
+    for (int i = 1;; i++) {
+        const result_t ret = minimax_search(i, -0x7f7f7f7f, 0x7f7f7f7f);
         if (get_time(tim) < time_limit - 10 && inboard(ret.pos))
-            pos = ret.pos, maxdepth = i;
+            best_result = ret, maxdepth = i, pos = best_result.pos;
         else
             break;
     }
@@ -314,5 +322,6 @@ point_t minimax(const game_t game, void* assets)
     log("maxdepth %d, total %d, reused %d, speed: %.2lf", maxdepth, eval_cache_size, eval_reuse_cnt,
         (double)eval_cache_size / get_time(tim));
     assert(inboard(pos) && available(game.board, pos));
+    log("evaluate: %d", best_result.value);
     return pos;
 }

@@ -12,7 +12,9 @@ typedef struct {
     int8_t wrap_rad;
     bool check_forbid;
     bool dynamic_area;
+    bool simulate_on_good_pos;
     neural_network_t* network;
+    pfboard_t prob_matrix;
 } mcts_param_t;  // parameters for mcts
 
 point_t mcts(const game_t game, void* assets);

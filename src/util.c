@@ -49,6 +49,7 @@ int log_write(int log_level, const char* fmt, ...)
     va_end(args);
     if (!_log_islocked) {
         log_flush();
+        return 1;
     } else {
         if (cur_len < LOG_BUFFER_SIZE)
             cur_len += snprintf(log_buffer + cur_len, LOG_BUFFER_SIZE - cur_len, " | ");
@@ -59,7 +60,7 @@ int log_write(int log_level, const char* fmt, ...)
 long long get_raw_time(void) {
     struct timespec time;
     clock_gettime(CLOCK_REALTIME, &time);
-    long long tim = time.tv_sec * 1000 + time.tv_nsec / 1000000;
+    const long long tim = time.tv_sec * 1000 + time.tv_nsec / 1000000;
     return tim;
 }
 
@@ -77,8 +78,8 @@ int get_time(int start_time) {
 /// @return char
 char pause()
 {
-    int tim = record_time();
-    char ch = getchar();
+    const int tim = record_time();
+    const char ch = getchar();
     if (get_time(tim) < 10 && ch != EOF) return pause();
     else return ch;
 }
@@ -93,7 +94,7 @@ const char* base_name(const char* fullname)
 #else
     ch = '/';
 #endif
-    int len = strlen(fullname);
+    const int len = strlen(fullname);
     for (int i = 0; i < len; i++) {
         if (fullname[i] == ch) {
             pos = fullname + i + 1;

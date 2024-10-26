@@ -8,8 +8,9 @@
 enum {
     MANUAL,
     MCTS,     // default MCTS
-    MCTS_BZ,  // for test
+    MCTS_BZ,  // for botzone
     MCTS_NN,  // MCTS with neural network
+    MCTS_TS, // MCTS, test
     MINIMAX,
     PLAYER_CNT,
 };

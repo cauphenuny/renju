@@ -42,9 +42,9 @@ void game_print(game_t game)
         print(game.board);
         return;
     }
-    point_t pos = game.steps[game.count - 1];
+    const point_t pos = game.steps[game.count - 1];
     game.board[pos.x][pos.y] += 2;
-    emph_print(game.board, pos);
+    emphasis_print(game.board, pos);
     game.board[pos.x][pos.y] -= 2;
 }
 
@@ -82,5 +82,5 @@ void game_export(game_t game, const char* file)
         if (i != game.count - 1) fprintf(fp, ",");
     }
     fprintf(fp, "});\n");
-    fclose(fp);
+    if (fp != stdout) fclose(fp);
 }

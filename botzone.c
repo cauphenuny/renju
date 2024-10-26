@@ -24,7 +24,7 @@ void print_pos(point_t p)
 
 int main()
 {
-    int tim = record_time();
+    const int tim = record_time();
     log_lock();
     init();
 
@@ -39,7 +39,7 @@ int main()
             game_add_step(&game, p);
         }
     }
-    player_t player = preset_players[MCTS_BZ];
+    const player_t player = preset_players[MCTS_BZ];
     p = player.move(game, player.assets);
     print_pos(p);
     log_flush();

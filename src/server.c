@@ -8,19 +8,17 @@
 /// @param time_limit game time limit
 int start_game(player_t p1, player_t p2, int first_id, int time_limit)
 {
-    player_t players[] = {{}, p1, p2};
+    const player_t players[] = {{}, p1, p2};
     const char* colors[] = {"", L_GREEN, L_RED};
     log("start game: %s vs %s, first player: %d", p1.name, p2.name, first_id);
     game_t game = game_new(first_id, time_limit);
-    point_t pos;
     game_print(game);
     while (1) {
-        int id = game.cur_id;
-        int tim;
+        const int id = game.cur_id;
         log_i("------ step %s#%d" RESET ", player%d's turn ------", colors[id], game.count + 1, id);
-        tim = record_time();
+        const int tim = record_time();
         game_export(game, "gomoku.log");
-        pos = players[id].move(game, players[id].assets);
+        const point_t pos = players[id].move(game, players[id].assets);
 
         switch (pos.x) {
             case GAMECTRL_WITHDRAW:
@@ -48,7 +46,8 @@ int start_game(player_t p1, player_t p2, int first_id, int time_limit)
                   pos.x + 1);
         }
         if (game.cur_id == game.first_id) {
-            int forbid = is_forbidden(game.board, pos, id, true);
+            const int forbid = is_forbidden(game.board, pos, id, true);
+            // int forbid = false;
             if (forbid) {
                 log_e("forbidden position! (%s)", pattern4_typename[forbid]);
                 // prompt_pause();
@@ -58,7 +57,7 @@ int start_game(player_t p1, player_t p2, int first_id, int time_limit)
         }
 
         game_add_step(&game, pos);
-        // game_export(game);
+        game_export(game, "");
         game_print(game);
 
         if (is_draw(game.board)) {
