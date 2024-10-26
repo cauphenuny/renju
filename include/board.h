@@ -53,8 +53,12 @@ typedef struct {
 } point_t;
 
 typedef int board_t[BOARD_SIZE][BOARD_SIZE];
+typedef double fboard_t[BOARD_SIZE][BOARD_SIZE]; // board with float type
+typedef double (*pfboard_t)[BOARD_SIZE];         // same as fboard_t but is pointer rather than array
 
-void emph_print(const board_t board, point_t emph_pos);
+void print_implement(const board_t board, point_t emph_pos, const fboard_t prob);
+void emphasis_print(const board_t board, point_t emph_pos);
+void probability_print(const board_t board, const fboard_t prob);
 void print(const board_t board);
 
 void wrap_area(const board_t board, point_t* begin, point_t* end, int8_t margin);
@@ -76,7 +80,7 @@ typedef struct {
 
 int segment_encode(segment_t s);
 segment_t segment_decode(int v);
-void print_segment(segment_t s);
+void segment_print(segment_t s);
 
 pattern_t to_pattern(int segment_value);
 pattern4_t to_pattern4(int x, int y, int u, int v);

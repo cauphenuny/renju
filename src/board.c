@@ -10,7 +10,7 @@
 #include <stdio.h>
 #include <string.h>
 
-/// @brief get a minimal area [{begin}, {end}) that wraps up the board
+/// @brief get a minimal area [{begin}, {end}) that wraps up pieces in {board}
 /// @param begin left-top corner of wrapped area
 /// @param end right-bottom corner of wrapped area
 /// @param margin min margin
@@ -33,26 +33,34 @@ void wrap_area(const board_t board, point_t* begin, point_t* end, int8_t margin)
     }
 }
 
-/// @brief print {board} with one emphasized position {pos}
-void emph_print(const board_t board, point_t emph_pos)
+/// @brief print {board} with one emphasized position {pos} or predicted probability
+void print_implement(const board_t board, point_t emph_pos, const fboard_t prob)
 {
 #define dark(x) DARK x RESET
-    static const char* border_line[3][5] = {
-        {dark("╔"), dark("═"), dark("╤"), dark("═"), dark("╗")},   //
-        {dark("╟"), dark("─"), dark("┼"), dark("─"), dark("╢")},   //
-        {dark("╚"), dark("═"), dark("╧"), dark("═"), dark("╝")}};  //
-#undef dark
-    // 0: empty, 1/2: prev p1/p2 piece, 3/4: cur p1/p2 piece
-    static const char* ch[5] = {
-        " ",                //
-        GREEN "o" RESET,    //
-        RED "x" RESET,      //
-        L_GREEN "o" RESET,  //
-        L_RED "x" RESET,    //
+    const char* border_line[3][5] = {{dark("╔"), dark("═"), dark("╤"), dark("═"), dark("╗")},   //
+                                     {dark("╟"), dark("─"), dark("┼"), dark("─"), dark("╢")},   //
+                                     {dark("╚"), dark("═"), dark("╧"), dark("═"), dark("╝")}};  //
+    const char* piece_ch[5] = {
+        " ",                // empty
+        GREEN "o" RESET,    // previous p1 pieces
+        RED "x" RESET,      // previous p2 pieces
+        L_GREEN "o" RESET,  // current p1 piece
+        L_RED "x" RESET,    // current p2 piece
     };
-    // point_t begin = {0, 0}, end = {BOARD_SIZE, BOARD_SIZE};
-    // wrap_area(board, &begin, &end, 3);
-    // int8_t left = begin.y, right = end.y, top = begin.x, bottom = end.x;
+#define LEVELS 7
+    const struct {
+        double thresh;
+        const char* ch;
+    } levels[LEVELS] = {
+        {0.01, dark("#")},                  // 0.01 < p <= 0.05
+        {0.05, "#"},                        // 0.05 < p <= 0.20
+        {0.10, BOLD "#" RESET},             // 0.05 < p <= 0.20
+        {0.20, L_YELLOW "#" RESET},         // 0.20 < p <= 0.50
+        {0.50, L_RED "#" RESET},            // 0.50 < p <= 0.85
+        {0.85, UNDERLINE L_RED "#" RESET},  // 0.85 < p <= 1
+        {1.00, "@"},                        // invalid
+    };
+#undef dark
     for (int i = BOARD_SIZE - 1, line_type, col_type; i >= 0; i--) {
         switch (i) {
             case BOARD_SIZE - 1: line_type = 0; break;
@@ -70,13 +78,24 @@ void emph_print(const board_t board, point_t emph_pos)
                 case 2 * BOARD_SIZE - 2: col_type = 4; break;
                 default: col_type = 2 + (j & 1);
             }
-            if ((j & 1) && emph_pos.x == i && emph_pos.y == j / 2)
-                printf("]");
-            else if ((j & 1) && emph_pos.x == i && emph_pos.y == (j + 1) / 2)
-                printf("[");
-            else
-                printf("%s", ((j & 1) || !board[i][j / 2]) ? border_line[line_type][col_type]
-                                                           : ch[board[i][j / 2]]);
+            if (j & 1) {
+                if (emph_pos.x == i && emph_pos.y == j / 2)
+                    printf("]");
+                else if (emph_pos.x == i && emph_pos.y == (j + 1) / 2)
+                    printf("[");
+                else
+                    printf("%s", border_line[line_type][col_type]);
+            } else if (board[i][j / 2]) {
+                printf("%s", piece_ch[board[i][j / 2]]);
+            } else if (prob[i][j / 2] > levels[0].thresh) {
+                int level = 0;
+                for (int k = 0; k < LEVELS; k++) {
+                    if (prob[i][j / 2] > levels[k].thresh) level = k;
+                }
+                printf("%s", levels[level].ch);
+            } else {
+                printf("%s", border_line[line_type][col_type]);
+            }
         }
         printf("%c\n", " ]"[emph_pos.x == i && emph_pos.y == BOARD_SIZE - 1]);
     }
@@ -89,13 +108,25 @@ void emph_print(const board_t board, point_t emph_pos)
 #endif
     }
     printf("\n");
+#undef LEVELS
+}
+
+/// @brief print {board} with one emphasized position
+void emphasis_print(const board_t board, point_t emph_pos)
+{
+    fboard_t prob;
+    memset(prob, 0, sizeof(prob));
+    print_implement(board, emph_pos, prob);
+}
+
+/// @brief print {board} predicted probability
+void probability_print(const board_t board, const fboard_t prob)
+{
+    print_implement(board, (point_t){-1, -1}, prob);
 }
 
 /// @brief print {board} without emphasis
-void print(const board_t board)
-{
-    return emph_print(board, (point_t){-1, -1});
-}
+void print(const board_t board) { return emphasis_print(board, (point_t){-1, -1}); }
 
 /// @brief check if {pos} is in the board and is empty
 bool available(const board_t board, point_t pos)
@@ -105,10 +136,7 @@ bool available(const board_t board, point_t pos)
 }
 
 /// @brief put a player{id}'s piece at {pos} on {board}
-void put(board_t board, int id, point_t pos)
-{
-    board[pos.x][pos.y] = id;
-}
+void put(board_t board, int id, point_t pos) { board[pos.x][pos.y] = id; }
 
 /// @brief check if {board} is a draw situation
 bool is_draw(const board_t board)
@@ -191,14 +219,14 @@ segment_t segment_decode(int v)
 }
 
 /// @brief print a segment and its data
-void print_segment(segment_t s)
+void segment_print(segment_t s)
 {
-    char ch[3] = {'.', 'o', 'x'};
+    const char ch[3] = {'.', 'o', 'x'};
     printf("%5d [%c", segment_encode(s), ch[s.pieces[0]]);
     for (int i = 1; i < SEGMENT_LEN; i++) {
         printf(" %c", ch[s.pieces[i]]);
     }
-    int idx = segment_encode(s);
+    const int idx = segment_encode(s);
     // printf("]: level = %s, \tcols: [%d, %d, %d]\n", pattern_typename[pattern_mem[idx]],
     //        from_col[idx][0], from_col[idx][1], from_col[idx][2]);
     printf("]: level = %s\n", pattern_typename[pattern_memo[idx]]);
@@ -449,3 +477,58 @@ void get_upgrade_columns(int segment_value, int* cols, int limit)
         }
     }
 };
+
+void get_patterns(const board_t board, point_t pos, pattern_t arr[])
+{
+    int id;
+    if (!inboard(pos) || !((id = board[pos.x][pos.y]))) {
+        arr[0] = arr[1] = arr[2] = arr[3] = PAT_ETY;
+    } else {
+        const int8_t arrows[4][2] = {{1, 1}, {1, -1}, {1, 0}, {0, 1}};
+        int piece ;
+        for (int8_t i = 0, dx, dy; i < 4; i++) {
+            dx = arrows[i][0], dy = arrows[i][1];
+            int val = 0;
+            for (int8_t j = -WIN_LENGTH + 1; j < WIN_LENGTH; j++) {
+                const point_t np = (point_t){pos.x + dx * j, pos.y + dy * j};
+                if (!inboard(np))
+                    val = val * PIECE_SIZE + OPPO_PIECE;
+                else if (!((piece = board[np.x][np.y])))
+                    val = val * PIECE_SIZE + EMPTY_PIECE;
+                else
+                    val = val * PIECE_SIZE + ((piece == id) ? SELF_PIECE : OPPO_PIECE);
+            }
+            arr[i] = to_pattern(val);
+        }
+    }
+}
+
+int evaluate_pos(const board_t board, point_t pos, int id, bool check_forbid)
+{
+    assert(inboard(pos) && board[pos.x][pos.y] == 0);
+    board_t new_board;
+    memcpy(new_board, board, sizeof(new_board));
+    new_board[pos.x][pos.y] = id;
+    int cnt[PAT_TYPE_SIZE] = {0};
+    pattern_t patterns[4];
+    get_patterns(new_board, pos, patterns);
+    for (int i = 0; i < 4; i++) cnt[patterns[i]]++;
+    const int weight[PAT_TYPE_SIZE] = {
+        [PAT_ETY] = 0,
+        [PAT_44] = check_forbid ? 0 : 5000,
+        [PAT_ATL] = check_forbid ? 0 : 2000,
+        [PAT_TL] = check_forbid ? 0 : 10000,
+        [PAT_D1] = 5,
+        [PAT_A1] = 10,
+        [PAT_D2] = 50,
+        [PAT_A2] = 100,
+        [PAT_D3] = 500,
+        [PAT_A3] = 2000,
+        [PAT_D4] = 2000,
+        [PAT_A4] = 5000,
+        [PAT_5] = 10000,
+    };
+    int val = 0;
+    for (int i = 0; i < PAT_TYPE_SIZE; i++) val += cnt[i] * weight[i];
+    return val;
+}
