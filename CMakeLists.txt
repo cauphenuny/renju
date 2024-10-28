@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 3.5)
 project (
     gomoku
-    VERSION 1.12.4
+    VERSION 1.12.5
     LANGUAGES C
 )
 set (CMAKE_VERBOSE_MAKEFILE OFF)
@@ -40,7 +40,7 @@ endif()
 
 add_definitions (-DVERSION="${VERSION_STRING}")
 
-aux_source_directory (src SRC_LIST)
+file(GLOB SRC_LIST "${PROJECT_SOURCE_DIR}/src/*.c")
 include_directories (include)
 include_directories (${PROJECT_SOURCE_DIR})
 file(GLOB_RECURSE INCLUDE_LIST "*.h")
@@ -68,7 +68,7 @@ endif ()
 
 add_executable (main gomoku.c $<TARGET_OBJECTS:gomoku_objects>)
 
-add_executable (test tests/main.c ${SRC_LIST})
+add_executable (test src/tests/main.c ${SRC_LIST})
 target_compile_definitions(test PRIVATE TEST)
 set_target_properties(test PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
