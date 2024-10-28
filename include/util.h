@@ -2,6 +2,7 @@
 #define UTIL_H
 
 #include <stdio.h>
+#include <stdbool.h>
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
 #define max(x, y) ((x) > (y) ? (x) : (y))
@@ -82,11 +83,13 @@ void log_enable();
 void log_disable();
 void log_lock();
 void log_unlock();
+bool log_locked();
+bool log_disabled();
 int log_write(int level, const char* fmt, ...);
 
 #ifndef BOTZONE
 #define log_add(level, fmt, ...)                                                           \
-    log_write(level, DARK "%s/%s/%d: " RESET fmt, base_name(__FILE__), __func__, __LINE__, \
+    log_write(level, DARK "%s/%s/%d: " RESET fmt "\n", base_name(__FILE__), __func__, __LINE__, \
               ##__VA_ARGS__)
 #else
 #define log_add(level, fmt, ...) log_write(level, "%s: " fmt, __func__, ##__VA_ARGS__)

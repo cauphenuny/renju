@@ -40,7 +40,7 @@ static void signal_handler(int signum)
 {
     switch (signum) {
         case SIGINT:
-            log_s("");
+            log_s("\n");
             log("received signal SIGINT, terminate.");
             print_statistics();
             exit(0);

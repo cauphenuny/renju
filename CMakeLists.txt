@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 3.5)
 project (
     gomoku
-    VERSION 1.12.2
+    VERSION 1.12.3
     LANGUAGES C
 )
 set (CMAKE_VERBOSE_MAKEFILE OFF)
@@ -20,13 +20,13 @@ set (COLOR_RESET "${ESC}[0m")
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     message ("-- ${COLOR_RED}debug${COLOR_RESET}")
     add_compile_options (-Wall -Wextra -Wshadow) 
-    add_compile_options (-DDEBUG -O0 -g -fno-omit-frame-pointer -fsanitize=undefined,address,leak,null,bounds)
+    add_compile_options (-DDEBUG_LEVEL=2 -O0 -g -fno-omit-frame-pointer -fsanitize=undefined,address,leak,null,bounds)
     add_link_options (-fno-omit-frame-pointer -fsanitize=undefined,address,leak,null,bounds)
     set (VERSION_STRING "${PROJECT_VERSION} (debug)")
 elseif (CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
     message ("-- ${COLOR_GREEN}release with debug info${COLOR_RESET}")
     add_compile_options (-Wall -Wextra -Wshadow) 
-    add_compile_options(-DRELEASE -O3 -g)
+    add_compile_options(-DDEBUG_LEVEL=1 -O3 -g)
     set (VERSION_STRING "${PROJECT_VERSION} (with debug info)")
 else()
     message ("-- ${COLOR_GREEN}release${COLOR_RESET}")

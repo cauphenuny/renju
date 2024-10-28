@@ -57,7 +57,9 @@ int start_game(player_t p1, player_t p2, int first_id, int time_limit)
         }
 
         game_add_step(&game, pos);
+#if defined(DEBUG_LEVEL) && DEBUG_LEVEL > 0
         game_export(game, "");
+#endif
         game_print(game);
 
         if (is_draw(game.board)) {

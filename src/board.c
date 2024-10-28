@@ -10,6 +10,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#define printf(...) log_s(__VA_ARGS__)
+
 /// @brief get a minimal area [{begin}, {end}) that wraps up pieces in {board}
 /// @param begin left-top corner of wrapped area
 /// @param end right-bottom corner of wrapped area
@@ -36,6 +38,7 @@ void wrap_area(const board_t board, point_t* begin, point_t* end, int8_t margin)
 /// @brief print {board} with one emphasized position {pos} or predicted probability
 void print_implement(const board_t board, point_t emph_pos, const fboard_t prob)
 {
+    if (log_locked()) return;
 #define dark(x) DARK x RESET
     const char* border_line[3][5] = {{dark("╔"), dark("═"), dark("╤"), dark("═"), dark("╗")},   //
                                      {dark("╟"), dark("─"), dark("┼"), dark("─"), dark("╢")},   //
@@ -67,7 +70,7 @@ void print_implement(const board_t board, point_t emph_pos, const fboard_t prob)
             case 0: line_type = 2; break;
             default: line_type = 1;
         }
-#ifdef DEBUG
+#if defined(DEBUG_LEVEL) && DEBUG_LEVEL >= 2
         printf("%2d%c", i, " ["[emph_pos.x == i && emph_pos.y == 0]);
 #else
         printf("%2d%c", i + 1, " ["[emph_pos.x == i && emph_pos.y == 0]);
@@ -101,7 +104,7 @@ void print_implement(const board_t board, point_t emph_pos, const fboard_t prob)
     }
     printf("   ");
     for (int i = 0; i < 2 * BOARD_SIZE - 1; i++) {
-#ifdef DEBUG
+#if defined(DEBUG_LEVEL) && DEBUG_LEVEL >= 2
         if (!(i & 1)) printf("%-2d", i / 2);
 #else
         printf("%c", (i & 1) ? ' ' : 'A' + i / 2);
@@ -131,7 +134,7 @@ void print(const board_t board) { return emphasis_print(board, (point_t){-1, -1}
 /// @brief check if {pos} is in the board and is empty
 bool available(const board_t board, point_t pos)
 {
-    if (!inboard(pos) || board[pos.x][pos.y]) return false;
+    if (!in_board(pos) || board[pos.x][pos.y]) return false;
     return true;
 }
 
@@ -264,14 +267,14 @@ int check(const board_t board, point_t pos)
     for (int i = 0, cnt; i < 4; i++) {
         dx = arrows[i][0], dy = arrows[i][1];
         point_t np = {pos.x, pos.y};
-        for (cnt = 0; inboard(np); np.x += dx, np.y += dy) {
+        for (cnt = 0; in_board(np); np.x += dx, np.y += dy) {
             if (board[np.x][np.y] == id)
                 cnt++;
             else
                 break;
         }
         np = (point_t){pos.x - dx, pos.y - dy};
-        for (; inboard(np); np.x -= dx, np.y -= dy) {
+        for (; in_board(np); np.x -= dx, np.y -= dy) {
             if (board[np.x][np.y] == id)
                 cnt++;
             else
@@ -300,7 +303,7 @@ int is_forbidden(const board_t board, point_t pos, int id, bool enable_log)
         a = arrow[i][0], b = arrow[i][1];
         for (int8_t j = -WIN_LENGTH + 1; j < WIN_LENGTH; j++) {
             const point_t np = (point_t){pos.x + a * j, pos.y + b * j};
-            if (!inboard(np))
+            if (!in_board(np))
                 seg[i].pieces[mid + j] = OPPO_PIECE;
             else if (!board[np.x][np.y])
                 seg[i].pieces[mid + j] = EMPTY_PIECE;
@@ -481,7 +484,7 @@ void get_upgrade_columns(int segment_value, int* cols, int limit)
 void get_patterns(const board_t board, point_t pos, pattern_t arr[])
 {
     int id;
-    if (!inboard(pos) || !((id = board[pos.x][pos.y]))) {
+    if (!in_board(pos) || !((id = board[pos.x][pos.y]))) {
         arr[0] = arr[1] = arr[2] = arr[3] = PAT_ETY;
     } else {
         const int8_t arrows[4][2] = {{1, 1}, {1, -1}, {1, 0}, {0, 1}};
@@ -491,7 +494,7 @@ void get_patterns(const board_t board, point_t pos, pattern_t arr[])
             int val = 0;
             for (int8_t j = -WIN_LENGTH + 1; j < WIN_LENGTH; j++) {
                 const point_t np = (point_t){pos.x + dx * j, pos.y + dy * j};
-                if (!inboard(np))
+                if (!in_board(np))
                     val = val * PIECE_SIZE + OPPO_PIECE;
                 else if (!((piece = board[np.x][np.y])))
                     val = val * PIECE_SIZE + EMPTY_PIECE;
@@ -505,7 +508,7 @@ void get_patterns(const board_t board, point_t pos, pattern_t arr[])
 
 int evaluate_pos(const board_t board, point_t pos, int id, bool check_forbid)
 {
-    assert(inboard(pos) && board[pos.x][pos.y] == 0);
+    assert(in_board(pos) && board[pos.x][pos.y] == 0);
     board_t new_board;
     memcpy(new_board, board, sizeof(new_board));
     new_board[pos.x][pos.y] = id;

@@ -20,7 +20,7 @@ static const char* prompts[] = {
 /// @brief flush stored logs
 void log_flush()
 {
-    printf("%s\n", log_buffer);
+    printf("%s", log_buffer);
     log_buffer[0] = '\0', cur_len = 0;
     fflush(stdout);
 }
@@ -31,9 +31,13 @@ void log_disable() { _log_isdisabled = 1; }
 
 void log_enable() { _log_isdisabled = 0; }
 
+bool log_disabled() { return _log_isdisabled; }
+
 void log_lock() { _log_islocked = 1; }
 
 void log_unlock() { _log_islocked = 0; if (cur_len) log_flush(); }
+
+bool log_locked() { return _log_islocked; }
 
 int log_write(int log_level, const char* fmt, ...)
 {
