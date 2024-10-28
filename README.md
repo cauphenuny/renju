@@ -1,6 +1,6 @@
 # gomoku
 
-`cmake -Bbuild && cmake --build build main`
+`cmake -Bbuild && cmake --build build --target main`
 
 targets: 
 - main: game launcher `bin/main`
