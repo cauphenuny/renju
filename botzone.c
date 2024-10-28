@@ -35,7 +35,7 @@ int main()
     point_t p;
     for (int i = 0; i < 2 * n - 1; i++) {
         read_pos(&p);
-        if (inboard(p)) {
+        if (in_board(p)) {
             game_add_step(&game, p);
         }
     }

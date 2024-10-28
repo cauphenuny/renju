@@ -2,7 +2,7 @@
 #define NEURO_H
 
 #include "board.h"
-#define IN_CHANNELS    3
+#define IN_CHANNELS    2
 #define OUT_CHANNELS1  32
 #define OUT_CHANNELS2  64
 #define KERNEL_SIZE    3
@@ -24,18 +24,25 @@ typedef struct {
 } neural_network_t;
 
 typedef struct {
-    double input[3][BOARD_SIZE][BOARD_SIZE];
-} nn_input_t;
+    double data[3][BOARD_SIZE][BOARD_SIZE];
+} input_t;
 
 typedef struct {
     double prob[BOARD_SIZE][BOARD_SIZE];
-} nn_output_t;
+} output_t;
+
+typedef struct {
+    input_t input;
+    output_t output;
+} sample_t;
 
 typedef struct {
     double prob[BOARD_SIZE][BOARD_SIZE];
-    double value;
+    double eval;
 } prediction_t;
 
-prediction_t predict(neural_network_t*, board_t, int);
+output_t forward(neural_network_t* network, input_t input);
+
+sample_t to_sample(const board_t board, int perspective, const board_t count, int winner);
 
 #endif

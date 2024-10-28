@@ -4,10 +4,32 @@ import signal
 import sys
 import subprocess
 
+stat = [[0 for _ in range(3)] for _ in range(3)]
+player1 = "bin/botzone"
+player2 = "bin/botzone"
+
+def print_stat():
+    sum = stat[0][1] + stat[0][2]
+    print(stat)
+    if stat[0][1] > 0 and stat[0][2] > 0:
+        total_base = 100 / sum
+        normal_base = 100 / stat[0][1]
+        reverse_base = 100 / stat[0][2]
+        print("statistics:")
+        print(f"player ({player1}) vs player ({player2})")
+        print(f"winner: p1/p2/draw: {stat[1][0]}/{stat[2][0]}/{stat[0][0]} "
+              f"({stat[1][0] * total_base:.2f}% - {stat[2][0] * total_base:.2f}%)")
+        print(f"player1: win when play as 1st: {stat[1][1]}/{stat[0][1]} "
+              f"({stat[1][1] * normal_base:.2f}%), 2nd: {stat[1][2]}/{stat[0][2]} "
+              f"({stat[1][2] * reverse_base:.2f}%)")
+        print(f"player2: win when play as 1st: {stat[2][1]}/{stat[0][2]} "
+              f"({stat[2][1] * reverse_base:.2f}%), 2nd: {stat[2][2]}/{stat[0][1]} "
+              f"({stat[2][2] * normal_base:.2f}%)")
+
 def signal_handler(sig, frame):
     print('exit server')
+    print_stat()
     sys.exit(0)
-
 
 def run_player(player_path, game: gomoku.game_t):
     process = subprocess.Popen(
@@ -29,32 +51,44 @@ def run_player(player_path, game: gomoku.game_t):
         print(f"Error running {player_path}: {stderr}")
     return stdout.strip().split('\n')[0]
 
-def server():
-    print("A server like botzone platform, using simplified I/O.")
-    player1_path = input("input first player (executable file): ")
-    player2_path = input("input second player: (executable file): ")
-    # player1_path = 'bin/botzone'
-    # player2_path = 'bin/botzone'
+def start_game(player1, player2, first_id):
     game = gomoku.game_new(1, 1000)
-    players = [player1_path, player2_path]
+    players = [player1, player2]
 
-    current_player = 1
+    current_player = first_id
     while True:
         print(f"player{current_player} ({players[current_player - 1]})'s move ")
         move = run_player(players[current_player - 1], game)
         x, y = map(int, move.split())
-        pos = gomoku.to_point(x, y)
+        pos = gomoku.point_t(x, y)
         gomoku.game_add_step(ctypes.pointer(game), pos)
         gomoku.game_print(game)
         if (gomoku.is_draw(game.board)):
             print('draw')
-            return
+            return 0
         if (gomoku.check(game.board, gomoku.point_t(x, y))):
             print(f'player{current_player} win')
-            return
+            return current_player
         current_player = 3 - current_player
+
+def server():
+    print("A server like botzone platform, using simplified I/O.")
+    # player1 = input("input first player (executable file): ")
+    # player2 = input("input second player: (executable file): ")
+    id = 1
+    while True:
+        winner = start_game(player1, player2, id)
+        stat[0][id] += 1
+        if winner:
+            stat[winner][0] += 1
+            stat[winner][(winner != id) + 1] += 1
+        else:
+            stat[0][0] += 1
+        print_stat()
+        id = 3 - id
 
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)
     gomoku.init()
     server()
+

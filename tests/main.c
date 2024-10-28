@@ -1,18 +1,20 @@
-#include "assert.h"
 #include "board.h"
 #include "game.h"
 #include "init.h"
 #include "minimax.h"
 #include "server.h"
 #include "util.h"
+
+#include <assert.h>
+
 #ifndef TEST
 #    error "define TEST to run unit tests!"
 #endif
 
 static int test_forbid(void)
 {
-    int n = 6;
-    struct {
+    const int n = 6;
+    const struct {
         board_t board;
         point_t pos;
         int id;
@@ -110,8 +112,8 @@ static int test_forbid(void)
     };
     for (int i = 0; i < n; i++) {
         log("i = %d", i);
-        emph_print(tests[i].board, tests[i].pos);
-        int forbid = is_forbidden(tests[i].board, tests[i].pos, 1, true);
+        emphasis_print(tests[i].board, tests[i].pos);
+        const int forbid = is_forbidden(tests[i].board, tests[i].pos, 1, true);
         log("got %s, expected %s", pattern4_typename[forbid], pattern4_typename[tests[i].id]);
         if (forbid != tests[i].id) {
             log_e("failed.");
@@ -130,16 +132,16 @@ static int test_pattern(void)
  3294 [. o o o o x . . .]: level = dead 4
     */
     for (int idx = 0; idx < PATTERN_SIZE; idx++) {
-        segment_t seg = segment_decode(idx);
+        const segment_t seg = segment_decode(idx);
         if (seg.pieces[WIN_LENGTH - 1] != SELF_PIECE) continue;
-        print_segment(segment_decode(idx));
+        segment_print(segment_decode(idx));
     }
     return 0;
 }
 
 void test_minimax(void)
 {
-    game_t game = game_import(
+    const game_t game = game_import(
         300, 1, 219,
         (point_t[]){
             {7, 7},  {6, 7},   {7, 8},   {7, 9},   {6, 8},   {8, 8},   {8, 6},   {9, 5},   {9, 7},
@@ -167,10 +169,10 @@ void test_minimax(void)
             {10, 5}, {0, 6},   {0, 8},   {1, 8},   {8, 14},  {8, 0},   {7, 0},   {11, 14}, {1, 1},
             {1, 0},  {4, 9},   {0, 0},   {6, 12},  {1, 7},   {7, 6},   {0, 13},  {3, 3},   {0, 14},
             {1, 14}, {14, 11}, {11, 11}});
-    point_t pos = minimax(game, NULL);
-    emph_print(game.board, pos);
+    const point_t pos = minimax(game, NULL);
+    emphasis_print(game.board, pos);
     log("got pos %d, %d", pos.x, pos.y);
-    assert(inboard(pos));
+    assert(in_board(pos));
 }
 
 int main()
@@ -189,9 +191,12 @@ int main()
 
     log_i("forbid tests passed.");
 
+    void mcts_test_entrance(void);
+    mcts_test_entrance();
+
     log("run zobrist test? [y/n]");
 
-    char ch = prompt_pause();
+    const char ch = prompt_pause();
 
     if (ch == 'y') {
         start_game(preset_players[MINIMAX], preset_players[MINIMAX], 1, 2000);
@@ -199,9 +204,6 @@ int main()
     }
 
     test_minimax();
-
-    void mcts_test_entrance(void);
-    mcts_test_entrance();
 
     log("all tests passed.");
     return 0;

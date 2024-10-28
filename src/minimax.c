@@ -24,7 +24,7 @@ static int local_evaluate_pos(board_t board, point_t pos, int sgn)
             int blocked = 0;
             for (int i = 0; i < 5; i++) {
                 const point_t p = {pos.x + (i + offset) * dx, pos.y + (i + offset) * dy};
-                if (inboard(p)) {
+                if (in_board(p)) {
                     if (board[p.x][p.y] == id) {
                         count++;
                     } else {
@@ -111,7 +111,7 @@ static bool adjacent(board_t board, point_t pos)
     point_t np;
     for (np.x = pos.x - 1; np.x <= pos.x + 1; np.x++) {
         for (np.y = pos.y - 1; np.y <= pos.y + 1; np.y++) {
-            if (inboard(np) && board[np.x][np.y]) return true;
+            if (in_board(np) && board[np.x][np.y]) return true;
         }
     }
     return false;
@@ -312,7 +312,7 @@ point_t minimax(const game_t game, const void* assets)
     log("searching...");
     for (int i = 1;; i++) {
         const result_t ret = minimax_search(i, -0x7f7f7f7f, 0x7f7f7f7f);
-        if (get_time(tim) < time_limit - 10 && inboard(ret.pos))
+        if (get_time(tim) < time_limit - 10 && in_board(ret.pos))
             best_result = ret, maxdepth = i, pos = best_result.pos;
         else
             break;
@@ -321,7 +321,7 @@ point_t minimax(const game_t game, const void* assets)
     log("max hash conflict: %d", max_cnt);
     log("maxdepth %d, total %d, reused %d, speed: %.2lf", maxdepth, eval_cache_size, eval_reuse_cnt,
         (double)eval_cache_size / get_time(tim));
-    assert(inboard(pos) && available(game.board, pos));
+    assert(in_board(pos) && available(game.board, pos));
     log("evaluate: %d", best_result.value);
     return pos;
 }
