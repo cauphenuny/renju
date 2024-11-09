@@ -9,6 +9,7 @@
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 int parse(char s[])
@@ -37,12 +38,12 @@ point_t manual(const game_t game, const void* assets)
 #if defined(DEBUG_LEVEL) && DEBUG_LEVEL >= 2
     log_i("waiting input. (format: %%d %%d)");
     int x, y;
-    prompt(), scanf("%d %d", &x, &y);
+    prompt_scanf("%d %d", &x, &y);
     return (point_t){x, y};
 #else
     log_i("input (eg. \"H 8\" / \"h 8\" for pos (H, 8), \"back 2\" for withdraw two moves):");
     char input_x[10], input_y[10];
-    prompt(), scanf("%s %s", input_x, input_y);
+    prompt_scanf("%s %s", input_x, input_y);
     const int first = parse(input_x), second = parse(input_y);
     switch (first) {
         case GAMECTRL_GIVEUP:

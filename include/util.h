@@ -102,6 +102,9 @@ int log_write(int level, const char* fmt, ...);
 #define log_e(...) log_add(PROMPT_ERROR, __VA_ARGS__)
 #define log_s(...) log_write(PROMPT_EMPTY, __VA_ARGS__)
 
+#define chkscanf(...) { if (scanf(__VA_ARGS__) == EOF) exit(1); }
+#define prompt_scanf(...) { prompt(); chkscanf(__VA_ARGS__); }
+
 int record_time(void);
 int get_time(int start_time);
 
