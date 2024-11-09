@@ -12,6 +12,7 @@ enum {
     MCTS_NN,  // MCTS with neural network
     MCTS_TS, // MCTS, test
     MINIMAX,
+    MINIMAX_TS,
     PLAYER_CNT,
 };
 
@@ -19,8 +20,8 @@ enum {
 
 typedef struct {
     const char* name;
-    point_t (*move)(const game_t, void* assets);
-    void* assets;
+    point_t (*move)(game_t, const void* assets);
+    const void* assets;
 } player_t;
 
 extern player_t preset_players[MAX_PLAYERS];

@@ -11,7 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static int local_evaluate_pos(board_t board, point_t pos, int sgn)
+static int evaluate_pos(board_t board, point_t pos, int sgn)
 {
     const int id = sgn == 1 ? 1 : 2;
     const int8_t dir[4][2] = {{1, 0}, {0, 1}, {1, 1}, {1, -1}};
@@ -60,10 +60,8 @@ static int evaluate(board_t board, int sgn)
     for (int x = 0; x < BOARD_SIZE; x++) {
         for (int y = 0; y < BOARD_SIZE; y++) {
             if (!board[x][y]) continue;
-            const int pos_val = local_evaluate_pos(board, (point_t){x, y}, sgn);
-            // int pos_val = evaluate_pos(board, (point_t){x, y}, sgn, board[x][y] == first_id);
-            // if (board[x][y] == 1) pos_val *= sgn;
-            // else pos_val *= -sgn;
+            int pos_val;
+            pos_val = evaluate_pos(board, (point_t){x, y}, sgn);
             sum += pos_val;
         }
     }
@@ -247,7 +245,8 @@ static result_t minimax_search(int depth, int alpha, int beta)
         for (int j = 0; j < BOARD_SIZE; j++) {
             const point_t pos = (point_t){i, j};
             if (adjacent(cur_state.board, pos) &&
-                ((put_id != first_id) || !is_forbidden(cur_state.board, pos, put_id, false))) {
+                ((put_id != first_id) ||
+                 !is_forbidden_legacy(cur_state.board, pos, put_id, false))) {
                 cur_state = mm_put_piece(cur_state, pos, id);
                 const result_t child = minimax_search(depth - 1, alpha, beta);
                 cur_state = mm_remove_piece(cur_state, pos);
@@ -301,7 +300,8 @@ point_t minimax(const game_t game, const void* assets)
     for (int8_t i = 0; i < BOARD_SIZE; i++) {
         for (int8_t j = 0; j < BOARD_SIZE; j++) {
             const point_t p = {i, j};
-            if (available(game.board, p) && !is_forbidden(game.board, p, game.cur_id, false)) {
+            if (available(game.board, p) &&
+                !is_forbidden_legacy(game.board, p, game.cur_id, false)) {
                 pos = p;
                 break;
             }

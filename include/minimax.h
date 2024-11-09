@@ -4,6 +4,6 @@
 #include "board.h"
 #include "game.h"
 
-point_t minimax(const game_t game, void* assets);
+point_t minimax(game_t game, const void* assets);
 
 #endif

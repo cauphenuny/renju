@@ -16,8 +16,11 @@ int start_game(player_t p1, player_t p2, int first_id, int time_limit)
     while (1) {
         const int id = game.cur_id;
         log_i("------ step %s#%d" RESET ", player%d's turn ------", colors[id], game.count + 1, id);
+        if (!have_space(game.board, id)) {
+            log("no more space for player%d", id);
+            return 3 - id;
+        }
         const int tim = record_time();
-        game_export(game, "gomoku.log");
         const point_t pos = players[id].move(game, players[id].assets);
 
         switch (pos.x) {
@@ -26,31 +29,29 @@ int start_game(player_t p1, player_t p2, int first_id, int time_limit)
                     game = game_backward(game, game.count - pos.y);
                     game_print(game);
                 } else
-                    log("invalid input");
+                    log_e("invalid argument!");
                 continue;
             case GAMECTRL_EXPORT:
                 if (pos.y > 0 && pos.y <= game.count) {
                     game_export(game_backward(game, pos.y), "");
                 } else
-                    log("invalid input");
+                    log_e("invalid argument!");
                 continue;
             case GAMECTRL_GIVEUP: log("player %d gave up.", id); return 3 - id;
             default: break;
         }
         if (!available(game.board, pos)) {
-            log_i("time: %dms", get_time(tim));
-            log_e("invalid position!"), prompt_pause();
+            log_e("invalid position!");
             continue;
-        } else {
-            log_i("time: %dms, chose " BOLD UNDERLINE "(%c, %d)" RESET, get_time(tim), pos.y + 'A',
-                  pos.x + 1);
         }
+        log_i("time: %dms, chose " BOLD UNDERLINE "(%c, %d)" RESET, get_time(tim), pos.y + 'A',
+              pos.x + 1);
         if (game.cur_id == game.first_id) {
             const int forbid = is_forbidden(game.board, pos, id, true);
             // int forbid = false;
             if (forbid) {
                 log_e("forbidden position! (%s)", pattern4_typename[forbid]);
-                // prompt_pause();
+                prompt_pause();
                 // continue;
                 return 3 - id;
             }
@@ -67,10 +68,6 @@ int start_game(player_t p1, player_t p2, int first_id, int time_limit)
         }
         if (check(game.board, pos)) {
             return id;
-        }
-        if (!have_space(game.board, game.cur_id)) {
-            log("no more space for player%d", game.cur_id);
-            return 3 - game.cur_id;
         }
     }
 }

@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 3.5)
 project (
     gomoku
-    VERSION 1.12.5
+    VERSION 1.13.0
     LANGUAGES C
 )
 set (CMAKE_VERBOSE_MAKEFILE OFF)
@@ -68,7 +68,8 @@ endif ()
 
 add_executable (main gomoku.c $<TARGET_OBJECTS:gomoku_objects>)
 
-add_executable (test src/tests/main.c ${SRC_LIST})
+file(GLOB TEST_SRC_LIST "${PROJECT_SOURCE_DIR}/src/tests/*.c")
+add_executable (test ${TEST_SRC_LIST} ${SRC_LIST})
 target_compile_definitions(test PRIVATE TEST)
 set_target_properties(test PROPERTIES EXCLUDE_FROM_ALL TRUE)
 

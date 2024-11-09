@@ -11,8 +11,10 @@ game_t game_new(int first_id, int time_limit)
 {
     game_t game = {0};
     game.first_id = game.cur_id = first_id;
-    if (time_limit > 0) game.time_limit = time_limit;
-    else game.time_limit = 0x7f7f7f7f;
+    if (time_limit > 0)
+        game.time_limit = time_limit;
+    else
+        game.time_limit = 0x7f7f7f7f;
     return game;
 }
 

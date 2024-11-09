@@ -52,7 +52,7 @@ def run_player(player_path, game: gomoku.game_t):
     return stdout.strip().split('\n')[0]
 
 def start_game(player1, player2, first_id):
-    game = gomoku.game_new(1, 1000)
+    game = gomoku.game_new(first_id, 1000)
     players = [player1, player2]
 
     current_player = first_id

@@ -15,16 +15,6 @@
 #include <string.h>
 #include <time.h>
 
-#if BOARD_SIZE <= 16
-typedef uint32_t line_t;
-#elif BOARD_SIZE <= 32
-typedef uint64_t line_t;
-#else
-#    error "board size too large!"
-#endif
-
-typedef line_t comp_board_t[BOARD_SIZE];  // compressed board
-
 #define WINPOS_SIZE 2
 
 typedef struct {
@@ -60,39 +50,6 @@ static int first_id;
 static int start_time;
 static mcts_param_t param;
 
-/// @brief encode from raw board to compressed board
-static void encode(const board_t src, comp_board_t dest)
-{
-    for (int i = 0; i < BOARD_SIZE; i++) {
-        dest[i] = 0;
-        for (int j = BOARD_SIZE - 1; j >= 0; j--) {
-            dest[i] = dest[i] * 4 + src[i][j];
-        }
-    }
-}
-
-/// @brief decode from compressed board to raw board
-static void decode(const comp_board_t src, board_t dest)
-{
-    for (int i = 0; i < BOARD_SIZE; i++) {
-        line_t tmp = src[i];
-        for (int j = 0; j < BOARD_SIZE; j++) {
-            dest[i][j] = tmp & 3;
-            tmp >>= 2;
-        }
-    }
-}
-
-/// @brief read and modify compressed board
-#define get_xy(arr, x, y)      (int)((arr[x] >> ((y) * 2)) & 3)
-#define set_xy(arr, x, y, v)   arr[x] += ((v) - get_xy(arr, x, y)) * (1 << ((y) * 2))
-#define add_xy(arr, x, y, v)   arr[x] += (((v) << ((y) * 2)))
-#define minus_xy(arr, x, y, v) arr[x] -= (((v) << ((y) * 2)))
-#define get(arr, p)            get_xy(arr, p.x, p.y)
-#define set(arr, p, v)         set_xy(arr, p.x, p.y, v)
-#define add(arr, p, v)         add_xy(arr, p.x, p.y, v)
-#define minus(arr, p, v)       minus_xy(arr, p.x, p.y, v)
-
 #ifdef BOTZONE
 #    define MAX_TREE_SIZE 1001000
 #    define NODE_LIMIT    1000000
@@ -101,17 +58,80 @@ static void decode(const comp_board_t src, board_t dest)
 #    define NODE_LIMIT    30000000
 #endif
 
-// node_t* memory_pool;
+static int is_forbidden_comp(comp_board_t bd, point_t pos, int id, int depth);
 
-static void print_compressed_board(const comp_board_t board, point_t emph_pos)
+/// @brief get pattern by compressed board {bd} and position {pos}
+/// @return pattern type
+static pattern4_t pattern4_type_comp(comp_board_t board, point_t pos, int depth)
 {
-    board_t b;
-    decode(board, b);
-    emphasis_print(b, emph_pos);
+    int id;
+    if (!in_board(pos) || !((id = get(board, pos)))) return PAT4_OTHERS;
+    const int8_t mid = WIN_LENGTH - 1, arrows[4][2] = {{1, 1}, {1, -1}, {1, 0}, {0, 1}};
+    int idx[4];
+    int piece;
+    for (int8_t i = 0, dx, dy; i < 4; i++) {
+        dx = arrows[i][0], dy = arrows[i][1];
+        segment_t seg;
+        for (int8_t j = -WIN_LENGTH + 1; j < WIN_LENGTH; j++) {
+            const point_t np = (point_t){pos.x + dx * j, pos.y + dy * j};
+            if (!in_board(np))
+                seg.pieces[mid + j] = OPPO_PIECE;
+            else if (!((piece = get(board, np)))) {
+                seg.pieces[mid + j] = EMPTY_PIECE;
+            } else
+                seg.pieces[mid + j] = ((piece == id) ? SELF_PIECE : OPPO_PIECE);
+        }
+        int segment_value = segment_encode(seg);
+        idx[i] = to_pattern(segment_value);
+        if (depth > 1 && idx[i] >= PAT_A3 && idx[i] <= PAT_A4) {
+            int col[2];
+            get_upgrade_columns(segment_value, col, 2);
+            for (int j = 0; j < 2; j++) {
+                if (col[j] != -1) {
+                    const point_t np =
+                        (point_t){pos.x + dx * (col[j] - mid), pos.y + dy * (col[j] - mid)};
+                    if (is_forbidden_comp(board, np, id, depth - 1)) {
+                        idx[i] = PAT_ETY;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    pattern4_t pat4 = to_pattern4(idx[0], idx[1], idx[2], idx[3]);
+    if (id != first_id || depth == 0) {
+        if (pat4 == PAT4_TL)
+            pat4 = PAT4_WIN;
+        else if (pat4 > PAT4_WIN)
+            pat4 = PAT4_OTHERS;
+    }
+    return pat4;
+}
+
+/// @brief get pattern after putting a piece of player{id} at {pos}
+/// @return pattern type
+static pattern4_t virtual_pat4type_comp(comp_board_t board, point_t pos, int id, int depth)
+{
+    assert(in_board(pos) && !get(board, pos));
+    add(board, pos, id);
+    const pattern4_t pat4 = pattern4_type_comp(board, pos, depth);
+    minus(board, pos, id);
+    return pat4;
+}
+
+/// @brief check if {pos} is forbidden for player{id}
+/// @return 0 if not forbidden, pattern4 type otherwise.
+static int is_forbidden_comp(comp_board_t board, point_t pos, int id, int depth)
+{
+    assert(in_board(pos));
+    if (id != first_id) return 0;
+    const pattern4_t pat4 = virtual_pat4type_comp(board, pos, id, depth);
+    if (pat4 <= PAT4_WIN) return 0;
+    return pat4;
 }
 
 /// @brief print data of state {st}
-static void print_state(const state_t st)
+void print_state(const state_t st)
 {
     log("print state:");
     log("board:");
@@ -150,65 +170,6 @@ static void visualize_children(const node_t* node)
     assert(sum == node->state.count);
 }
 
-/// @brief get pattern by compressed board {bd} and position {pos}
-/// @return pattern type
-static pattern4_t pattern4_type_comp(const comp_board_t board, point_t pos)
-{
-    int id;
-    if (!in_board(pos) || !((id = get(board, pos)))) return PAT4_OTHERS;
-    const int8_t arrows[4][2] = {{1, 1}, {1, -1}, {1, 0}, {0, 1}};
-    int idx[4];
-    int piece;
-    for (int8_t i = 0, dx, dy; i < 4; i++) {
-        dx = arrows[i][0], dy = arrows[i][1];
-        int val = 0;
-        for (int8_t j = -WIN_LENGTH + 1; j < WIN_LENGTH; j++) {
-            const point_t np = (point_t){pos.x + dx * j, pos.y + dy * j};
-            if (!in_board(np))
-                val = val * PIECE_SIZE + OPPO_PIECE;
-            else if (!((piece = get(board, np))))
-                val = val * PIECE_SIZE + EMPTY_PIECE;
-            else
-                val = val * PIECE_SIZE + ((piece == id) ? SELF_PIECE : OPPO_PIECE);
-        }
-        idx[i] = to_pattern(val);
-    }
-    pattern4_t pat4 = to_pattern4(idx[0], idx[1], idx[2], idx[3]);
-    if (!param.check_forbid || id != first_id) {
-        if (pat4 > PAT4_WIN) {
-            if (pat4 == PAT4_TL) {
-                pat4 = PAT4_WIN;
-            } else {
-                pat4 = PAT4_OTHERS;
-            }
-        }
-    }
-    return pat4;
-}
-
-/// @brief get pattern after putting a piece of player{id} at {pos}
-/// @return pattern type
-static pattern4_t virtual_pat4type_comp(comp_board_t board, point_t pos, int id)
-{
-    assert(in_board(pos) && !get(board, pos));
-    add(board, pos, id);
-    const pattern4_t pat4 = pattern4_type_comp(board, pos);
-    minus(board, pos, id);
-    return pat4;
-}
-
-/// @brief check if {pos} is forbidden for player{id}
-/// @return 0 if not forbidden, pattern4 type otherwise.
-static int is_forbidden_comp(comp_board_t bd, point_t pos, int id)
-{
-    assert(in_board(pos));
-    if (!param.check_forbid) return 0;
-    if (id != first_id) return 0;
-    const pattern4_t pat4 = virtual_pat4type_comp(bd, pos, id);
-    if (pat4 <= PAT4_WIN) return 0;
-    return pat4;
-}
-
 /// @brief get positions which are winning pos after last move
 static void get_win_pos(state_t* st) {
     const point_t pos = st->pos;
@@ -227,7 +188,7 @@ static void get_win_pos(state_t* st) {
     for (int i = 0, val, pattern, piece, cnt = 0; i < 4 && cnt < WINPOS_SIZE; i++) {
         dx = arrows[i][0], dy = arrows[i][1];
         val = 0;
-        for (int j = -mid; j <= mid; j++) {
+        for (int j = mid; j >= -mid; j--) {
             tmp = (point_t){pos.x + dx * j, pos.y + dy * j};
             piece = in_board(tmp) ? get(board, tmp) : oppo;
             val = val * PIECE_SIZE +
@@ -241,7 +202,7 @@ static void get_win_pos(state_t* st) {
                 if (col[j] != -1) {
                     tmp = (point_t){pos.x + dx * (col[j] - mid), pos.y + dy * (col[j] - mid)};
                     assert(in_board(tmp) && !get(board, tmp));
-                    if (!is_forbidden_comp(st->board, tmp, id)) {
+                    if (!is_forbidden_comp(st->board, tmp, id, param.check_depth)) {
                         st->win_pos[cnt++] = tmp;
                     }
                 }
@@ -426,7 +387,9 @@ static node_t* find_child(node_t* node, point_t pos)
             return edge->to;
         }
     }
-    return put_piece(node, pos, virtual_pat4type_comp(node->state.board, pos, node->state.id));
+    return put_piece(
+        node, pos,
+        virtual_pat4type_comp(node->state.board, pos, node->state.id, param.check_depth));
 }
 
 /// @brief traverse the tree to find a leaf node
@@ -448,7 +411,7 @@ static node_t* traverse(node_t* node)
     for (int i = 0; i < 2; i++) {
         const point_t danger_pos = state.win_pos[i];
         if (in_board(danger_pos)) {
-            if (!is_forbidden_comp(state.board, danger_pos, id)) {
+            if (!is_forbidden_comp(state.board, danger_pos, id, param.check_depth)) {
                 return traverse(find_child(node, danger_pos));
             }
         }
@@ -466,7 +429,7 @@ static node_t* traverse(node_t* node)
             if (!get(state.visited, pos)) cnt++;
             if (cnt == index) {
                 // log("res = %d, pos = %d, choose %d, %d", res, pos, i, j);
-                pat4 = virtual_pat4type_comp(state.board, pos, id);
+                pat4 = virtual_pat4type_comp(state.board, pos, id, param.check_depth);
                 if (pat4 > PAT4_WIN) {
                     state.visited_cnt++;
                     add(state.visited, pos, 1);
@@ -502,7 +465,7 @@ static void simulate(node_t* start_node)
 }
 
 /// @brief get next move by mcts algorithm
-point_t mcts(const game_t game, void* assets)
+point_t mcts(const game_t game, const void* assets)
 {
     if (game.count == 0) {
         return (point_t){BOARD_SIZE / 2, BOARD_SIZE / 2};
@@ -543,7 +506,8 @@ point_t mcts(const game_t game, void* assets)
     int tim, cnt = 0;
     const int target_count = param.min_count * (root->state.capacity + game.count * 2);
 
-    log("simulating (C: %.1lf~%.1lf, time: %d~%d, rad: %d)", param.start_c, param.end_c, param.min_time, game.time_limit, radius);
+    log("simulating (C: %.1lf~%.1lf, time: %d~%d, depth: %d)", param.start_c, param.end_c,
+        param.min_time, game.time_limit, param.check_depth);
     // int base = 1;
     while ((tim = get_time(start_time)) < param.min_time ||
            max_count(root)->state.count < target_count) {
@@ -569,7 +533,7 @@ point_t mcts(const game_t game, void* assets)
     log_add(level, "(%d, %d) -> prob: %.2lf%% (%d), win: %.2lf%%.", st.pos.x, st.pos.y,
             (double)st.count / root->state.count * 100, st.count, rate);
 #ifdef TEST
-    point_t manual(const game_t, void*);
+    point_t manual(game_t, const void*);
     if (level == PROMPT_WARN) {
         print_state(root->state);
         while (1) {
@@ -589,12 +553,12 @@ point_t mcts(const game_t game, void* assets)
     return st.pos;
 }
 
-point_t mcts_nn(const game_t game, void* assets)
+point_t mcts_nn(const game_t game, const void* assets)
 {
     log_e("not implemented! call mcts without neural network instead.");
     return mcts(game, assets);
 }
 
 #ifdef TEST
-#    include "tests/mcts.txt"
+#    include "tests/mcts.inc"
 #endif

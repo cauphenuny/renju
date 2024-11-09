@@ -12,29 +12,6 @@
 
 #define printf(...) log_s(__VA_ARGS__)
 
-/// @brief get a minimal area [{begin}, {end}) that wraps up pieces in {board}
-/// @param begin left-top corner of wrapped area
-/// @param end right-bottom corner of wrapped area
-/// @param margin min margin
-void wrap_area(const board_t board, point_t* begin, point_t* end, int8_t margin)
-{
-    const int8_t n = BOARD_SIZE, mid = n / 2;
-    begin->x = begin->y = mid - margin;
-    end->x = end->y = mid + margin + 1;
-    chkmin(end->y, n), chkmin(end->x, n);
-    chkmax(begin->x, 0), chkmax(begin->y, 0);
-    for (int i = 0; i < n; i++) {
-        for (int j = 0; j < n; j++) {
-            if (board[i][j]) {
-                chkmin(begin->x, max(0, i - margin));
-                chkmin(begin->y, max(0, j - margin));
-                chkmax(end->x, min(i + margin + 1, n));
-                chkmax(end->y, min(j + margin + 1, n));
-            }
-        }
-    }
-}
-
 /// @brief print {board} with one emphasized position {pos} or predicted probability
 void print_implement(const board_t board, point_t emph_pos, const fboard_t prob)
 {
@@ -61,7 +38,7 @@ void print_implement(const board_t board, point_t emph_pos, const fboard_t prob)
         {0.20, L_YELLOW "#" RESET},         // 0.20 < p <= 0.50
         {0.50, L_RED "#" RESET},            // 0.50 < p <= 0.85
         {0.85, UNDERLINE L_RED "#" RESET},  // 0.85 < p <= 1
-        {1.00, "@"},                        // invalid
+        {1.00, "?"},                        // invalid
     };
 #undef dark
     for (int i = BOARD_SIZE - 1, line_type, col_type; i >= 0; i--) {
@@ -131,6 +108,29 @@ void probability_print(const board_t board, const fboard_t prob)
 /// @brief print {board} without emphasis
 void print(const board_t board) { return emphasis_print(board, (point_t){-1, -1}); }
 
+/// @brief get a minimal area [{begin}, {end}) that wraps up pieces in {board}
+/// @param begin left-top corner of wrapped area
+/// @param end right-bottom corner of wrapped area
+/// @param margin min margin
+void wrap_area(const board_t board, point_t* begin, point_t* end, int8_t margin)
+{
+    const int8_t n = BOARD_SIZE, mid = n / 2;
+    begin->x = begin->y = mid - margin;
+    end->x = end->y = mid + margin + 1;
+    chkmin(end->y, n), chkmin(end->x, n);
+    chkmax(begin->x, 0), chkmax(begin->y, 0);
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            if (board[i][j]) {
+                chkmin(begin->x, max(0, i - margin));
+                chkmin(begin->y, max(0, j - margin));
+                chkmax(end->x, min(i + margin + 1, n));
+                chkmax(end->y, min(j + margin + 1, n));
+            }
+        }
+    }
+}
+
 /// @brief check if {pos} is in the board and is empty
 bool available(const board_t board, point_t pos)
 {
@@ -168,9 +168,11 @@ bool is_equal(const board_t b1, const board_t b2)
 /// @brief check if {board} has available position for player{id}
 bool have_space(const board_t board, int id)
 {
+    board_t dyn_board;
+    memcpy(dyn_board, board, sizeof(board_t));
     for (int i = 0; i < BOARD_SIZE; i++) {
         for (int j = 0; j < BOARD_SIZE; j++) {
-            if (!board[i][j] && !is_forbidden(board, (point_t){i, j}, id, false)) {
+            if (!board[i][j] && !is_forbidden(dyn_board, (point_t){i, j}, id, false)) {
                 return true;
             }
         }
@@ -187,9 +189,11 @@ const char* pattern_typename[] = {
     [PAT_5] = "connect 5",
 };
 
-const char* pattern4_typename[] = {
-    [PAT4_OTHERS] = "others", [PAT4_43] = "4 and 3",  [PAT4_WIN] = "win",
-    [PAT4_A33] = "double 3",  [PAT4_44] = "double 4", [PAT4_TL] = "overline"};
+const char* pattern4_typename[] = {[PAT4_OTHERS] = "others",
+                                   [PAT4_WIN] = "win",
+                                   [PAT4_A33] = "double 3",
+                                   [PAT4_44] = "double 4",
+                                   [PAT4_TL] = "overline"};
 
 static int powers[SEGMENT_LEN];
 #define UP_COL_SIZE 3
@@ -205,7 +209,8 @@ int segment_encode(segment_t s)
     const piece_t* a = s.pieces;
     int result = 0;
     for (int i = 0; i < SEGMENT_LEN; i++) {
-        result = result * PIECE_SIZE + a[i];
+        // result += a[i] * powers[i];
+        result += a[i] * (1 << (i * 2));
     }
     return result;
 }
@@ -214,9 +219,9 @@ int segment_encode(segment_t s)
 segment_t segment_decode(int v)
 {
     segment_t result;
-    for (int i = SEGMENT_LEN - 1; i >= 0; i--) {
+    for (int i = 0; i < SEGMENT_LEN; i++) {
         result.pieces[i] = (piece_t)(v % (int)PIECE_SIZE);
-        v /= 3;
+        v /= (int)PIECE_SIZE;
     }
     return result;
 }
@@ -224,7 +229,7 @@ segment_t segment_decode(int v)
 /// @brief print a segment and its data
 void segment_print(segment_t s)
 {
-    const char ch[3] = {'.', 'o', 'x'};
+    const char ch[4] = {'.', 'o', 'x', '?'};
     printf("%5d [%c", segment_encode(s), ch[s.pieces[0]]);
     for (int i = 1; i < SEGMENT_LEN; i++) {
         printf(" %c", ch[s.pieces[i]]);
@@ -237,7 +242,7 @@ void segment_print(segment_t s)
 
 static int update(int prev, int pos, piece_t new_piece)
 {
-    return prev + new_piece * powers[SEGMENT_LEN - 1 - pos];
+    return prev + new_piece * (1 << (pos * 2));
 }
 
 /// @brief convert int value of segment to pattern type
@@ -291,40 +296,70 @@ int check(const board_t board, point_t pos)
 /// @param id current id
 /// @param enable_log enable logs when detects a forbidden pos
 /// @return 0 for accept, pat4 if forbidden
-int is_forbidden(const board_t board, point_t pos, int id, bool enable_log)
+int is_forbidden(board_t board, point_t pos, int id, bool enable_log)
 {
     assert(pattern_initialized);
+    assert(in_board(pos) && !board[pos.x][pos.y]);
     // print(board);
-    const int8_t arrow[4][2] = {{1, 1}, {1, -1}, {1, 0}, {0, 1}};
-    int idx[4];
-    const int mid = WIN_LENGTH - 1;
-    segment_t seg[4];
-    for (int8_t i = 0, a, b; i < 4; i++) {
-        a = arrow[i][0], b = arrow[i][1];
+    static const int8_t mid = WIN_LENGTH - 1, arrow[4][2] = {{1, 1}, {1, -1}, {1, 0}, {0, 1}};
+
+    pattern_t idx[4] = {PAT_ETY, PAT_ETY, PAT_ETY, PAT_ETY};
+    pattern4_t pat4;
+    segment_t seg[4] = {0};
+
+    // emphasis_print(board, pos);
+    // pause();
+    board[pos.x][pos.y] = id;
+    for (int8_t i = 0, dx, dy; i < 4; i++) {
+        dx = arrow[i][0], dy = arrow[i][1];
         for (int8_t j = -WIN_LENGTH + 1; j < WIN_LENGTH; j++) {
-            const point_t np = (point_t){pos.x + a * j, pos.y + b * j};
+            const point_t np = (point_t){pos.x + dx * j, pos.y + dy * j};
             if (!in_board(np))
                 seg[i].pieces[mid + j] = OPPO_PIECE;
-            else if (!board[np.x][np.y])
+            else if (!board[np.x][np.y]) {
                 seg[i].pieces[mid + j] = EMPTY_PIECE;
-            else
+            } else {
                 seg[i].pieces[mid + j] = board[np.x][np.y] == id ? SELF_PIECE : OPPO_PIECE;
+            }
         }
-        seg[i].pieces[mid] = SELF_PIECE;
-        // print_segment(seg);
+        int value = segment_encode(seg[i]);
         idx[i] = to_pattern(segment_encode(seg[i]));
+        if (idx[i] >= PAT_A3 && idx[i] <= PAT_A4) {
+            int cols[2];
+            get_upgrade_columns(value, cols, 2);
+            for (int j = 0; j < 2; j++) {
+                if (cols[j] != -1) {
+                    const point_t np =
+                        (point_t){pos.x + dx * (cols[j] - mid), pos.y + dy * (cols[j] - mid)};
+                    if (is_forbidden(board, np, id, false)) {
+                        idx[i] = PAT_ETY;  // incorrect, but enough for checking forbid
+                        break;
+                    }
+                }
+            }
+        }
+        pat4 = to_pattern4(idx[0], idx[1], idx[2], idx[3]);
+        if (pat4 > PAT4_WIN) break;
     }
-    const pattern4_t pat4 = to_pattern4(idx[0], idx[1], idx[2], idx[3]);
+    board[pos.x][pos.y] = 0;
+
     if (pat4 <= PAT4_WIN) return 0;
     if (enable_log) {
         log("forbidden pos, reason: %s", pattern4_typename[pat4]);
-        log("detailed infomation:");
+        log("detailed information:");
         emphasis_print(board, pos);
         for (int i = 0; i < 4; i++) {
             segment_print(seg[i]);
         }
     }
-    return pat4;
+    return (int)pat4;
+}
+
+int is_forbidden_legacy(const board_t board, point_t pos, int id, bool enable_log)
+{
+    board_t dyn_board;
+    memcpy(dyn_board, board, sizeof(board_t));
+    return is_forbidden(dyn_board, pos, id, enable_log);
 }
 
 /// @brief calculate pattern type and store it
@@ -453,8 +488,6 @@ void pattern_init()
                         pattern4_memo[i][j][k][u] = PAT4_A33;
                     else if ((cnt[PAT_A4] + cnt[PAT_D4]) > 1 || cnt[PAT_44])
                         pattern4_memo[i][j][k][u] = PAT4_44;
-                    else if ((cnt[PAT_A4] + cnt[PAT_D4]) && (cnt[PAT_A3]))
-                        pattern4_memo[i][j][k][u] = PAT4_43;
                     else
                         pattern4_memo[i][j][k][u] = PAT4_OTHERS;
                 }
@@ -488,7 +521,7 @@ void get_patterns(const board_t board, point_t pos, pattern_t arr[])
         arr[0] = arr[1] = arr[2] = arr[3] = PAT_ETY;
     } else {
         const int8_t arrows[4][2] = {{1, 1}, {1, -1}, {1, 0}, {0, 1}};
-        int piece ;
+        int piece;
         for (int8_t i = 0, dx, dy; i < 4; i++) {
             dx = arrows[i][0], dy = arrows[i][1];
             int val = 0;
@@ -506,32 +539,32 @@ void get_patterns(const board_t board, point_t pos, pattern_t arr[])
     }
 }
 
-int evaluate_pos(const board_t board, point_t pos, int id, bool check_forbid)
+/// @brief encode from raw board to compressed board
+void encode(const board_t src, comp_board_t dest)
 {
-    assert(in_board(pos) && board[pos.x][pos.y] == 0);
-    board_t new_board;
-    memcpy(new_board, board, sizeof(new_board));
-    new_board[pos.x][pos.y] = id;
-    int cnt[PAT_TYPE_SIZE] = {0};
-    pattern_t patterns[4];
-    get_patterns(new_board, pos, patterns);
-    for (int i = 0; i < 4; i++) cnt[patterns[i]]++;
-    const int weight[PAT_TYPE_SIZE] = {
-        [PAT_ETY] = 0,
-        [PAT_44] = check_forbid ? 0 : 5000,
-        [PAT_ATL] = check_forbid ? 0 : 2000,
-        [PAT_TL] = check_forbid ? 0 : 10000,
-        [PAT_D1] = 5,
-        [PAT_A1] = 10,
-        [PAT_D2] = 50,
-        [PAT_A2] = 100,
-        [PAT_D3] = 500,
-        [PAT_A3] = 2000,
-        [PAT_D4] = 2000,
-        [PAT_A4] = 5000,
-        [PAT_5] = 10000,
-    };
-    int val = 0;
-    for (int i = 0; i < PAT_TYPE_SIZE; i++) val += cnt[i] * weight[i];
-    return val;
+    for (int i = 0; i < BOARD_SIZE; i++) {
+        dest[i] = 0;
+        for (int j = BOARD_SIZE - 1; j >= 0; j--) {
+            dest[i] = dest[i] * 4 + src[i][j];
+        }
+    }
+}
+
+/// @brief decode from compressed board to raw board
+void decode(const comp_board_t src, board_t dest)
+{
+    for (int i = 0; i < BOARD_SIZE; i++) {
+        line_t tmp = src[i];
+        for (int j = 0; j < BOARD_SIZE; j++) {
+            dest[i][j] = tmp & 3;
+            tmp >>= 2;
+        }
+    }
+}
+
+void print_compressed_board(const comp_board_t board, point_t emph_pos)
+{
+    board_t b;
+    decode(board, b);
+    emphasis_print(b, emph_pos);
 }

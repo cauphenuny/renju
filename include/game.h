@@ -3,9 +3,9 @@
 
 #include "board.h"
 
-#define GAMECTRL_WITHDRAW -1
-#define GAMECTRL_GIVEUP   -2
-#define GAMECTRL_EXPORT   -3
+#define GAMECTRL_WITHDRAW 0x70
+#define GAMECTRL_GIVEUP   0x71
+#define GAMECTRL_EXPORT   0x72
 
 #ifndef GAME_TIME_LIMIT
 #    define GAME_TIME_LIMIT 15000
