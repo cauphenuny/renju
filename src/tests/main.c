@@ -86,6 +86,10 @@ int main()
 
     log_i("mcts tests passed.");
 
+    test_minimax();
+
+    log_i("minimax tests passed.");
+
     log("run zobrist test? [y/n]");
 
     const char ch = prompt_pause();
@@ -95,8 +99,7 @@ int main()
         log("zobrist tests passed.");
     }
 
-    test_minimax();
 
-    log("all tests passed.");
+    log_i("all tests passed.");
     return 0;
 }

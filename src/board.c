@@ -339,7 +339,6 @@ int is_forbidden(board_t board, point_t pos, int id, bool enable_log)
             }
         }
         pat4 = to_pattern4(idx[0], idx[1], idx[2], idx[3]);
-        if (pat4 > PAT4_WIN) break;
     }
     board[pos.x][pos.y] = 0;
 
@@ -353,13 +352,6 @@ int is_forbidden(board_t board, point_t pos, int id, bool enable_log)
         }
     }
     return (int)pat4;
-}
-
-int is_forbidden_legacy(const board_t board, point_t pos, int id, bool enable_log)
-{
-    board_t dyn_board;
-    memcpy(dyn_board, board, sizeof(board_t));
-    return is_forbidden(dyn_board, pos, id, enable_log);
 }
 
 /// @brief calculate pattern type and store it

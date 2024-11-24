@@ -246,7 +246,7 @@ static result_t minimax_search(int depth, int alpha, int beta)
             const point_t pos = (point_t){i, j};
             if (adjacent(cur_state.board, pos) &&
                 ((put_id != first_id) ||
-                 !is_forbidden_legacy(cur_state.board, pos, put_id, false))) {
+                 !is_forbidden(cur_state.board, pos, put_id, false))) {
                 cur_state = mm_put_piece(cur_state, pos, id);
                 const result_t child = minimax_search(depth - 1, alpha, beta);
                 cur_state = mm_remove_piece(cur_state, pos);
@@ -301,7 +301,7 @@ point_t minimax(const game_t game, const void* assets)
         for (int8_t j = 0; j < BOARD_SIZE; j++) {
             const point_t p = {i, j};
             if (available(game.board, p) &&
-                !is_forbidden_legacy(game.board, p, game.cur_id, false)) {
+                !is_forbidden(game.board, p, game.cur_id, false)) {
                 pos = p;
                 break;
             }

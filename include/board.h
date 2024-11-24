@@ -67,7 +67,6 @@ void wrap_area(const board_t board, point_t* begin, point_t* end, int8_t margin)
 #define in_area(pos, begin, end) \
     (pos.x >= begin.x && pos.x < end.x && pos.y >= begin.y && pos.y < end.y)
 bool available(const board_t board, point_t pos);
-int is_forbidden_legacy(const board_t board, point_t pos, int id, bool enable_log);
 int is_forbidden(board_t board, point_t pos, int id, bool enable_log);
 
 void put(board_t board, int id, point_t pos);
