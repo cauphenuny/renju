@@ -40,7 +40,6 @@ void mcts_test_entrance()
 
     // prompt_pause();
 
-    // extern mcts_param_t mcts_params_default;
     // while (1) {
     //     mcts(game2, &mcts_params_default);
     // }
@@ -59,7 +58,7 @@ void mcts_test_entrance()
         emphasis_print(board, pos);
         comp_board_t bd;
         encode(board, bd);
-        const pattern4_t forbid = is_forbidden_comp(bd, pos, 1, 2);
+        const pattern4_t forbid = is_forbidden_comp(bd, pos, 1, 4);
         log("got %s, expected %s", pattern4_typename[forbid], pattern4_typename[tests[i].id]);
         if (forbid != tests[i].id) {
             log_e("failed.");
@@ -68,5 +67,19 @@ void mcts_test_entrance()
     }
     game_t test_game = game_import(3000,2,22,(point_t[]){{7,7},{7,8},{8,8},{9,9},{8,6},{9,5},{8,7},{8,9},{6,7},{5,7},{9,7},{10,7},{8,5},{8,4},{7,6},{5,8},{6,6},{9,6},{5,5},{4,4},{4,6},{5,6}});
 
+    first_id = 2;
     game_t test_game2 = game_import(1000,2,42,(point_t[]){{7,7},{8,9},{6,7},{8,7},{7,6},{8,8},{8,6},{7,5},{6,8},{9,5},{5,8},{8,5},{6,5},{6,6},{4,8},{3,8},{5,9},{4,10},{5,10},{5,11},{6,10},{7,11},{2,10},{3,9},{2,8},{4,11},{6,11},{6,9},{2,9},{2,7},{7,12},{9,14},{9,10},{6,13},{3,7},{2,6},{4,6},{5,5},{4,7},{5,7},{4,5},{4,4}});
+    extern mcts_param_t mcts_params_default;
+    point_t p = mcts(test_game, &mcts_params_default);
+    // point_t p = (point_t){6, 5};
+    comp_board_t cpb;
+    encode(test_game.board, cpb);
+    board_t raw_board;
+    decode(cpb, raw_board);
+    emphasis_print(raw_board, p);
+    log("virtual_pat4 get %s", pattern4_typename[virtual_pat4type_comp(cpb, p, test_game.cur_id, 4)]);
+    log("first id: %d", first_id);
+    if (is_forbidden_comp(cpb, p, test_game.cur_id, 1)) log("compressed check return forbidden");
+    else log("compressed check return accepted");
+    assert(!is_forbidden(test_game.board, p, test_game.cur_id, true));
 }

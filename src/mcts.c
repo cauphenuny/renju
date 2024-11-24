@@ -46,7 +46,7 @@ static node_t* node_buffer;
 static edge_t* edge_buffer;
 
 static int tot, edge_tot;
-static int first_id;
+static int first_id, current_check_depth;
 static int start_time;
 static mcts_param_t param;
 
@@ -81,6 +81,7 @@ static pattern4_t pattern4_type_comp(comp_board_t board, point_t pos, int depth)
             } else
                 seg.pieces[mid + j] = ((piece == id) ? SELF_PIECE : OPPO_PIECE);
         }
+        // segment_print(seg);
         int segment_value = segment_encode(seg);
         idx[i] = to_pattern(segment_value);
         if (depth > 1 && idx[i] >= PAT_A3 && idx[i] <= PAT_A4) {
@@ -90,7 +91,10 @@ static pattern4_t pattern4_type_comp(comp_board_t board, point_t pos, int depth)
                 if (col[j] != -1) {
                     const point_t np =
                         (point_t){pos.x + dx * (col[j] - mid), pos.y + dy * (col[j] - mid)};
+                    // pattern4_t pat4;
+                    // if ((pat4 = is_forbidden_comp(board, np, id, depth - 1))) {
                     if (is_forbidden_comp(board, np, id, depth - 1)) {
+                        // log("fallback at (%d, %d) for %s", np.x, np.y, pattern4_typename[pat4]);
                         idx[i] = PAT_ETY;
                         break;
                     }
@@ -98,7 +102,11 @@ static pattern4_t pattern4_type_comp(comp_board_t board, point_t pos, int depth)
             }
         }
     }
+    // print_compressed_board(board, pos);
+    // log("%s | %s | %s | %s", pattern_typename[idx[0]], pattern_typename[idx[1]],
+    //     pattern_typename[idx[2]], pattern_typename[idx[3]]);
     pattern4_t pat4 = to_pattern4(idx[0], idx[1], idx[2], idx[3]);
+    // log("=> pat4: %s", pattern4_typename[pat4]);
     if (id != first_id || depth == 0) {
         if (pat4 == PAT4_TL)
             pat4 = PAT4_WIN;
@@ -202,7 +210,7 @@ static void get_win_pos(state_t* st) {
                 if (col[j] != -1) {
                     tmp = (point_t){pos.x + dx * (col[j] - mid), pos.y + dy * (col[j] - mid)};
                     assert(in_board(tmp) && !get(board, tmp));
-                    if (!is_forbidden_comp(st->board, tmp, id, param.check_depth)) {
+                    if (!is_forbidden_comp(st->board, tmp, id, current_check_depth)) {
                         st->win_pos[cnt++] = tmp;
                     }
                 }
@@ -389,7 +397,7 @@ static node_t* find_child(node_t* node, point_t pos)
     }
     return put_piece(
         node, pos,
-        virtual_pat4type_comp(node->state.board, pos, node->state.id, param.check_depth));
+        virtual_pat4type_comp(node->state.board, pos, node->state.id, current_check_depth));
 }
 
 /// @brief traverse the tree to find a leaf node
@@ -398,20 +406,21 @@ static node_t* traverse(node_t* node)
     if (node == NULL || terminated(node->state)) {
         return node;
     }
+    if (current_check_depth > param.check_depth) current_check_depth--;
     state_t state = node->state;
     const int id = state.id;
     const node_t* parent = node->parent;
     for (int i = 0; i < 2; i++) {
         const point_t win_pos = parent->state.win_pos[i];
         if (in_board(win_pos) && get(state.board, win_pos) == 0) {
-            assert(!is_forbidden_comp(state.board, win_pos, id));
+            assert(!is_forbidden_comp(state.board, win_pos, id, current_check_depth));
             return traverse(find_child(node, win_pos));
         }
     }
     for (int i = 0; i < 2; i++) {
         const point_t danger_pos = state.win_pos[i];
         if (in_board(danger_pos)) {
-            if (!is_forbidden_comp(state.board, danger_pos, id, param.check_depth)) {
+            if (!is_forbidden_comp(state.board, danger_pos, id, current_check_depth)) {
                 return traverse(find_child(node, danger_pos));
             }
         }
@@ -429,7 +438,7 @@ static node_t* traverse(node_t* node)
             if (!get(state.visited, pos)) cnt++;
             if (cnt == index) {
                 // log("res = %d, pos = %d, choose %d, %d", res, pos, i, j);
-                pat4 = virtual_pat4type_comp(state.board, pos, id, param.check_depth);
+                pat4 = virtual_pat4type_comp(state.board, pos, id, current_check_depth);
                 if (pat4 > PAT4_WIN) {
                     state.visited_cnt++;
                     add(state.visited, pos, 1);
@@ -453,6 +462,7 @@ static node_t* traverse(node_t* node)
 
 static void simulate(node_t* start_node)
 {
+    current_check_depth = 5;
     node_t* leaf = traverse(start_node);
     if (leaf == NULL) return;
     const int score = leaf->state.score;
@@ -496,12 +506,14 @@ point_t mcts(const game_t game, const void* assets)
     for (int i = 0; i < game.count; i++) {
         root = put_piece(root, game.steps[i], PAT4_OTHERS);
     }
+#if DEBUG_LEVEL
     for (int i = 0; i < WINPOS_SIZE; i++) {
         const point_t pos = root->parent->state.win_pos[i];
         if (in_board(pos)) {
             log("(%d, %d)", pos.x, pos.y);
         }
     }
+#endif
 
     int tim, cnt = 0;
     const int target_count = param.min_count * (root->state.capacity + game.count * 2);
