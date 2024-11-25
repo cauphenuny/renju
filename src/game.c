@@ -66,7 +66,7 @@ game_t game_import(int time_limit, int first_id, int count, point_t moves[])
 
 /// @brief export the state of {game} to {file}
 /// @param file file to export, empty if uses stdout
-void game_export(game_t game, const char* file)
+void game_serialize(game_t game, const char* file)
 {
     FILE* fp;
     if (strlen(file)) {

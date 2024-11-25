@@ -23,7 +23,7 @@ point_t parse_board(board_t dest, const char* str)
 
 int test_forbid(void)
 {
-    #include "boards.inc"
+#include "boards.txt"
     board_t board;
     point_t pos;
     for (int i = 0; i < TESTS; i++) {

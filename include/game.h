@@ -18,13 +18,14 @@ typedef struct {
     int count;
     int cur_id;
     int first_id;
+    int winner;
 } game_t;
 
 game_t game_new(int first_id, int time_limit);
 void game_add_step(game_t* game, point_t pos);
 game_t game_backward(game_t game, int after_step);
 void game_print(game_t game);
-void game_export(game_t game, const char* file);
+void game_serialize(game_t game, const char* file);
 game_t game_import(int time_limit, int first_id, int count, point_t moves[]);
 
 #endif

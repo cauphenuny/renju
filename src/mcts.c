@@ -572,5 +572,5 @@ point_t mcts_nn(const game_t game, const void* assets)
 }
 
 #ifdef TEST
-#    include "tests/mcts.inc"
+#    include "tests/mcts.txt"
 #endif

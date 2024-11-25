@@ -45,7 +45,7 @@ void mcts_test_entrance()
     // }
 
 
-    #include "boards.inc"
+    #include "boards.txt"
     
     board_t board;
     point_t pos;

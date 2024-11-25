@@ -13,7 +13,7 @@ typedef struct {
     int check_depth;
     bool dynamic_area;
     bool simulate_on_good_pos;
-    neural_network_t* network;
+    predictor_network_t* network;
     pfboard_t prob_matrix;
 } mcts_param_t;  // parameters for mcts
 

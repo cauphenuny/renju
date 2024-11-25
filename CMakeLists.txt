@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 3.5)
 project (
     gomoku
-    VERSION 1.13.3
+    VERSION 2.0.1
     LANGUAGES C
 )
 set (CMAKE_VERBOSE_MAKEFILE OFF)
@@ -54,14 +54,17 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     set_target_properties(libgomoku PROPERTIES EXCLUDE_FROM_ALL TRUE)
 endif ()
 
+file(MAKE_DIRECTORY ${PROJECT_SOURCE_DIR}/train)
+file(MAKE_DIRECTORY ${PROJECT_SOURCE_DIR}/train/lib)
+
 add_custom_command(
-    OUTPUT ${PROJECT_SOURCE_DIR}/lib/libgomoku.py
-    COMMAND ctypesgen -Llib -lgomoku ./include/* -o lib/libgomoku.py
+    OUTPUT ${PROJECT_SOURCE_DIR}/train/lib/libgomoku.py
+    COMMAND ctypesgen -Llib -lgomoku ./include/* -o train/lib/libgomoku.py
     DEPENDS ${INCLUDE_LIST}
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
     COMMENT "Running ctypesgen to generate Python bindings"
 )
-add_custom_target(generate_bindings ALL DEPENDS lib/libgomoku.py)
+add_custom_target(generate_bindings ALL DEPENDS train/lib/libgomoku.py)
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     set_target_properties(generate_bindings PROPERTIES EXCLUDE_FROM_ALL TRUE)
 endif ()

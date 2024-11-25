@@ -1,7 +1,9 @@
 // author: Cauphenuny
 // date: 2024/07/27
+#include "board.h"
 #include "game.h"
 #include "init.h"
+#include "neuro.h"
 #include "players.h"
 #include "server.h"
 #include "util.h"
@@ -11,6 +13,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#define GAME_STORAGE_SIZE 65536
 
 int statistics[3][3];
 // [0][0]: draw count [0][1/2]: normal / reverse count
@@ -37,6 +41,12 @@ static void print_statistics(void)
     }
 }
 
+static game_t games[GAME_STORAGE_SIZE];
+static int tot;
+static char* sample_file;
+char* model_file;
+static checker_network_t checker;
+
 static void signal_handler(int signum)
 {
     switch (signum) {
@@ -44,6 +54,17 @@ static void signal_handler(int signum)
             log_s("\n");
             log("received signal SIGINT, terminate.");
             print_statistics();
+            if (sample_file && tot) {
+                log("save game data? [y/n]");
+                char c = prompt_pause();
+                if (c == 'y') {
+                    char name[1024];
+                    log("input file name: ");
+                    prompt_scanf("%s", name);
+                    add_samples(games, tot);
+                    export_samples(name);
+                }
+            }
             exit(0);
         default: log_e("unexpected signal %d", signum);
     }
@@ -65,14 +86,24 @@ struct {
     {MANUAL, MANUAL, -1},
 };
 
-int main(void)
+int main(int argc, char* argv[])
 {
     signal(SIGINT, signal_handler);
-    // signal(SIGSEGV, signal_handler);
 
     log("gomoku v%s", VERSION);
 
     init();
+
+    if (argc > 1) {
+        for (int i = 1; i < argc; i++) {
+            char* p = argv[i] + strlen(argv[i]);
+            while (*p != '.' && p > argv[i]) p--;
+            if (strcmp(p, ".dat") == 0 && !sample_file)
+                sample_file = argv[i], import_samples(sample_file);
+            if (strcmp(p, ".mod") == 0 && !model_file)
+                model_file = argv[i], checker = checker_load(model_file);
+        }
+    }
 
     log_i("available modes: ");
     for (int i = 0; i < PRESET_SIZE; i++) {
@@ -111,8 +142,10 @@ int main(void)
 
     int id = 1;
     while (1) {
-        const int winner =
+        const game_t game =
             start_game(preset_players[player1], preset_players[player2], id, time_limit);
+        if (tot < GAME_STORAGE_SIZE) games[tot++] = game;
+        const int winner = game.winner;
         statistics[0][id]++;
         if (winner) {
             log_i("player%d wins", winner);
