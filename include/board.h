@@ -15,46 +15,13 @@ typedef enum {
     PIECE_SIZE = 4,
 } piece_t;
 
-#define SEGMENT_LEN  9      // 2 * WIN_LENGTH - 1
-#define PATTERN_SIZE 262144 // PIECE_SIZE ** SEGMENT_LEN
-
-typedef enum {
-    PAT_ETY,  // empty
-    PAT_44,   // double 4  x o o o o . o o o
-    PAT_ATL,  // almost tl . o o . o o o . .
-    PAT_TL,   // too long  . o o o o o o . .
-    PAT_D1,   // dead 1    . . . x o . . . .
-    PAT_A1,   // alive 1   . . . . o . . . .
-    PAT_D2,   // dead 2    . . x o o . . . .
-    PAT_A2,   // alive 2   . . . o o . . . .
-    PAT_D3,   // dead 3    . x o o o . . . .
-    PAT_A3,   // alive 3   . . o o o . . . .
-    PAT_D4,   // dead 4    . o o o o x . . .
-    PAT_A4,   // alive 4   . o o o o . . . .
-    PAT_5,    // 5         . o o o o o . . .
-    PAT_TYPE_SIZE,
-} pattern_t;
-
-typedef enum {
-    PAT4_OTHERS,
-    PAT4_WIN,
-    PAT4_A33,
-    PAT4_44,
-    PAT4_TL,
-    PAT4_TYPE_SIZE,
-} pattern4_t;
-
-extern const char* pattern_typename[PAT_TYPE_SIZE];
-
-extern const char* pattern4_typename[PAT4_TYPE_SIZE];
-
 typedef struct {
     int8_t x, y;
 } point_t;
 
 typedef int board_t[BOARD_SIZE][BOARD_SIZE];
-typedef double fboard_t[BOARD_SIZE][BOARD_SIZE]; // board with float type
-typedef double (*pfboard_t)[BOARD_SIZE];         // same as fboard_t but is pointer rather than array
+typedef float fboard_t[BOARD_SIZE][BOARD_SIZE]; // board with float type
+typedef float (*pfboard_t)[BOARD_SIZE];         // same as fboard_t but is pointer rather than array
 
 void print_implement(const board_t board, point_t emph_pos, const fboard_t prob);
 void emphasis_print(const board_t board, point_t emph_pos);
@@ -99,19 +66,5 @@ typedef line_t comp_board_t[BOARD_SIZE];  // compressed board
 void encode(const board_t src, comp_board_t dest);
 void decode(const comp_board_t src, board_t dest);
 void print_compressed_board(const comp_board_t board, point_t emph_pos);
-
-typedef struct {
-    piece_t pieces[SEGMENT_LEN];  // something like . . o . . x . o .
-} segment_t;
-
-int segment_encode(segment_t s);
-segment_t segment_decode(int v);
-void segment_print(segment_t s);
-
-pattern_t to_pattern(int segment_value);
-pattern4_t to_pattern4(int x, int y, int u, int v);
-void pattern_init(void);
-void get_upgrade_columns(int segment_value, int* cols, int limit);
-void get_patterns(const board_t board, point_t pos, pattern_t arr[]);
 
 #endif

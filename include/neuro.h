@@ -2,7 +2,6 @@
 #define NEURO_H
 
 #include "board.h"
-#include "game.h"
 
 const static struct {
     struct {
@@ -35,20 +34,6 @@ typedef struct {
 typedef struct {
     // TODO:
 } predictor_network_t;
-
-typedef struct {
-    int8_t board[BOARD_SIZE][BOARD_SIZE];
-    int8_t winner;
-    int8_t final_winner;
-} sample_t;
-
-sample_t to_sample(const board_t board, int winner, int final_winner);
-void add_samples(game_t* games, int count);
-void export_samples(const char* file_name);
-void import_samples(const char* file_name);
-int dataset_size();
-sample_t random_sample();
-sample_t find_sample(int index);
 
 checker_network_t checker_new();
 checker_network_t checker_load(const char* file_name);

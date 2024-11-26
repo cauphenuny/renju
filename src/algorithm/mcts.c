@@ -4,6 +4,7 @@
 #include "mcts.h"
 
 #include "board.h"
+#include "pattern.h"
 #include "util.h"
 
 #include <assert.h>
@@ -156,26 +157,6 @@ void print_state(const state_t st)
         log("win pos #%d: (%d, %d)", i, st.win_pos[i].x, st.win_pos[i].y);
     }
     log("done");
-}
-
-static void visualize_children(const node_t* node)
-{
-    if (!node->state.count) return;
-    fboard_t prob = {0};
-    int sum = 0;
-    for (const edge_t* e = node->child_edge; e; e = e->next) {
-        const node_t* child = e->to;
-        prob[child->state.pos.x][child->state.pos.y] =
-            (double)child->state.count / node->state.count;
-        sum += child->state.count;
-    }
-    if (param.prob_matrix != NULL) {
-        memcpy(param.prob_matrix, prob, sizeof(prob));
-    }
-    board_t board;
-    decode(node->state.board, board);
-    probability_print(board, prob);
-    assert(sum == node->state.count);
 }
 
 /// @brief get positions which are winning pos after last move
@@ -506,7 +487,7 @@ point_t mcts(const game_t game, const void* assets)
     for (int i = 0; i < game.count; i++) {
         root = put_piece(root, game.steps[i], PAT4_OTHERS);
     }
-#if DEBUG_LEVEL
+#if DEBUG_LEVEL > 0
     for (int i = 0; i < WINPOS_SIZE; i++) {
         const point_t pos = root->parent->state.win_pos[i];
         if (in_board(pos)) {
@@ -532,7 +513,21 @@ point_t mcts(const game_t game, const void* assets)
     log("consumption: %d nodes, %d ms", tot, get_time(start_time));
     log("entropy: %.3lf, min count: %d, max count: %d", entropy(root), min_count(root)->state.count, max_count(root)->state.count);
     log("visualize:");
-    visualize_children(root);
+    fboard_t prob = {0};
+    for (const edge_t* e = root->child_edge; e; e = e->next) {
+        const node_t* child = e->to;
+        prob[child->state.pos.x][child->state.pos.y] =
+            (double)child->state.count / root->state.count;
+    }
+    if (param.prob != NULL) {
+        memcpy(param.prob, prob, sizeof(prob));
+    }
+    board_t board;
+    decode(root->state.board, board);
+    probability_print(board, prob);
+    if (((mcts_param_t*)assets)->prob) {
+        memcpy(((mcts_param_t*)assets)->prob, prob, sizeof(prob));
+    }
 
     const node_t* move = max_count(root);
     const state_t st = move->state;
@@ -572,5 +567,5 @@ point_t mcts_nn(const game_t game, const void* assets)
 }
 
 #ifdef TEST
-#    include "tests/mcts.txt"
+#    include "src/_tests/mcts.txt"
 #endif

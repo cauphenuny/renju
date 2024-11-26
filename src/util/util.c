@@ -106,3 +106,13 @@ const char* base_name(const char* fullname)
     }
     return pos;
 }
+
+bool file_exists(const char* filename)
+{
+    FILE* file = fopen(filename, "r");
+    if (file) {
+        fclose(file);
+        return true;
+    }
+    return false;
+}

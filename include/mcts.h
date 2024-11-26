@@ -14,7 +14,7 @@ typedef struct {
     bool dynamic_area;
     bool simulate_on_good_pos;
     predictor_network_t* network;
-    pfboard_t prob_matrix;
+    pfboard_t prob;
 } mcts_param_t;  // parameters for mcts
 
 point_t mcts(game_t game, const void* assets);

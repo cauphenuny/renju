@@ -108,4 +108,6 @@ int log_write(int level, const char* fmt, ...);
 int record_time(void);
 int get_time(int start_time);
 
+bool file_exists(const char* file_name);
+
 #endif

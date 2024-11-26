@@ -4,6 +4,7 @@
 from IPython import display
 from lib import libgomoku as gomoku
 import random
+import sys
 import torch
 from d2l import torch as d2l
 from torch import nn
@@ -156,8 +157,12 @@ def test():
         pos = gomoku.move(game, player)
         gomoku.game_add_step(ctypes.pointer(game), pos)
         # gomoku.game_print(game)
-        sample = gomoku.to_sample(game.board, 0, 0)
-        X = torch.tensor(sample.board, dtype=torch.float32).reshape(1, 1, 15, 15)
+        transformed_board = game.board
+        for i in range(15):
+            for j in range(15):
+                if transformed_board[i][j] == 2:
+                    transformed_board[i][j] = -1
+        X = torch.tensor(transformed_board, dtype=torch.float32).reshape(1, 1, 15, 15)
         y_hat = checker(X)
         ctype_net = checker.to_ctype()
         print(y_hat.argmax(axis=1)[0], y_hat.data)
@@ -172,7 +177,11 @@ def test():
 
 if __name__ == "__main__":
     gomoku.init()
-    gomoku.import_samples("model/fast.dat")
+    if len(sys.argv) != 2:
+        print(f'usage: {sys.argv[0]} [.dat file]')
+        sys.exit(1)
+    if gomoku.import_samples(sys.argv[1]):
+        sys.exit(2)
     batch_size = 16
     X, y = next(train_iter(batch_size))
     print(f'X shape: {X.shape}, y shape: {y.shape}')
@@ -181,8 +190,8 @@ if __name__ == "__main__":
         X = layer(X)
         print(layer.__class__.__name__,'output shape: \t',X.shape)
     
-    # train(checker, train_iter(batch_size), test_iter(batch_size), 5, 0.05, try_mps())
-    checker.load("model/checker_tmp.params")
+    train(checker, train_iter(batch_size), test_iter(batch_size), 15, 0.05, try_mps())
+    # checker.load("model/checker_tmp.params")
 
     for layer in checker.net:
         print(f'layer: {layer}, parameters: {list(x for x in layer.parameters())}')

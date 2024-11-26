@@ -35,7 +35,7 @@ point_t manual(const game_t game, const void* assets)
 {
     (void)game, (void)assets;
 
-#if defined(DEBUG_LEVEL) && DEBUG_LEVEL >= 2
+#if DEBUG_LEVEL >= 2
     log_i("waiting input. (format: %%d %%d)");
     int x, y;
     prompt_scanf("%d %d", &x, &y);

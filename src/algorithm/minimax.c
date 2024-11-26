@@ -37,12 +37,12 @@ static int evaluate_pos(board_t board, point_t pos, int sgn)
             }
             if (!blocked) {
                 switch (count) {
-                case 5: cur_score += 10000; break;
-                case 4: cur_score += 1000; break;
-                case 3: cur_score += 100; break;
-                case 2: cur_score += 10; break;
-                case 1: cur_score += 1; break;
-                default:;
+                    case 5: cur_score += 10000; break;
+                    case 4: cur_score += 1000; break;
+                    case 3: cur_score += 100; break;
+                    case 2: cur_score += 10; break;
+                    case 1: cur_score += 1; break;
+                    default:;
                 }
             }
             score += cur_score;
@@ -154,10 +154,7 @@ static int eval_cache_size;
 
 static int tim, time_limit;
 
-static unsigned int eval_cache_hash(zobrist_t key)
-{
-    return key % EVAL_CACHE_SIZE;
-}
+static unsigned int eval_cache_hash(zobrist_t key) { return key % EVAL_CACHE_SIZE; }
 
 static eval_cache_t create_eval_cache()
 {
@@ -245,8 +242,7 @@ static result_t minimax_search(int depth, int alpha, int beta)
         for (int j = 0; j < BOARD_SIZE; j++) {
             const point_t pos = (point_t){i, j};
             if (adjacent(cur_state.board, pos) &&
-                ((put_id != first_id) ||
-                 !is_forbidden(cur_state.board, pos, put_id, false))) {
+                ((put_id != first_id) || !is_forbidden(cur_state.board, pos, put_id, false))) {
                 cur_state = mm_put_piece(cur_state, pos, id);
                 const result_t child = minimax_search(depth - 1, alpha, beta);
                 cur_state = mm_remove_piece(cur_state, pos);
@@ -280,6 +276,8 @@ point_t minimax(const game_t game, const void* assets)
 {
     first_id = game.first_id;
     (void)assets;
+    board_t board;
+    memcpy(board, game.board, sizeof(board));
 
     max_cnt = 0;
     time_limit = game.time_limit - 10;
@@ -288,8 +286,8 @@ point_t minimax(const game_t game, const void* assets)
     eval_cache = create_eval_cache();
     eval_reuse_cnt = 0, eval_cache_size = 0;
     if (eval_cache_buffer == NULL) {
-        eval_cache_buffer = (eval_cache_entry_t*)malloc(
-            sizeof(eval_cache_entry_t) * EVAL_CACHE_ENTRY_SIZE);
+        eval_cache_buffer =
+            (eval_cache_entry_t*)malloc(sizeof(eval_cache_entry_t) * EVAL_CACHE_ENTRY_SIZE);
     }
     memcpy(cur_state.board, game.board, sizeof(board_t));
     cur_state.id = game.cur_id == 1 ? 1 : -1;
@@ -300,8 +298,7 @@ point_t minimax(const game_t game, const void* assets)
     for (int8_t i = 0; i < BOARD_SIZE; i++) {
         for (int8_t j = 0; j < BOARD_SIZE; j++) {
             const point_t p = {i, j};
-            if (available(game.board, p) &&
-                !is_forbidden(game.board, p, game.cur_id, false)) {
+            if (available(board, p) && !is_forbidden(board, p, game.cur_id, false)) {
                 pos = p;
                 break;
             }

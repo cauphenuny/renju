@@ -2,26 +2,37 @@
 // date: 2024/10/19
 
 #include "game.h"
+#include "neuro.h"
 #include "players.h"
 #include "util.h"
+#include "pattern.h"
+
+#include <string.h>
 
 /// @brief start a game with player {p1} and {p2}, {p{first_id}} move first
 /// @param time_limit game time limit
-game_t start_game(player_t p1, player_t p2, int first_id, int time_limit)
+game_result_t start_game(player_t p1, player_t p2, int first_id, int time_limit,
+                         checker_network_t* checker)
 {
     const player_t players[] = {{}, p1, p2};
     const char* colors[] = {"", L_GREEN, L_RED};
     log("start game: %s vs %s, first player: %d", p1.name, p2.name, first_id);
     game_t game = game_new(first_id, time_limit);
+    game_result_t result = {0};
     game_print(game);
+#define WIN(winner_id)                                 \
+    do {                                               \
+        result.game = game, result.winner = winner_id; \
+        return result;                                 \
+    } while (0)
     while (1) {
         const int id = game.cur_id;
         log_i("------ step %s#%d" RESET ", player%d's turn ------", colors[id], game.count + 1, id);
         if (!have_space(game.board, id)) {
             log("no more space for player%d", id);
-            game.winner = 3 - id;
-            return game;
+            WIN(3 - id);
         }
+        mcts_params_default.prob = result.prob[game.count];
         const int tim = record_time();
         const point_t pos = players[id].move(game, players[id].assets);
 
@@ -39,10 +50,7 @@ game_t start_game(player_t p1, player_t p2, int first_id, int time_limit)
                 } else
                     log_e("invalid argument!");
                 continue;
-            case GAMECTRL_GIVEUP:
-                log("player %d gave up.", id);
-                game.winner = 3 - id;
-                return game;
+            case GAMECTRL_GIVEUP: log("player %d gave up.", id); WIN(3 - id);
             default: break;
         }
         if (!available(game.board, pos)) {
@@ -58,24 +66,24 @@ game_t start_game(player_t p1, player_t p2, int first_id, int time_limit)
                 log_e("forbidden position! (%s)", pattern4_typename[forbid]);
                 prompt_pause();
                 // continue;
-                game.winner = 3 - id;
-                return game;
+                WIN(3 - id);
             }
         }
 
         game_add_step(&game, pos);
-#if defined(DEBUG_LEVEL) && DEBUG_LEVEL > 0
+#if DEBUG_LEVEL > 0
         game_serialize(game, "");
 #endif
         game_print(game);
+        if (checker != NULL) {
+            int ret = checker_forward(checker, game.board);
+            if (ret)
+                log_w("checker returned: %d", ret);
+            else
+                log("checker returned: %d", ret);
+        }
 
-        if (is_draw(game.board)) {
-            game.winner = 0;
-            return game;
-        }
-        if (check(game.board, pos)) {
-            game.winner = id;
-            return game;
-        }
+        if (is_draw(game.board)) WIN(0);
+        if (check(game.board, pos)) WIN(id);
     }
 }

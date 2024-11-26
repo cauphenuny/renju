@@ -1,4 +1,4 @@
-#include "board.h"
+#include "pattern.h"
 #include "players.h"
 #include "zobrist.h"
 

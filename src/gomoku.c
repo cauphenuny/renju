@@ -1,9 +1,9 @@
 // author: Cauphenuny
 // date: 2024/07/27
-#include "board.h"
 #include "game.h"
 #include "init.h"
 #include "neuro.h"
+#include "dataset.h"
 #include "players.h"
 #include "server.h"
 #include "util.h"
@@ -41,11 +41,33 @@ static void print_statistics(void)
     }
 }
 
-static game_t games[GAME_STORAGE_SIZE];
+static game_result_t results[GAME_STORAGE_SIZE];
 static int tot;
 static char* sample_file;
-char* model_file;
+static char* model_file;
 static checker_network_t checker;
+
+static void save_data()
+{
+    log("save game data? [y/n]");
+    char c = prompt_pause();
+    if (c == 'y') {
+        char name[1024];
+        add_samples(results, tot, true);
+        do {
+            if (!sample_file) {
+                log("input file name: ");
+            } else {
+                log("input file name (. for %s): ", sample_file);
+            }
+            prompt_scanf("%s", name);
+            if (strcmp(name, ".") == 0 && sample_file) strcpy(name, sample_file);
+            // log("filter? [y/n]");
+            // c = prompt_pause();
+            // add_samples(results, tot, c == 'y');
+        } while (export_samples(name));
+    }
+}
 
 static void signal_handler(int signum)
 {
@@ -54,16 +76,8 @@ static void signal_handler(int signum)
             log_s("\n");
             log("received signal SIGINT, terminate.");
             print_statistics();
-            if (sample_file && tot) {
-                log("save game data? [y/n]");
-                char c = prompt_pause();
-                if (c == 'y') {
-                    char name[1024];
-                    log("input file name: ");
-                    prompt_scanf("%s", name);
-                    add_samples(games, tot);
-                    export_samples(name);
-                }
+            if (tot) {
+                save_data();
             }
             exit(0);
         default: log_e("unexpected signal %d", signum);
@@ -98,10 +112,12 @@ int main(int argc, char* argv[])
         for (int i = 1; i < argc; i++) {
             char* p = argv[i] + strlen(argv[i]);
             while (*p != '.' && p > argv[i]) p--;
-            if (strcmp(p, ".dat") == 0 && !sample_file)
+            if (strcmp(p, ".dat") == 0 && !sample_file && file_exists(argv[i])) {
                 sample_file = argv[i], import_samples(sample_file);
-            if (strcmp(p, ".mod") == 0 && !model_file)
+            }
+            if (strcmp(p, ".mod") == 0 && !model_file && file_exists(argv[i])) {
                 model_file = argv[i], checker = checker_load(model_file);
+            }
         }
     }
 
@@ -142,10 +158,10 @@ int main(int argc, char* argv[])
 
     int id = 1;
     while (1) {
-        const game_t game =
-            start_game(preset_players[player1], preset_players[player2], id, time_limit);
-        if (tot < GAME_STORAGE_SIZE) games[tot++] = game;
-        const int winner = game.winner;
+        const game_result_t result = start_game(preset_players[player1], preset_players[player2],
+                                                id, time_limit, model_file ? &checker : NULL);
+        if (tot < GAME_STORAGE_SIZE) results[tot++] = result;
+        const int winner = result.winner;
         statistics[0][id]++;
         if (winner) {
             log_i("player%d wins", winner);
@@ -157,6 +173,7 @@ int main(int argc, char* argv[])
         }
         print_statistics();
         id = 3 - id;
+        // save_data();
     }
     return 0;
 }

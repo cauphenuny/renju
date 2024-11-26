@@ -1,7 +1,9 @@
+// author: Cauphenuny
+// date: 2024/11/25
+
 #include "neuro.h"
 
 #include "board.h"
-#include "game.h"
 #include "util.h"
 
 #undef log
@@ -13,133 +15,6 @@
 #include <string.h>
 
 #define N BOARD_SIZE
-
-#define DATASET_SIZE 1048576
-
-sample_t to_sample(const board_t board, int winner, int final_winner)
-{
-    sample_t sample = {0};
-    for (int i = 0; i < N; i++) {
-        for (int j = 0; j < N; j++) {
-            if (!board[i][j]) continue;
-            sample.board[i][j] = board[i][j] == 1 ? 1 : -1;
-        }
-    }
-    sample.winner = winner;
-    sample.final_winner = final_winner;
-    return sample;
-}
-
-typedef struct {
-    sample_t samples[DATASET_SIZE];
-    int size;
-} dataset_t;
-
-static dataset_t dataset;
-
-static sample_t rotate(sample_t raw)
-{
-    sample_t ret = {0};
-    for (int i = 0; i < N; i++) {
-        for (int j = 0; j < N; j++) {
-            ret.board[j][N - 1 - i] = raw.board[i][j];
-        }
-    }
-    ret.winner = raw.winner;
-    ret.final_winner = raw.final_winner;
-    return ret;
-}
-static sample_t reflect_x(sample_t raw)
-{
-    sample_t ret = {0};
-    for (int i = 0; i < N; i++) {
-        for (int j = 0; j < N; j++) {
-            ret.board[N - 1 - i][j] = raw.board[i][j];
-        }
-    }
-    ret.winner = raw.winner;
-    ret.final_winner = raw.final_winner;
-    return ret;
-}
-static sample_t reflect_y(sample_t raw)
-{
-    sample_t ret = {0};
-    for (int i = 0; i < N; i++) {
-        for (int j = 0; j < N; j++) {
-            ret.board[i][N - 1 - j] = raw.board[i][j];
-        }
-    }
-    ret.winner = raw.winner;
-    ret.final_winner = raw.final_winner;
-    return ret;
-}
-
-static void add_sample(sample_t sample)
-{
-    if (dataset.size < DATASET_SIZE) {
-        dataset.samples[dataset.size++] = sample;
-    }
-}
-
-void add_samples(game_t* games, int count)
-{
-    for (int i = 0; i < count; i++) {
-        game_t tmp = game_new(games[i].first_id, games[i].time_limit);
-        for (int j = 0; j < games[i].count; j++) {
-            point_t pos = games[i].steps[j];
-            game_add_step(&tmp, pos);
-            // emphasis_print(tmp.board, pos);
-            int id = (j == (games[i].count - 1)) ? games[i].winner : 0;
-            sample_t raw_sample = to_sample(tmp.board, id, games[i].winner);
-            dataset.samples[dataset.size++] = raw_sample;
-            add_sample(raw_sample);
-            if (j > 0) {
-                add_sample(rotate(raw_sample));
-                add_sample(rotate(rotate(raw_sample)));
-                add_sample(rotate(rotate(rotate(raw_sample))));
-                add_sample(reflect_x(raw_sample));
-                add_sample(reflect_y(raw_sample));
-            }
-            if (dataset.size >= DATASET_SIZE) return;
-        }
-    }
-}
-
-void export_samples(const char* file_name)
-{
-    FILE* file = fopen(file_name, "wb");
-    if (!file) {
-        log_e("file open failed: %s", file_name);
-        return;
-    }
-    fwrite(&dataset, sizeof(dataset_t), 1, file);
-    fclose(file);
-    log("exported %d samples", dataset.size);
-    log("sizeof sample_t: %d", sizeof(sample_t));
-}
-
-void import_samples(const char* file_name)
-{
-    FILE* file = fopen(file_name, "rb");
-    if (!file) {
-        log_e("no such file: %s", file_name);
-        return;
-    }
-    fread(&dataset, sizeof(dataset_t), 1, file);
-    fclose(file);
-    log("imported %d samples", dataset.size);
-}
-
-int dataset_size() { return dataset.size; }
-
-sample_t random_sample() { return dataset.samples[rand() % dataset.size]; }
-
-sample_t find_sample(int index)
-{
-    if (index < dataset.size) return dataset.samples[index];
-    log_e("index out of range: %d", index);
-    return dataset.samples[0];
-}
 
 static void relu(float x[], int size)
 {
@@ -298,10 +173,12 @@ int checker_forward(checker_network_t* network, const board_t board)
            output[1 - cur], checker_params.linear.output_size, network->linear.weight,
            network->linear.bias),
         cur = 1 - cur;
+#if DEBUG_LEVEL > 0
     fprintf(stderr, "result: %.3lf, %.3lf, %.3lf\n", output[cur][0], output[cur][1],
             output[cur][2]);
+#endif
     int index = 0;
-    for (int i = 1; i < 2; i++) {
+    for (int i = 1; i < 3; i++) {
         if (output[cur][i] > output[cur][index]) index = i;
     }
     return index;

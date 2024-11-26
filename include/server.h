@@ -2,6 +2,7 @@
 #define SERVER_H
 #include "game.h"
 #include "players.h"
+#include "neuro.h"
 
-game_t start_game(player_t p1, player_t p2, int first_id, int time_limit);
+game_result_t start_game(player_t p1, player_t p2, int first_id, int time_limit, checker_network_t* checker);
 #endif

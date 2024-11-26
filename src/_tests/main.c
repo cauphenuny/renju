@@ -4,8 +4,10 @@
 #include "minimax.h"
 #include "server.h"
 #include "util.h"
+#include "pattern.h"
 
 #include <assert.h>
+#include <string.h>
 
 #ifndef TEST
 #    error "define TEST to run unit tests!"
@@ -95,7 +97,7 @@ int main()
     const char ch = prompt_pause();
 
     if (ch == 'y') {
-        start_game(preset_players[MINIMAX], preset_players[MINIMAX], 1, 2000);
+        start_game(preset_players[MINIMAX], preset_players[MINIMAX], 1, 2000, NULL);
         log("zobrist tests passed.");
     }
 
