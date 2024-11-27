@@ -20,8 +20,11 @@ int parse(char s[])
     if (strcmp(s, "export") == 0) {
         return GAMECTRL_EXPORT;
     }
-    if (strcmp(s, "give") == 0) { // give up
+    if (strcmp(s, "give") == 0) {  // give up
         return GAMECTRL_GIVEUP;
+    }
+    if (strcmp(s, "change") == 0) {
+        return GAMECTRL_CHANGE_PLAYER;
     }
     if (isupper(s[0])) return strlen(s) == 1 ? s[0] - 'A' : -1;
     if (islower(s[0])) return strlen(s) == 1 ? s[0] - 'a' : -1;
@@ -48,7 +51,8 @@ point_t manual(const game_t game, const void* assets)
     switch (first) {
         case GAMECTRL_GIVEUP:
         case GAMECTRL_EXPORT:
-        case GAMECTRL_WITHDRAW: return (point_t){first, second};
+        case GAMECTRL_WITHDRAW:
+        case GAMECTRL_CHANGE_PLAYER: return (point_t){first, second};
         default: {
             const point_t pos = (point_t){second - 1, first};
             if (in_board(pos)) return pos;

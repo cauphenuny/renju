@@ -97,7 +97,6 @@ prediction_t predict(const predictor_network_t* predictor, const board_t board, 
            predictor_params.shared.conv3, relu),
         cur = 1 - cur;
     memcpy(shared_output, output[cur], sizeof(shared_output));
-    log("shared consumption: %dms", get_time(tim)), tim = record_time();
 
     conv2d(output[cur], output[1 - cur], size, predictor->value.conv, predictor_params.value.conv,
            relu),
@@ -109,7 +108,6 @@ prediction_t predict(const predictor_network_t* predictor, const board_t board, 
            tanh_),
         cur = 1 - cur;
     prediction.eval = output[cur][0];
-    log("value consumption: %dms", get_time(tim)), tim = record_time();
 
     memcpy(output[cur], shared_output, sizeof(shared_output));
     conv2d(output[cur], output[1 - cur], size, predictor->policy.conv1,
@@ -119,7 +117,7 @@ prediction_t predict(const predictor_network_t* predictor, const board_t board, 
            predictor_params.policy.conv2, softmax),
         cur = 1 - cur;
     memcpy(prediction.prob, output[cur], sizeof(prediction.prob));
-    log("policy consumption: %dms", get_time(tim));
+    log("consumption: %dms", get_time(tim));
     return prediction;
 }
 
@@ -130,16 +128,21 @@ void print_prediction(const prediction_t prediction)
     probability_print(board, prediction.prob);
 }
 
-int predictor_save(const predictor_network_t* network, const char* file_name)
+int predictor_save(const predictor_network_t* network, const char* file_basename)
 {
-    FILE* file = fopen(file_name, "wb");
+    char file_fullname[1024];
+    sprintf(file_fullname, "%s.v%d.%dch.mod", file_basename, NETWORK_VERSION, MAX_CHANNEL);
+    FILE* file = fopen(file_fullname, "wb");
     if (!file) {
-        log_e("file open failed: %s", file_name);
+        log_e("file open failed: %s", file_fullname);
         return 1;
     }
+    int version = NETWORK_VERSION;
+    fwrite(&version, sizeof(version), 1, file);
+    fwrite(&predictor_params, sizeof(predictor_params), 1, file);
     fwrite(network, sizeof(predictor_network_t), 1, file);
     fclose(file);
-    log("network saved to %s", file_name);
+    log("network saved to %s", file_fullname);
     return 0;
 }
 
@@ -149,6 +152,18 @@ int predictor_load(predictor_network_t* network, const char* file_name)
     if (!file) {
         log_e("no such file: %s", file_name);
         return 1;
+    }
+    int version = 0;
+    fread(&version, sizeof(version), 1, file);
+    if (version != NETWORK_VERSION) {
+        log_e("network version mismatch: %d (expect %d)", version, NETWORK_VERSION);
+        return 2;
+    }
+    struct predictor_params_t get_params;
+    fread(&get_params, sizeof(get_params), 1, file);
+    if (memcmp(&get_params, &predictor_params, sizeof(predictor_params))) {
+        log_e("network params mismatch");
+        return 3;
     }
     fread(network, sizeof(predictor_network_t), 1, file);
     fclose(file);
@@ -160,7 +175,9 @@ point_t move_nn(game_t game, const void* assets)
 {
     if (!game.count) return (point_t){N / 2, N / 2};
     const predictor_network_t* predictor = assets;
-    const prediction_t prediction = predict(predictor, game.board, game.first_id, game.cur_id);
+    board_t board;
+    memcpy(board, game.board, sizeof(board_t));
+    prediction_t prediction = predict(predictor, board, game.first_id, game.cur_id);
     point_t pos = {0, 0};
     bool forbid = game.cur_id == game.first_id;
     for (int8_t i = 0; i < N; i++) {
@@ -173,5 +190,6 @@ point_t move_nn(game_t game, const void* assets)
             }
         }
     }
+    board[pos.x][pos.y] = game.cur_id;
     return pos;
 }

@@ -165,7 +165,7 @@ int main(int argc, char* argv[])
         const int winner = result.winner;
         statistics[0][id]++;
         if (winner) {
-            log_i("player%d wins", winner);
+            log_i("player%d (%s) wins", winner, winner == id ? "first" : "second");
             statistics[winner][0]++;
             statistics[winner][(winner != id) + 1]++;
         } else {

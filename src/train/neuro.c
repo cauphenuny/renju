@@ -73,13 +73,14 @@ void conv2d_impl(const float* restrict input, int input_channel, int input_x, in
     memset(output, 0, output_size * output_channel * sizeof(float));
 // log("conv2d: (%d, %d, %d) => (%d, %d, %d)", input_channel, input_x, input_y, output_channel,
 //     _output_x, _output_y);
-#pragma omp parallel for collapse(4)
+#pragma omp parallel for
     for (int och = 0; och < output_channel; och++) {
         for (int ich = 0; ich < input_channel; ich++) {
             for (int i = 0; i < _output_x; i++) {
                 for (int j = 0; j < _output_y; j++) {
                     const int x = i - padding, y = j - padding;
                     float sum = 0;
+#pragma omp simd reduction(+:sum)
                     for (int offset_x = 0; offset_x < kernel_size; offset_x++) {
                         for (int offset_y = 0; offset_y < kernel_size; offset_y++) {
                             const int cur_x = x + offset_x, cur_y = y + offset_y;
@@ -97,7 +98,7 @@ void conv2d_impl(const float* restrict input, int input_channel, int input_x, in
             }
         }
     }
-#pragma omp parallel for collapse(3)
+#pragma omp parallel for collapse(2)
     for (int och = 0; och < output_channel; och++) {
         for (int i = 0; i < _output_x; i++) {
             for (int j = 0; j < _output_y; j++) {

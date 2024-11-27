@@ -102,47 +102,79 @@ def evaluate_accuracy_gpu(net, data_iter, device=None):
     return metric[0] / metric[1]
 
 class Predictor(nn.Module):
-    def __init__(self):
+    def __init__(self, max_channel = 64, model_name = None):
         super().__init__()
+        """
+shared = 2 * 32 * 225 * 9 + 32 * 64 * 225 * 25 + 64 * 128 * 225 * 9
+value = 128 * 4 * 1 + 4 * 225 * 128 + 128 * 1
+policy = 128 * 32 * 225 * 9 + 16 * 1 * 225 * 1
+print(f'shared: {shared}, value: {value}, policy: {policy}, sum: {(shared+value+policy)/1e6}')
+        """
         self.shared = nn.Sequential(
-            nn.Conv2d(2, 64, kernel_size=5, padding=2), nn.ReLU(), 
-            nn.Conv2d(64, 128, kernel_size=3, padding=1), nn.ReLU(), nn.Dropout(), 
+            nn.Conv2d(2, 32, kernel_size=5, padding=2), nn.ReLU(), 
+            nn.Conv2d(32, 64, kernel_size=5, padding=2), nn.ReLU(), nn.Dropout(), 
+            nn.Conv2d(64, max_channel, kernel_size=3, padding=1), nn.ReLU()
         )
         self.value_net = nn.Sequential(
             self.shared, 
-            nn.Conv2d(128, 8, kernel_size=1, padding=0), nn.ReLU(), 
+            nn.Conv2d(max_channel, 4, kernel_size=1, padding=0), nn.ReLU(), 
             nn.Flatten(),
-            nn.Linear(8 * 225, 128), nn.ReLU(), nn.Dropout(), 
+            nn.Linear(4 * 15 * 15, 128), nn.ReLU(), nn.Dropout(), 
             nn.Linear(128, 1), nn.Tanh()
         )
         self.policy_net = nn.Sequential(
             self.shared, 
-            nn.Conv2d(128, 16, kernel_size=3, padding=1), nn.ReLU(), nn.Dropout(), 
-            nn.Flatten(), 
-            nn.Linear(16 * 225, 225), nn.LogSoftmax(dim=1)
+            nn.Conv2d(max_channel, 32, kernel_size=3, padding=1), nn.ReLU(), nn.Dropout(), 
+            nn.Conv2d(32, 1, kernel_size=1, padding=0),
+            nn.Flatten(), nn.LogSoftmax(dim=1)
         )
+        self.max_channel = max_channel
+        if model_name != None:
+            self.load(model_name)
+        self.model_name = model_name
 
-    def save(self, file_path):
-        torch.save(self.state_dict(), file_path)
+    def save(self, basename):
+        name = f'{basename}.v{gomoku.NETWORK_VERSION}.{self.max_channel}ch.params'
+        torch.save(self.state_dict(), name)
 
-    def load(self, file_path):
-        self.load_state_dict(torch.load(file_path))
+    def load(self, basename):
+        name = f'{basename}.v{gomoku.NETWORK_VERSION}.{self.max_channel}ch.params'
+        self.to(try_mps())
+        print(f'load params from {name}')
+        self.load_state_dict(torch.load(name))
 
     def forward(self, X):
         return self.policy_net(X), self.value_net(X)
     
     def to_ctype(self):
-        raise NotImplementedError("The method to_ctype is not implemented yet.")
         net = gomoku.predictor_network_t()
+        print('created')
         net.shared.conv1.weight, net.shared.conv1.bias = to_ctype(self.shared[0])
+        print('completed 1')
         net.shared.conv2.weight, net.shared.conv2.bias = to_ctype(self.shared[2])
+        print('completed 2')
         net.shared.conv3.weight, net.shared.conv3.bias = to_ctype(self.shared[5])
+        print('completed 3')
         net.value.conv.weight, net.value.conv.bias = to_ctype(self.value_net[1])
+        print('completed 4')
         net.value.linear1.weight, net.value.linear1.bias = to_ctype(self.value_net[4])
+        print('completed 5')
         net.value.linear2.weight, net.value.linear2.bias = to_ctype(self.value_net[7])
+        print('completed 6')
         net.policy.conv1.weight, net.policy.conv1.bias = to_ctype(self.policy_net[1])
+        print('completed 7')
         net.policy.conv2.weight, net.policy.conv2.bias = to_ctype(self.policy_net[4])
+        print('completed 8')
         return net
+
+    def export_ctype(self, name = None):
+        if name == None:
+            name = self.model_name
+        if name == None:
+            name = input('input model name: ')
+        print(f'exporting model "{name}"')
+        ctype_net = self.to_ctype()
+        gomoku.predictor_save(ctypes.pointer(ctype_net), name)
 
 # %%
 def calculate_entropy(tensor):
@@ -162,9 +194,11 @@ def train(animated, net, train_iter, test_iter, num_epochs, lr, device):
     print('training on', device)
     net.to(device)
     optimizer = torch.optim.SGD(net.parameters(), lr=lr, momentum=0.9)
+    # optimizer = torch.optim.Adam(net.parameters(), lr=lr)
     timer, num_batches = d2l.Timer(), len(train_iter)
     print(f'num_batches: {num_batches}')
     loss = nn.MSELoss()
+    metric_record = []
     if animated:
         animator = d2l.Animator(xlabel='epoch', xlim=[1, num_epochs], ylim=[0, 3.0],
                         legend=['train loss', 'test loss', 'entropy'])
@@ -190,19 +224,22 @@ def train(animated, net, train_iter, test_iter, num_epochs, lr, device):
         train_l1 = metric[1] / metric[0]
         train_l2 = metric[2] / metric[0]
         entropy = metric[3] / metric[0]
-        test_loss = evaluate_loss(net.value_net, device, test_iter, loss)
+        test_l1 = evaluate_loss(net.value_net, device, test_iter, loss)
+        metric_record.append([train_l1, test_l1, train_l2, entropy])
         if animated:
-            animator.add(epoch + 1, (train_l1, test_loss, entropy))
+            animator.add(epoch + 1, (train_l1, test_l1, entropy))
         else:
-            print(f'epoch {epoch + 1}, loss {train_l1:.3f}, {train_l2:.3f}, test value loss {test_loss:.3f}, entropy {entropy:.3f}')
-    print(f'value loss {train_l1:.3f}, policy loss {train_l2:.3f}, test value loss {test_loss:.3f}, entropy {entropy:.3f}')
+            print(f'epoch {epoch + 1}, loss {train_l1:.3f}, {train_l2:.3f}, test value loss {test_l1:.3f}, entropy {entropy:.3f}')
+    print(f'value loss {train_l1:.3f}, policy loss {train_l2:.3f}, test value loss {test_l1:.3f}, entropy {entropy:.3f}')
     print(f'{metric[0] * num_epochs / timer.sum():.1f} examples/sec on {str(device)}')
+    return metric_record
 
 
 # %%
-def test_sample(net, sample):
+def test_sample(net, ctype_net, sample):
     X, prob, eval = to_tensor(sample)
-    X = X.reshape(1, 2, 15, 15)
+    X = X.reshape(1, 2, 15, 15).to(try_mps())
+    net.to(try_mps())
     net.eval()
 
     # print(X)
@@ -226,11 +263,13 @@ def test_sample(net, sample):
 
     print(f'eval: {eval_hat[0][0].item():.3f}')
 
-    # cur_id = sample.cur_id[0][0]
-    # if cur_id == -1:
-    #     cur_id = 2
-    # prediction = gomoku.predict(board_array, 1, cur_id, ctypes.pointer(net.to_ctype()))
-    # gomoku.print_prediction(prediction)
+    cur_id = sample.cur_id[0][0]
+    if cur_id == -1:
+        cur_id = 2
+    print('call gomoku.predict...')
+    prediction = gomoku.predict(ctypes.pointer(ctype_net), board_array, 1, 0)
+    print(f'result eval: {prediction.eval}')
+    gomoku.probability_print(board_array, prediction.prob)
 
 # %%
 
@@ -274,30 +313,43 @@ if __name__ == '__main__':
     predictor = Predictor()
 
     X, policy, value = next(train_iter(batch_size))
-    print(f'X shape: {X.shape}, y shape: {policy.shape}')
-    for layer in predictor.value_net:
-        print(f'layer: {layer}, parameters: {list(x.shape for x in layer.parameters())}')
-        X = layer(X)
-        print(layer.__class__.__name__,'output shape: \t',X.shape)
-    X, policy, value = next(train_iter(batch_size))
-    for layer in predictor.policy_net:
-        print(f'layer: {layer}, parameters: {list(x.shape for x in layer.parameters())}')
-        X = layer(X)
-        print(layer.__class__.__name__,'output shape: \t',X.shape)
-        
     print(f'dataset output shape: {policy.shape}, {value.shape}')
 
 # %%
-    batch_size = 16
-    train(False, predictor, train_iter(batch_size), test_iter(batch_size), 10, 0.001, try_mps())
-    predictor.save("model/predictor_min.params")
+    batch_size = 32
+    num_epochs = 10
+    lr = 0.005
+    metrics = train(False, predictor, train_iter(batch_size), test_iter(batch_size), num_epochs, lr, try_mps())
+    animator1 = d2l.Animator(xlabel='epoch', xlim=[1, num_epochs], ylim=[0, 1], 
+                             legend=['train value loss', 'test value loss'])
+    animator2 = d2l.Animator(xlabel='epoch', xlim=[1, num_epochs], ylim=[2, 5], 
+                             legend=['train policy loss', 'entropy'])
+    for i, metric in enumerate(metrics):
+        animator1.add(i + 1, (metric[0], metric[1]))
+        animator2.add(i + 1, (metric[2], metric[3]))
     predictor.to(cpu())
 
+    print(f'completed, loss: {metrics[-1][0]:.3f}, {metrics[-1][2]:.3f}, test loss {metrics[-1][1]:.3f}, entropy {metrics[-1][3]:.3f}')
+
+    # predictor.save("model/predictor_min.params")
+    # print('start load')
+    # predictor.load("model/predictor_min.params")
+    # input('press enter to continue')
+    # predictor.to_ctype("model/predictor_min_tmp.mod")
+
+    # ctype_net = predictor.to_ctype()
+    # gomoku.predictor_save(ctypes.pointer(ctype_net), 'model/predictor_min.tmp.mod')
+
+    # ctype_net = gomoku.predictor_network_t()
+    # gomoku.predictor_load(ctypes.pointer(ctype_net), 'model/predictor_min.tmp.mod')
+
 # %%
-    predictor.load("model/predictor_min.params")
-    while True:
-        sample = gomoku.random_sample()
-        test_sample(predictor, sample)
-        gomoku.print_sample(sample)
-        input('press enter to continue')
+    # for i in range(gomoku.dataset_size()):
+    #     sample=gomoku.find_sample(i)
+    #     if sample.winner == 0:
+    #         print(i)
+    #         continue
+    #     gomoku.print_sample(sample)
+    #     test_sample(predictor, ctype_net, sample)
+    #     input('press enter to continue')
 # %%

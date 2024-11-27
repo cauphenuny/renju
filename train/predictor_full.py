@@ -104,7 +104,12 @@ def evaluate_accuracy_gpu(net, data_iter, device=None):
 class Predictor(nn.Module):
     def __init__(self):
         super().__init__()
-        # 2 * 32 * 225 * 9 + 32 * 64 * 225 * 9 + 64 * 256 * 225 * 25
+        """
+shared = 2 * 32 * 225 * 9 + 32 * 64 * 225 * 9 + 64 * 256 * 225 * 25
+value  = 256 * 4 * 225 * 1 + 4 * 225 * 128
+policy = 256 * 16 * 225 * 25 + 16 * 1 * 225 * 1
+print(f'shared: {shared}, value: {value}, policy: {policy}, sum: {shared+value+policy}')
+        """
         self.shared = nn.Sequential(
             nn.Conv2d(2, 32, kernel_size=3, padding=1), nn.ReLU(), 
             nn.Conv2d(32, 64, kernel_size=3, padding=1), nn.ReLU(), nn.Dropout(), 
@@ -270,34 +275,22 @@ if __name__ == '__main__':
     # if gomoku.import_samples(sys.argv[1]):
     #     sys.exit(2)
     test_size = gomoku.dataset_size() // 10
-    print(f'dataset size: {gomoku.dataset_size()}, test size: {test_size}')
+    print(f'dataset size: {gomoku.dataset_size()}, test size: {test_size}\n')
 
     batch_size = 256
 
     predictor = Predictor()
 
     X, policy, value = next(train_iter(batch_size))
-    print(f'X shape: {X.shape}, y shape: {policy.shape}')
-    for layer in predictor.value_net:
-        print(f'layer: {layer}, parameters: {list(x.shape for x in layer.parameters())}')
-        X = layer(X)
-        print(layer.__class__.__name__,'output shape: \t',X.shape)
-    X, policy, value = next(train_iter(batch_size))
-    for layer in predictor.policy_net:
-        print(f'layer: {layer}, parameters: {list(x.shape for x in layer.parameters())}')
-        X = layer(X)
-        print(layer.__class__.__name__,'output shape: \t',X.shape)
-        
     print(f'dataset output shape: {policy.shape}, {value.shape}')
 
-# %%
     batch_size = 32
     predictor.load("model/predictor_v0.params")
     train(False, predictor, train_iter(batch_size), test_iter(batch_size), 5, 0.001, try_mps())
     predictor.to(cpu())
 
-# %%
     X, policy, value = next(train_iter(1))
     # detail(predictor, X)
     test_sample(predictor, gomoku.random_sample())
+
 # %%

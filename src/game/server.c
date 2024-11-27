@@ -14,7 +14,7 @@
 game_result_t start_game(player_t p1, player_t p2, int first_id, int time_limit,
                          predictor_network_t* predictor)
 {
-    const player_t players[] = {{}, p1, p2};
+    player_t players[] = {{}, p1, p2};
     const char* colors[] = {"", L_GREEN, L_RED};
     log("start game: %s vs %s, first player: %d", p1.name, p2.name, first_id);
     game_t game = game_new(first_id, time_limit);
@@ -51,6 +51,14 @@ game_result_t start_game(player_t p1, player_t p2, int first_id, int time_limit,
                     log_e("invalid argument!");
                 continue;
             case GAMECTRL_GIVEUP: log("player %d gave up.", id); WIN(3 - id);
+            case GAMECTRL_CHANGE_PLAYER:
+                if (pos.y >= 0 && pos.y < PLAYER_CNT) {
+                    players[3 - id] = preset_players[pos.y];
+                    log("changed opponent to %s", players[3 - id].name);
+                } else {
+                    log("invalid argument!");
+                }
+                continue;
             default: break;
         }
         if (!available(game.board, pos)) {
@@ -75,11 +83,13 @@ game_result_t start_game(player_t p1, player_t p2, int first_id, int time_limit,
         game_serialize(game, "");
 #endif
         game_print(game);
-        // if (predictor != NULL) {
-        //     prediction_t pred = predict(predictor, game.board, game.first_id, game.cur_id);
-        //     log("evaluate: %f", pred.eval);
-        //     probability_print(game.board, pred.prob);
-        // }
+        if (predictor != NULL) {
+            prediction_t pred = predict(predictor, game.board, game.first_id, 3 - game.cur_id);
+            log_i("evaluate: %f",
+                  pred.eval *
+                      (game.first_id == 1 ? 1 : -1));  // for 1.00 -> 'o' wins, -1.00 -> 'x' wins
+            // probability_print(game.board, pred.prob);
+        }
 
         if (is_draw(game.board)) WIN(0);
         if (check(game.board, pos)) WIN(id);
