@@ -4,6 +4,7 @@
 #include "mcts.h"
 
 #include "board.h"
+#include "network.h"
 #include "pattern.h"
 #include "util.h"
 
@@ -22,6 +23,8 @@ typedef struct {
     comp_board_t board, visited;
     int piece_cnt, visited_cnt;
     int result, count;
+    double prior_prob;
+    bool evaluated;
     int capacity;
     point_t begin, end;
     point_t pos;
@@ -139,8 +142,9 @@ static int is_forbidden_comp(comp_board_t board, point_t pos, int id, int depth)
     return pat4;
 }
 
+/*
 /// @brief print data of state {st}
-void print_state(const state_t st)
+static void print_state(const state_t st)
 {
     log("print state:");
     log("board:");
@@ -158,6 +162,7 @@ void print_state(const state_t st)
     }
     log("done");
 }
+*/
 
 /// @brief get positions which are winning pos after last move
 static void get_win_pos(state_t* st) {
@@ -209,6 +214,7 @@ static state_t empty_state(point_t begin, point_t end, int next_id)
     st.begin = begin;
     st.end = end;
     st.id = next_id;
+    st.prior_prob = 1;
     st.capacity = ((int)end.x - begin.x) * ((int)end.y - begin.y);
     st.pos = (point_t){-1, -1};
     get_win_pos(&st);
@@ -243,6 +249,7 @@ static state_t update_state(state_t state, point_t pos, pattern4_t new_pat4)
     }
     get_win_pos(&state);
     state.id = 3 - state.id;  // change player
+    state.prior_prob = 1, state.evaluated = false;
     return state;
 }
 
@@ -281,9 +288,10 @@ static double ucb_eval(const node_t* node)
 {
     const int flag = (node->parent->state.id == 1) ? 1 : -1;
     const int win_cnt = node->state.count + flag * node->state.result;
-    const double f1 = (double)win_cnt / node->state.count;
-    const double f2 = sqrt(log(node->parent->state.count) / node->state.count);
-    return f1 + param.C * f2;
+    const double Q = (double)win_cnt / node->state.count;
+    const double U = sqrt(log(node->parent->state.count) / node->state.count);
+    const double P = node->state.prior_prob;
+    return Q + param.C_puct * P * U;
 }
 
 static double entropy(const node_t* node)
@@ -341,6 +349,23 @@ static node_t* ucb_select(const node_t* node)
         cur = cur->next;
     }
     return best;
+}
+
+static void evaluate_children(node_t* node)
+{
+    if (param.network) {
+        board_t board;
+        decode(node->state.board, board);
+        prediction_t prediction = predict(param.network, board, first_id, node->state.id);
+        // log("evaluated:");
+        // probability_print(board, prediction.prob);
+        for (edge_t* e = node->child_edge; e; e = e->next) {
+            const point_t pos = e->to->state.pos;
+            e->to->state.prior_prob = prediction.prob[pos.x][pos.y] * BOARD_SIZE * BOARD_SIZE; // for normalization
+        }
+        // prompt_pause();
+    }
+    node->state.evaluated = true;
 }
 
 /// @brief check if state is terminated
@@ -435,6 +460,9 @@ static node_t* traverse(node_t* node)
         return traverse(put_piece(node, empty_pos, pat4));
     }
     if (node->child_cnt) {
+        if (!node->state.evaluated) {
+            evaluate_children(node);
+        }
         return traverse(ucb_select(node));
     }
     node->state.score = id == 1 ? -1 : 1;  // no available space
@@ -499,14 +527,18 @@ point_t mcts(const game_t game, const void* assets)
     int tim, cnt = 0;
     const int target_count = param.min_count * (root->state.capacity + game.count * 2);
 
-    log("simulating (C: %.1lf~%.1lf, time: %d~%d, depth: %d)", param.start_c, param.end_c,
-        param.min_time, game.time_limit, param.check_depth);
+    log("simulating (C: %.1lf, time: %d~%d, depth: %d)", param.C_puct, param.min_time,
+        game.time_limit, param.check_depth);
     // int base = 1;
     while ((tim = get_time(start_time)) < param.min_time ||
            max_count(root)->state.count < target_count) {
         if (tim > game.time_limit - 10 || tot >= NODE_LIMIT) break;
-        param.C = param.start_c + (param.end_c - param.start_c) * (double)tim / game.time_limit;
+        // param.C_puct =
+        //     param.start_c + (param.end_c - param.start_c) * (double)tim / game.time_limit;
         simulate(root), cnt++;
+        if (!root->state.evaluated && root->state.visited_cnt == root->state.capacity) {
+            evaluate_children(root);
+        }
     }
     log("simulated %d times, average %.2lf us, speed %.2lf", cnt, tim * 1000.0 / cnt,
         (double)cnt / tim);
@@ -519,14 +551,14 @@ point_t mcts(const game_t game, const void* assets)
         prob[child->state.pos.x][child->state.pos.y] =
             (double)child->state.count / root->state.count;
     }
-    if (param.prob != NULL) {
-        memcpy(param.prob, prob, sizeof(prob));
+    if (param.output_prob != NULL) {
+        memcpy(param.output_prob, prob, sizeof(prob));
     }
     board_t board;
     decode(root->state.board, board);
     probability_print(board, prob);
-    if (((mcts_param_t*)assets)->prob) {
-        memcpy(((mcts_param_t*)assets)->prob, prob, sizeof(prob));
+    if (((mcts_param_t*)assets)->output_prob) {
+        memcpy(((mcts_param_t*)assets)->output_prob, prob, sizeof(prob));
     }
 
     const node_t* move = max_count(root);
@@ -562,7 +594,10 @@ point_t mcts(const game_t game, const void* assets)
 
 point_t mcts_nn(const game_t game, const void* assets)
 {
-    log_e("not implemented! call mcts without neural network instead.");
+    param = *((mcts_param_t*)assets);
+    if (!param.network) {
+        log_w("network not found");
+    }
     return mcts(game, assets);
 }
 

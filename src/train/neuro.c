@@ -80,8 +80,8 @@ void conv2d_impl(const float* restrict input, int input_channel, int input_x, in
                 for (int j = 0; j < _output_y; j++) {
                     const int x = i - padding, y = j - padding;
                     float sum = 0;
-#pragma omp simd reduction(+:sum)
                     for (int offset_x = 0; offset_x < kernel_size; offset_x++) {
+#pragma omp simd
                         for (int offset_y = 0; offset_y < kernel_size; offset_y++) {
                             const int cur_x = x + offset_x, cur_y = y + offset_y;
                             if (cur_x >= 0 && cur_x < input_x && cur_y >= 0 && cur_y < input_y) {

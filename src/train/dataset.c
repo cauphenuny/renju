@@ -34,7 +34,7 @@ sample_t to_sample(const board_t board, int perspective, int current, const fboa
                    int winner, int final_winner)
 {
     assert(winner >= 0 && winner <= 2);
-    assert(result > 0 && result <= 2);
+    assert(final_winner > 0 && final_winner <= 2);
     sample_t sample = {0};
     sample_input_t input = to_sample_input(board, perspective, current);
     memcpy(sample.board, input.board, sizeof(sample.board));
@@ -116,14 +116,14 @@ void add_samples(game_result_t* results, int count, bool transform)
 {
     for (int i = 0; i < count; i++) {
         if (!results[i].winner) continue;
-        int count = results[i].game.count;
+        int step_cnt = results[i].game.count;
         int first_id = results[i].game.first_id;
         game_t tmp = game_new(first_id, results[i].game.time_limit);
-        for (int j = 0; j < count; j++) {
+        for (int j = 0; j < step_cnt; j++) {
             point_t pos = results[i].game.steps[j];
             game_add_step(&tmp, pos);
             int id = tmp.cur_id, current;
-            int winner = (j == (count - 1)) ? results[i].winner : 0;
+            int winner = (j == (step_cnt - 1)) ? results[i].winner : 0;
             sample_t raw_sample;
             if (transform) {
                 current = winner ? 0 : id;

@@ -9,7 +9,6 @@ tools/
 *.json
 *.ipynb
 *.log
-*.mod
 *.dat
 train/*
 !train/*.py

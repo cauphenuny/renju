@@ -6,7 +6,7 @@
 #include "network.h"
 
 typedef struct {
-    double C, start_c, end_c;
+    double C_puct;
     int min_time;
     int min_count;
     int8_t wrap_rad;
@@ -14,7 +14,7 @@ typedef struct {
     bool dynamic_area;
     bool simulate_on_good_pos;
     predictor_network_t* network;
-    pfboard_t prob;
+    pfboard_t output_prob;
 } mcts_param_t;  // parameters for mcts
 
 point_t mcts(game_t game, const void* assets);

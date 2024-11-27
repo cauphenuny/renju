@@ -3,7 +3,6 @@
 
 #include "board.h"
 #include "game.h"
-#include "mcts.h"
 #include "network.h"
 
 enum {
@@ -11,10 +10,9 @@ enum {
     MCTS,     // default MCTS
     MCTS_BZ,  // for botzone
     MCTS_NN,  // MCTS with neural network
-    MCTS_TS, // MCTS, test
     MINIMAX,
     MINIMAX_TS,
-    NEURAL_NETWORK, // pure neural network
+    NEURAL_NETWORK,  // pure neural network
     PLAYER_CNT,
 };
 
@@ -28,12 +26,11 @@ typedef struct {
 
 extern player_t preset_players[MAX_PLAYERS];
 
-extern mcts_param_t mcts_params_default;
-
 point_t move(const game_t, player_t);
 
 void player_init(void);
 
 void bind_network(predictor_network_t*);
+void bind_output_prob(pfboard_t output_array);
 
 #endif

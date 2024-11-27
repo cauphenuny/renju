@@ -91,8 +91,8 @@ struct {
     int p1, p2;
     int time_limit;
 } preset_modes[PRESET_SIZE] = {
-    {MANUAL, MCTS, GAME_TIME_LIMIT},
-    {MCTS, MANUAL, GAME_TIME_LIMIT},
+    {MANUAL, MCTS_NN, GAME_TIME_LIMIT},
+    {MCTS_NN, MANUAL, GAME_TIME_LIMIT},
     {MANUAL, MANUAL, -1},
 };
 
@@ -101,7 +101,6 @@ int main(int argc, char* argv[])
     signal(SIGINT, signal_handler);
 
     log("gomoku v%s", VERSION);
-
     init();
 
     if (argc > 1) {
@@ -119,6 +118,16 @@ int main(int argc, char* argv[])
                     bind_network(&predictor);
                 }
             }
+        }
+    }
+
+    if (model_file == NULL) {
+        char default_model[] = "model/default";
+        if (predictor_load(&predictor, default_model)) {
+            log_e("failed to load network. usage: %s {model basename with path}", argv[0]);
+            return 1;
+        } else {
+            bind_network(&predictor);
         }
     }
 

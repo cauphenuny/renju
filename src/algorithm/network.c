@@ -69,6 +69,8 @@ checker_network_t checker_load(const char* file_name)
     return network;
 }
 
+static int sum_time, cnt;
+
 prediction_t predict(const predictor_network_t* predictor, const board_t board, int first_id,
                      int cur_id)
 {
@@ -117,7 +119,16 @@ prediction_t predict(const predictor_network_t* predictor, const board_t board, 
            predictor_params.policy.conv2, softmax),
         cur = 1 - cur;
     memcpy(prediction.prob, output[cur], sizeof(prediction.prob));
-    log("consumption: %dms", get_time(tim));
+    // log("consumption: %dms", get_time(tim));
+    sum_time += get_time(tim);
+    cnt++;
+    if (cnt % 1000 == 0) {
+        double avg = (double)sum_time / cnt;
+        if (avg < 10)
+            log("average calculate time: %.2lfms", avg);
+        else
+            log_w("average calculate time: %.2lfms", avg);
+    }
     return prediction;
 }
 
@@ -131,7 +142,7 @@ void print_prediction(const prediction_t prediction)
 int predictor_save(const predictor_network_t* network, const char* file_basename)
 {
     char file_fullname[1024];
-    sprintf(file_fullname, "%s.v%d.%dch.mod", file_basename, NETWORK_VERSION, MAX_CHANNEL);
+    snprintf(file_fullname, 1024, "%s.v%d.%dch.mod", file_basename, NETWORK_VERSION, MAX_CHANNEL);
     FILE* file = fopen(file_fullname, "wb");
     if (!file) {
         log_e("file open failed: %s", file_fullname);
@@ -146,11 +157,13 @@ int predictor_save(const predictor_network_t* network, const char* file_basename
     return 0;
 }
 
-int predictor_load(predictor_network_t* network, const char* file_name)
+int predictor_load(predictor_network_t* network, const char* file_basename)
 {
-    FILE* file = fopen(file_name, "rb");
+    char file_fullname[1024];
+    snprintf(file_fullname, 1024, "%s.v%d.%dch.mod", file_basename, NETWORK_VERSION, MAX_CHANNEL);
+    FILE* file = fopen(file_fullname, "rb");
     if (!file) {
-        log_e("no such file: %s", file_name);
+        log_e("no such file: %s", file_fullname);
         return 1;
     }
     int version = 0;
@@ -167,7 +180,7 @@ int predictor_load(predictor_network_t* network, const char* file_name)
     }
     fread(network, sizeof(predictor_network_t), 1, file);
     fclose(file);
-    log("network loaded from %s", file_name);
+    log("network loaded from %s", file_fullname);
     return 0;
 }
 

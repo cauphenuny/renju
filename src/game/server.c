@@ -32,7 +32,7 @@ game_result_t start_game(player_t p1, player_t p2, int first_id, int time_limit,
             log("no more space for player%d", id);
             WIN(3 - id);
         }
-        mcts_params_default.prob = result.prob[game.count];
+        bind_output_prob(result.prob[game.count]);
         const int tim = record_time();
         const point_t pos = players[id].move(game, players[id].assets);
 
@@ -51,7 +51,7 @@ game_result_t start_game(player_t p1, player_t p2, int first_id, int time_limit,
                     log_e("invalid argument!");
                 continue;
             case GAMECTRL_GIVEUP: log("player %d gave up.", id); WIN(3 - id);
-            case GAMECTRL_CHANGE_PLAYER:
+            case GAMECTRL_SWITCH_PLAYER:
                 if (pos.y >= 0 && pos.y < PLAYER_CNT) {
                     players[3 - id] = preset_players[pos.y];
                     log("changed opponent to %s", players[3 - id].name);

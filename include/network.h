@@ -50,7 +50,7 @@ typedef struct {
 
 #define NETWORK_VERSION 1
 
-#define MAX_CHANNEL 128
+#define MAX_CHANNEL 64
 
 typedef struct {
     struct {
@@ -106,8 +106,8 @@ typedef struct {
 prediction_t predict(const predictor_network_t* predictor, const board_t board, int first_id,
                      int cur_id);
 void print_prediction(const prediction_t prediction);
-int predictor_load(predictor_network_t* network, const char* file_name);
-int predictor_save(const predictor_network_t* network, const char* file_base_name);
+int predictor_load(predictor_network_t* network, const char* file_basename);
+int predictor_save(const predictor_network_t* network, const char* file_basename);
 
 point_t move_nn(game_t game, const void* assets);
 
