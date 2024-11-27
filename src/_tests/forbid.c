@@ -1,5 +1,6 @@
 #include "board.h"
 #include "util.h"
+#include "pattern.h"
 
 #include <stdlib.h>
 #include <string.h>

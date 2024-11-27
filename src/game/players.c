@@ -35,6 +35,7 @@ player_t preset_players[MAX_PLAYERS] = {
     [MCTS_TS] = {"AI (MCTS, test)", mcts, &mcts_params_test},                  //
     [MINIMAX] = {"AI (minimax)", minimax, &use_external_eval},                               //
     [MINIMAX_TS] = {"AI (minimax, test)", minimax, &use_external_eval},                               //
+    [NEURAL_NETWORK] = {"AI (pure neural network)", move_nn, NULL}
 };
 
 point_t move(game_t game, player_t player) { return player.move(game, player.assets); }
@@ -48,4 +49,9 @@ void player_init()
 
     mcts_params_test = mcts_params_default;
     mcts_params_test.check_depth = 1;
+}
+
+void bind_network(predictor_network_t* network)
+{
+    preset_players[NEURAL_NETWORK].assets = network;
 }

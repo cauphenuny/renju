@@ -3,3 +3,4 @@ ctype
 torch
 d2l
 IPython
+colorama

@@ -104,22 +104,25 @@ def evaluate_accuracy_gpu(net, data_iter, device=None):
 class Predictor(nn.Module):
     def __init__(self):
         super().__init__()
+        # 2 * 32 * 225 * 9 + 32 * 64 * 225 * 9 + 64 * 256 * 225 * 25
         self.shared = nn.Sequential(
-            nn.Conv2d(2, 64, kernel_size=5, padding=2), nn.ReLU(), 
-            nn.Conv2d(64, 128, kernel_size=3, padding=1), nn.ReLU(), nn.Dropout(), 
+            nn.Conv2d(2, 32, kernel_size=3, padding=1), nn.ReLU(), 
+            nn.Conv2d(32, 64, kernel_size=3, padding=1), nn.ReLU(), nn.Dropout(), 
+            nn.Conv2d(64, 256, kernel_size=5, padding=2), nn.ReLU()
         )
         self.value_net = nn.Sequential(
             self.shared, 
-            nn.Conv2d(128, 8, kernel_size=1, padding=0), nn.ReLU(), 
+            nn.Conv2d(256, 4, kernel_size=1, padding=0), nn.ReLU(), 
             nn.Flatten(),
-            nn.Linear(8 * 225, 128), nn.ReLU(), nn.Dropout(), 
+            nn.Linear(4 * 15 * 15, 128), nn.ReLU(), nn.Dropout(), 
             nn.Linear(128, 1), nn.Tanh()
         )
+        # 256 * 16 * 225 * 25 + 16 * 1 * 225 * 1
         self.policy_net = nn.Sequential(
             self.shared, 
-            nn.Conv2d(128, 16, kernel_size=3, padding=1), nn.ReLU(), nn.Dropout(), 
-            nn.Flatten(), 
-            nn.Linear(16 * 225, 225), nn.LogSoftmax(dim=1)
+            nn.Conv2d(256, 16, kernel_size=5, padding=2), nn.ReLU(), nn.Dropout(), 
+            nn.Conv2d(16, 1, kernel_size=1, padding=0),
+            nn.Flatten(), nn.LogSoftmax(dim=1)
         )
 
     def save(self, file_path):
@@ -288,16 +291,13 @@ if __name__ == '__main__':
     print(f'dataset output shape: {policy.shape}, {value.shape}')
 
 # %%
-    batch_size = 16
-    train(False, predictor, train_iter(batch_size), test_iter(batch_size), 10, 0.001, try_mps())
-    predictor.save("model/predictor_min.params")
+    batch_size = 32
+    predictor.load("model/predictor_v0.params")
+    train(False, predictor, train_iter(batch_size), test_iter(batch_size), 5, 0.001, try_mps())
     predictor.to(cpu())
 
 # %%
-    predictor.load("model/predictor_min.params")
-    while True:
-        sample = gomoku.random_sample()
-        test_sample(predictor, sample)
-        gomoku.print_sample(sample)
-        input('press enter to continue')
+    X, policy, value = next(train_iter(1))
+    # detail(predictor, X)
+    test_sample(predictor, gomoku.random_sample())
 # %%

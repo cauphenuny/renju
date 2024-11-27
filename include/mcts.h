@@ -3,7 +3,7 @@
 
 #include "board.h"
 #include "game.h"
-#include "neuro.h"
+#include "network.h"
 
 typedef struct {
     double C, start_c, end_c;

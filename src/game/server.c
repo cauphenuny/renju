@@ -1,8 +1,8 @@
 // author: Cauphenuny
 // date: 2024/10/19
 
+#include "board.h"
 #include "game.h"
-#include "neuro.h"
 #include "players.h"
 #include "util.h"
 #include "pattern.h"
@@ -12,7 +12,7 @@
 /// @brief start a game with player {p1} and {p2}, {p{first_id}} move first
 /// @param time_limit game time limit
 game_result_t start_game(player_t p1, player_t p2, int first_id, int time_limit,
-                         checker_network_t* checker)
+                         predictor_network_t* predictor)
 {
     const player_t players[] = {{}, p1, p2};
     const char* colors[] = {"", L_GREEN, L_RED};
@@ -75,13 +75,11 @@ game_result_t start_game(player_t p1, player_t p2, int first_id, int time_limit,
         game_serialize(game, "");
 #endif
         game_print(game);
-        if (checker != NULL) {
-            int ret = checker_forward(checker, game.board);
-            if (ret)
-                log_w("checker returned: %d", ret);
-            else
-                log("checker returned: %d", ret);
-        }
+        // if (predictor != NULL) {
+        //     prediction_t pred = predict(predictor, game.board, game.first_id, game.cur_id);
+        //     log("evaluate: %f", pred.eval);
+        //     probability_print(game.board, pred.prob);
+        // }
 
         if (is_draw(game.board)) WIN(0);
         if (check(game.board, pos)) WIN(id);

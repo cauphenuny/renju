@@ -1,44 +1,30 @@
 #ifndef NEURO_H
 #define NEURO_H
 
-#include "board.h"
+void softmax(float x[], int size);
+void relu(float x[], int size);
+void tanh_(float x[], int size);
+void conv2d_impl(const float* restrict input, int input_channel, int input_x, int input_y,
+                 float* restrict output, int output_channel, int* output_x, int* output_y,
+                 const float* restrict kernel, const float* restrict bias, int kernel_size,
+                 int padding, void (*activate)(float[], int));
+void max_pool_impl(const float* restrict input, int channel, int input_x, int input_y,
+                   float* restrict output, int* output_x, int* output_y, int kernel_size,
+                   int stride);
+void linear_impl(const float* restrict input, int input_size, float* restrict output,
+                 int output_size, const float* restrict weight, const float* restrict bias,
+                 void (*activate)(float[], int));
 
-const static struct {
-    struct {
-        int input_channel, output_channel;
-        int kernel_size, padding;
-    } conv;
-    struct {
-        int input_size, output_size;
-    } linear;
-    struct {
-        int kernel_size, stride;
-    } max_pool;
-} checker_params = {
-    .conv = {1, 32, 5, 2},
-    .max_pool = {5, 5},
-    .linear = {288, 3},
-};
+#define conv2d(input, output, size, data, param, activate)                                         \
+    conv2d_impl(input, param.input_channel, size.x, size.y, output, param.output_channel, &size.x, \
+                &size.y, data.weight, data.bias, param.kernel_size, param.padding, activate)
 
-typedef struct {
-    struct {
-        float weight[32 * 5 * 5];
-        float bias[32];
-    } conv;
-    struct {
-        float weight[288 * 3];
-        float bias[3];
-    } linear;
-} checker_network_t;
+#define max_pool(input, output, size, param)                                      \
+    max_pool_impl(input, param.channel, size.x, size.y, output, &size.x, &size.y, \
+                  param.kernel_size, param.stride)
 
-typedef struct {
-    // TODO:
-} predictor_network_t;
-
-checker_network_t checker_new();
-checker_network_t checker_load(const char* file_name);
-int checker_forward(checker_network_t* network, const board_t board);
-void checker_free(checker_network_t* network);
-void checker_save(checker_network_t* network, const char* file_name);
+#define linear(input, output, data, param, activate)                                        \
+    linear_impl(input, param.input_size, output, param.output_size, data.weight, data.bias, \
+                activate)
 
 #endif

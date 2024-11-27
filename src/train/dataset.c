@@ -13,22 +13,35 @@
 
 #define N BOARD_SIZE
 
-sample_t to_sample(const board_t board, int perspective, int current, const fboard_t prob,
-                   int winner, int result)
+sample_input_t to_sample_input(const board_t board, int perspective, int current)
 {
-    assert(current >= -1 && current <= 1);
-    assert(winner >= 0 && winner <= 2);
+    assert(current >= 0 && current <= 2);
     assert(perspective >= 0 && perspective <= 2);
-    sample_t sample = {0};
+    sample_input_t input = {0};
+    if (current != 0) {
+        current = current == perspective ? 1 : -1;
+    }
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < N; j++) {
-            sample.current_id[i][j] = current;
-            if (board[i][j]) sample.board[i][j] = board[i][j] == perspective ? 1 : -1;
+            input.cur_id[i][j] = current;
+            if (board[i][j]) input.board[i][j] = board[i][j] == perspective ? 1 : -1;
         }
     }
-    memcpy(sample.prob, prob, sizeof(fboard_t));
+    return input;
+}
+
+sample_t to_sample(const board_t board, int perspective, int current, const fboard_t prob,
+                   int winner, int final_winner)
+{
+    assert(winner >= 0 && winner <= 2);
+    assert(result > 0 && result <= 2);
+    sample_t sample = {0};
+    sample_input_t input = to_sample_input(board, perspective, current);
+    memcpy(sample.board, input.board, sizeof(sample.board));
+    memcpy(sample.cur_id, input.cur_id, sizeof(sample.cur_id));
+    memcpy(sample.prob, prob, sizeof(sample.prob));
     sample.winner = winner;
-    sample.result = result;
+    sample.result = final_winner == 0 ? 0 : final_winner == perspective ? 1 : -1;
     return sample;
 }
 
@@ -41,7 +54,7 @@ void print_sample(sample_t sample)
         }
     }
     probability_print(board, sample.prob);
-    printf("current: %d\n", sample.current_id[0][0]);
+    printf("current: %d\n", sample.cur_id[0][0]);
     printf("winner: %d, result: %d\n", sample.winner, sample.result);
 }
 
@@ -102,26 +115,23 @@ static void add_sample(sample_t sample)
 void add_samples(game_result_t* results, int count, bool transform)
 {
     for (int i = 0; i < count; i++) {
-        game_t game = results[i].game;
-        game_t tmp = game_new(game.first_id, game.time_limit);
-        for (int j = 0; j < game.count; j++) {
-            point_t pos = game.steps[j];
+        if (!results[i].winner) continue;
+        int count = results[i].game.count;
+        int first_id = results[i].game.first_id;
+        game_t tmp = game_new(first_id, results[i].game.time_limit);
+        for (int j = 0; j < count; j++) {
+            point_t pos = results[i].game.steps[j];
             game_add_step(&tmp, pos);
             int id = tmp.cur_id, current;
-            int winner = (j == (game.count - 1)) ? results[i].winner : 0;
+            int winner = (j == (count - 1)) ? results[i].winner : 0;
             sample_t raw_sample;
             if (transform) {
-                if (winner) {
-                    current = 0;
-                } else {
-                    current = id == game.first_id ? 1 : -1;
-                }
-                raw_sample =
-                    to_sample(tmp.board, game.first_id, current, results[i].prob[j + 1],  //
-                              winner, results[i].winner == game.first_id ? 1 : -1);
+                current = winner ? 0 : id;
+                raw_sample = to_sample(tmp.board, first_id, current, results[i].prob[j + 1],  //
+                                       winner, results[i].winner);
             } else {
-                raw_sample = to_sample(tmp.board, 1, id == 1 ? 1 : -1, results[i].prob[j + 1],
-                                       winner, results[i].winner == game.first_id ? 1 : -1);
+                raw_sample = to_sample(tmp.board, 1, id, results[i].prob[j + 1], winner,
+                                       results[i].winner);
             }
             dataset.samples[dataset.nitems++] = raw_sample;
             add_sample(raw_sample);

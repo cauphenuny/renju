@@ -74,34 +74,37 @@ int main()
     int ret = 0;
     log("running test");
 
-    log("test pattern");
-    test_pattern();
+    // log("test pattern");
+    // test_pattern();
 
-    log("test forbid");
-    ret = test_forbid();
-    if (ret) return ret;
+    // log("test forbid");
+    // ret = test_forbid();
+    // if (ret) return ret;
 
-    log_i("forbid tests passed.");
+    // log_i("forbid tests passed.");
 
-    void mcts_test_entrance(void);
-    mcts_test_entrance();
+    // void mcts_test_entrance(void);
+    // mcts_test_entrance();
 
-    log_i("mcts tests passed.");
+    // log_i("mcts tests passed.");
 
-    test_minimax();
+    // test_minimax();
 
-    log_i("minimax tests passed.");
+    // log_i("minimax tests passed.");
 
-    log("run zobrist test? [y/n]");
+    // log("run zobrist test? [y/n]");
 
-    const char ch = prompt_pause();
+    // const char ch = prompt_pause();
 
-    if (ch == 'y') {
-        start_game(preset_players[MINIMAX], preset_players[MINIMAX], 1, 2000, NULL);
-        log("zobrist tests passed.");
-    }
+    // if (ch == 'y') {
+    //     start_game(preset_players[MINIMAX], preset_players[MINIMAX], 1, 2000, NULL);
+    //     log("zobrist tests passed.");
+    // }
 
 
+    void test_neuro();
+    log("test neuro");
+    test_neuro();
     log_i("all tests passed.");
     return 0;
 }

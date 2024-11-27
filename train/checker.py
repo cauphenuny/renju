@@ -6,11 +6,14 @@ from lib import libgomoku as gomoku
 import random
 import sys
 import torch
+from torch import functional as F
 from d2l import torch as d2l
 from torch import nn
 import ctypes
+import copy
+from export import to_ctype
 
-class GomokuDataset(torch.utils.data.IterableDataset):
+class CheckerDataset(torch.utils.data.IterableDataset):
     def __init__(self, batch_size, start, end):
         self.samples = list(range(start, end))
         random.shuffle(self.samples)
@@ -45,10 +48,10 @@ def try_mps():
 test_size = 1000
 
 def test_iter(batch_size):
-    return GomokuDataset(batch_size, 0, test_size)
+    return CheckerDataset(batch_size, 0, test_size)
 
 def train_iter(batch_size):
-    return GomokuDataset(batch_size, test_size, gomoku.dataset_size())
+    return CheckerDataset(batch_size, test_size, gomoku.dataset_size())
 
 def evaluate_accuracy_gpu(net, data_iter, device=None):
     if isinstance(net, nn.Module):
@@ -70,7 +73,7 @@ def train(net, train_iter, test_iter, num_epochs, lr, device):
     def init_weights(m):
         if type(m) == nn.Linear or type(m) == nn.Conv2d:
             nn.init.xavier_uniform_(m.weight)
-    # net.apply(init_weights)
+    net.apply(init_weights)
     print('training on', device)
     net.to(device)
     optimizer = torch.optim.SGD(net.parameters(), lr=lr)
@@ -123,24 +126,10 @@ class Checker(nn.Module):
         return self.net(X)
 
     def to_ctype(self):
-        ctype_net = gomoku.checker_network_t()
-        ctype_net.conv.weight = (ctypes.c_float * 800)()
-        ctype_net.conv.bias = (ctypes.c_float * 32)()
-        ctype_net.linear.weight = (ctypes.c_float * 864)()
-        ctype_net.linear.bias = (ctypes.c_float * 3)()
-        print(ctype_net)
-        for ch in range(32):
-            for i in range(5):
-                for j in range(5):
-                    ctype_net.conv.weight[ch * 25 + j * 5 + i] = self.net[0].weight[ch][0][j][i].item()
-        for i in range(32):
-            ctype_net.conv.bias[i] = self.net[0].bias[i].item()
-        for i in range(3):
-            for j in range(288):
-                ctype_net.linear.weight[i * 288 + j] = self.net[5].weight[i][j].item()
-        for i in range(3):
-            ctype_net.linear.bias[i] = self.net[5].bias[i].item()
-        return ctype_net
+        net = gomoku.checker_network_t()
+        net.conv.weight, net.conv.bias = to_ctype(self.net[0])
+        net.linear.weight, net.linear.bias = to_ctype(self.net[5])
+        return net
 
 checker = Checker()
 
@@ -152,12 +141,12 @@ def test():
 
     current_player = first_id
     while True:
-        print(f"player{current_player} ({players[current_player - 1]})'s move ")
+        print(f"player{current_player}'s move ")
         player = players[current_player - 1]
         pos = gomoku.move(game, player)
         gomoku.game_add_step(ctypes.pointer(game), pos)
         # gomoku.game_print(game)
-        transformed_board = game.board
+        transformed_board = copy.deepcopy(game.board)
         for i in range(15):
             for j in range(15):
                 if transformed_board[i][j] == 2:
@@ -174,31 +163,32 @@ def test():
             print(f'player{current_player} win')
             return current_player
         current_player = 3 - current_player
+        input('press enter to continue')
 
 if __name__ == "__main__":
     gomoku.init()
-    if len(sys.argv) != 2:
-        print(f'usage: {sys.argv[0]} [.dat file]')
-        sys.exit(1)
-    if gomoku.import_samples(sys.argv[1]):
-        sys.exit(2)
-    batch_size = 16
-    X, y = next(train_iter(batch_size))
-    print(f'X shape: {X.shape}, y shape: {y.shape}')
-    for layer in checker.net:
-        print(f'layer: {layer}, parameters: {list(x.shape for x in layer.parameters())}')
-        X = layer(X)
-        print(layer.__class__.__name__,'output shape: \t',X.shape)
+    # if len(sys.argv) != 2:
+    #     print(f'usage: {sys.argv[0]} [.dat file]')
+    #     sys.exit(1)
+    # if gomoku.import_samples(sys.argv[1]):
+    #     sys.exit(2)
+    # batch_size = 16
+    # X, y = next(train_iter(batch_size))
+    # print(f'X shape: {X.shape}, y shape: {y.shape}')
+    # for layer in checker.net:
+    #     print(f'layer: {layer}, parameters: {list(x.shape for x in layer.parameters())}')
+    #     X = layer(X)
+    #     print(layer.__class__.__name__,'output shape: \t',X.shape)
     
-    train(checker, train_iter(batch_size), test_iter(batch_size), 15, 0.05, try_mps())
-    # checker.load("model/checker_tmp.params")
+    # train(checker, train_iter(batch_size), test_iter(batch_size), 15, 0.05, try_mps())
+    checker.load("model/checker_v1.params")
 
     for layer in checker.net:
-        print(f'layer: {layer}, parameters: {list(x for x in layer.parameters())}')
+        print(f'layer: {layer}, parameters: {list(x.shape for x in layer.parameters())}')
 
     checker.to('cpu')
 
-    ctype_net = checker.to_ctype()
-    gomoku.checker_save(ctypes.pointer(ctype_net), "model/checker_tmp.mod")
+    # ctype_net = checker.to_ctype()
+    # gomoku.checker_save(ctypes.pointer(ctype_net), "model/checker_tmp.mod")
 
-    # test()
+    test()

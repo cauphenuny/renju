@@ -2,7 +2,6 @@
 // date: 2024/07/27
 #include "game.h"
 #include "init.h"
-#include "neuro.h"
 #include "dataset.h"
 #include "players.h"
 #include "server.h"
@@ -45,7 +44,7 @@ static game_result_t results[GAME_STORAGE_SIZE];
 static int tot;
 static char* sample_file;
 static char* model_file;
-static checker_network_t checker;
+static predictor_network_t predictor;
 
 static void save_data()
 {
@@ -62,9 +61,6 @@ static void save_data()
             }
             prompt_scanf("%s", name);
             if (strcmp(name, ".") == 0 && sample_file) strcpy(name, sample_file);
-            // log("filter? [y/n]");
-            // c = prompt_pause();
-            // add_samples(results, tot, c == 'y');
         } while (export_samples(name));
     }
 }
@@ -116,7 +112,12 @@ int main(int argc, char* argv[])
                 sample_file = argv[i], import_samples(sample_file);
             }
             if (strcmp(p, ".mod") == 0 && !model_file && file_exists(argv[i])) {
-                model_file = argv[i], checker = checker_load(model_file);
+                model_file = argv[i];
+                if (predictor_load(&predictor, model_file)) {
+                    model_file = NULL;
+                } else {
+                    bind_network(&predictor);
+                }
             }
         }
     }
@@ -159,7 +160,7 @@ int main(int argc, char* argv[])
     int id = 1;
     while (1) {
         const game_result_t result = start_game(preset_players[player1], preset_players[player2],
-                                                id, time_limit, model_file ? &checker : NULL);
+                                                id, time_limit, model_file ? &predictor : NULL);
         if (tot < GAME_STORAGE_SIZE) results[tot++] = result;
         const int winner = result.winner;
         statistics[0][id]++;

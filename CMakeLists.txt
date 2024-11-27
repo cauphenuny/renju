@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 3.5)
 project (
     gomoku
-    VERSION 2.0.2
+    VERSION 2.1.0
     LANGUAGES C
 )
 set (CMAKE_VERBOSE_MAKEFILE OFF)
@@ -17,6 +17,7 @@ string (ASCII 27 ESC)
 set (COLOR_GREEN "${ESC}[1;32m")
 set (COLOR_RED "${ESC}[1;31m")
 set (COLOR_RESET "${ESC}[0m")
+find_package(OpenMP)
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     message (STATUS "${COLOR_RED}debug${COLOR_RESET}")
     add_compile_options (-Wall -Wextra -Wshadow) 
@@ -31,9 +32,15 @@ elseif (CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
 else()
     message (STATUS "${COLOR_GREEN}release${COLOR_RESET}")
     if (MSVC)
-        add_compile_options (/O2 /DRELEASE)
+        add_compile_options (/DRELEASE /O2)
+        if(OpenMP_FOUND)
+            add_compile_options (/openmp)
+        endif()
     else()
         add_compile_options (-DRELEASE -O3)
+        if(OpenMP_FOUND)
+            add_compile_options (-fopenmp)
+        endif()
     endif()
     set (VERSION_STRING "${PROJECT_VERSION}")
 endif()
@@ -55,6 +62,7 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     set_target_properties(libgomoku PROPERTIES EXCLUDE_FROM_ALL TRUE)
 endif ()
 
+file(MAKE_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
 file(MAKE_DIRECTORY ${PROJECT_SOURCE_DIR}/train)
 file(MAKE_DIRECTORY ${PROJECT_SOURCE_DIR}/train/lib)
 
@@ -62,7 +70,7 @@ add_custom_command(
     OUTPUT ${PROJECT_SOURCE_DIR}/train/lib/libgomoku.py
     COMMAND ctypesgen -L${PROJECT_SOURCE_DIR}/lib -lgomoku ${PROJECT_SOURCE_DIR}/include/* -o ${PROJECT_SOURCE_DIR}/train/lib/libgomoku.py
     DEPENDS ${INCLUDE_LIST}
-    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/lib
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/train
     COMMENT "Running ctypesgen to generate Python bindings"
 )
 add_custom_target(generate_bindings ALL DEPENDS train/lib/libgomoku.py)
@@ -81,3 +89,10 @@ add_executable (botzone src/botzone.c ${SRC_LIST})
 target_compile_definitions(botzone PRIVATE NOCOLOR)
 target_link_libraries (botzone m)
 set_target_properties(botzone PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+if(OpenMP_FOUND)
+    target_link_libraries(main OpenMP::OpenMP_C)
+    target_link_libraries(libgomoku OpenMP::OpenMP_C)
+    target_link_libraries(botzone OpenMP::OpenMP_C)
+    target_link_libraries(test OpenMP::OpenMP_C)
+endif()
