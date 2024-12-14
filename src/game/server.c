@@ -11,15 +11,14 @@
 
 /// @brief start a game with player {p1} and {p2}, {p{first_id}} move first
 /// @param time_limit game time limit
-game_result_t start_game(player_t p1, player_t p2, int first_id, int time_limit,
-                         predictor_network_t* predictor)
+game_result_t start_game(player_t p1, player_t p2, int first_id, int time_limit, network_t* network)
 {
     player_t players[] = {{}, p1, p2};
     const char* colors[] = {"", L_GREEN, L_RED};
     log("start game: %s vs %s, first player: %d", p1.name, p2.name, first_id);
-    game_t game = game_new(first_id, time_limit);
+    game_t game = new_game(first_id, time_limit);
     game_result_t result = {0};
-    game_print(game);
+    print_game(game);
 #define WIN(winner_id)                                 \
     do {                                               \
         result.game = game, result.winner = winner_id; \
@@ -27,6 +26,7 @@ game_result_t start_game(player_t p1, player_t p2, int first_id, int time_limit,
     } while (0)
     while (1) {
         const int id = game.cur_id;
+        // log_disable();
         log_i("------ step %s#%d" RESET ", player%d's turn ------", colors[id], game.count + 1, id);
         if (!have_space(game.board, id)) {
             log("no more space for player%d", id);
@@ -39,14 +39,14 @@ game_result_t start_game(player_t p1, player_t p2, int first_id, int time_limit,
         switch (pos.x) {
             case GAMECTRL_WITHDRAW:
                 if (pos.y > 0 && pos.y <= game.count) {
-                    game = game_backward(game, game.count - pos.y);
-                    game_print(game);
+                    game = backward(game, game.count - pos.y);
+                    print_game(game);
                 } else
                     log_e("invalid argument!");
                 continue;
             case GAMECTRL_EXPORT:
                 if (pos.y > 0 && pos.y <= game.count) {
-                    game_serialize(game_backward(game, pos.y), "");
+                    serialize_game(backward(game, pos.y), "");
                 } else
                     log_e("invalid argument!");
                 continue;
@@ -59,6 +59,20 @@ game_result_t start_game(player_t p1, player_t p2, int first_id, int time_limit,
                     log("invalid argument!");
                 }
                 continue;
+            case GAMECTRL_EVALUATE:
+                if (!network) {
+                    log_e("no network available!");
+                    continue;
+                } else {
+                    prediction_t prediction =
+                        predict(network, game.board, game.steps[game.count - 1], first_id, id);
+                    if (pos.y) {
+                        print_prediction(prediction);
+                    } else {
+                        log("eval: %.3lf", prediction.eval * (game.first_id == 1 ? 1 : -1));
+                    }
+                    continue;
+                }
             default: break;
         }
         if (!available(game.board, pos)) {
@@ -67,6 +81,7 @@ game_result_t start_game(player_t p1, player_t p2, int first_id, int time_limit,
         }
         log_i("time: %dms, chose " BOLD UNDERLINE "(%c, %d)" RESET, get_time(tim), pos.y + 'A',
               pos.x + 1);
+#ifndef NO_FORBID
         if (game.cur_id == game.first_id) {
             const int forbid = is_forbidden(game.board, pos, id, true);
             // int forbid = false;
@@ -77,19 +92,18 @@ game_result_t start_game(player_t p1, player_t p2, int first_id, int time_limit,
                 WIN(3 - id);
             }
         }
-
-        game_add_step(&game, pos);
-#if DEBUG_LEVEL > 0
-        game_serialize(game, "");
 #endif
-        game_print(game);
-        if (predictor != NULL) {
-            prediction_t pred = predict(predictor, game.board, game.first_id, 3 - game.cur_id);
-            log_i("evaluate: %f",
-                  pred.eval *
-                      (game.first_id == 1 ? 1 : -1));  // for 1.00 -> 'o' wins, -1.00 -> 'x' wins
-            // probability_print(game.board, pred.prob);
-        }
+
+        add_step(&game, pos);
+        print_game(game);
+        // serialize_game(game, "");
+        // if (network != NULL) {
+        //     prediction_t pred = predict(network, game.board, game.first_id, 3 - game.cur_id);
+        //     log_i("evaluate: %f",
+        //           pred.eval *
+        //               (game.first_id == 1 ? 1 : -1));  // for 1.00 -> 'o' wins, -1.00 -> 'x' wins
+        //     // print_prob(game.board, pred.prob);
+        // }
 
         if (is_draw(game.board)) WIN(0);
         if (check(game.board, pos)) WIN(id);

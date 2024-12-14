@@ -7,7 +7,7 @@
 #include <string.h>
 
 /// @brief create a new game, player{first_id} moves first, time limit {time_limit}ms
-game_t game_new(int first_id, int time_limit)
+game_t new_game(int first_id, int time_limit)
 {
     game_t game = {0};
     game.first_id = game.cur_id = first_id;
@@ -19,7 +19,7 @@ game_t game_new(int first_id, int time_limit)
 }
 
 /// @brief add a step to {game} at {pos}
-void game_add_step(game_t* game, point_t pos)
+void add_step(game_t* game, point_t pos)
 {
     put(game->board, game->cur_id, pos);
     game->steps[game->count++] = pos;
@@ -28,17 +28,17 @@ void game_add_step(game_t* game, point_t pos)
 
 /// @brief generate a game with the first {count} steps of {game}
 /// @return generated game
-game_t game_backward(game_t game, int count)
+game_t backward(game_t game, int count)
 {
-    game_t subgame = game_new(game.first_id, game.time_limit);
+    game_t subgame = new_game(game.first_id, game.time_limit);
     for (int i = 0; i < count; i++) {
-        game_add_step(&subgame, game.steps[i]);
+        add_step(&subgame, game.steps[i]);
     }
     return subgame;
 }
 
 /// @brief print the current board of {game}
-void game_print(game_t game)
+void print_game(game_t game)
 {
     if (game.count == 0) {
         print(game.board);
@@ -46,7 +46,7 @@ void game_print(game_t game)
     }
     const point_t pos = game.steps[game.count - 1];
     game.board[pos.x][pos.y] += 2;
-    emphasis_print(game.board, pos);
+    print_emph(game.board, pos);
     game.board[pos.x][pos.y] -= 2;
 }
 
@@ -55,18 +55,18 @@ void game_print(game_t game)
 /// @param first_id first player
 /// @param count count of existed pieces
 /// @param moves positions of each piece
-game_t game_import(int time_limit, int first_id, int count, point_t moves[])
+game_t restore_game(int time_limit, int first_id, int count, point_t moves[])
 {
-    game_t game = game_new(first_id, time_limit);
+    game_t game = new_game(first_id, time_limit);
     for (int i = 0; i < count; i++) {
-        game_add_step(&game, moves[i]);
+        add_step(&game, moves[i]);
     }
     return game;
 }
 
 /// @brief export the state of {game} to {file}
 /// @param file file to export, empty if uses stdout
-void game_serialize(game_t game, const char* file)
+void serialize_game(game_t game, const char* file)
 {
     FILE* fp;
     if (strlen(file)) {
@@ -78,7 +78,7 @@ void game_serialize(game_t game, const char* file)
     } else {
         fp = stdout;
     }
-    fprintf(fp, "game_import(%d,%d,%d,(point_t[]){", game.time_limit, game.first_id, game.count);
+    fprintf(fp, "restore_game(%d,%d,%d,(point_t[]){", game.time_limit, game.first_id, game.count);
     for (int i = 0; i < game.count; i++) {
         fprintf(fp, "{%d,%d}", game.steps[i].x, game.steps[i].y);
         if (i != game.count - 1) fprintf(fp, ",");

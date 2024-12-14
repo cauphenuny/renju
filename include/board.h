@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #define BOARD_SIZE 15
+#define BOARD_AREA (BOARD_SIZE * BOARD_SIZE)
 
 #define WIN_LENGTH 5
 
@@ -23,9 +24,14 @@ typedef int board_t[BOARD_SIZE][BOARD_SIZE];
 typedef float fboard_t[BOARD_SIZE][BOARD_SIZE]; // board with float type
 typedef float (*pfboard_t)[BOARD_SIZE];         // same as fboard_t but is pointer rather than array
 
-void print_implement(const board_t board, point_t emph_pos, const fboard_t prob);
-void emphasis_print(const board_t board, point_t emph_pos);
-void probability_print(const board_t board, const fboard_t prob);
+typedef struct {
+    point_t* points;
+    int size;
+} point_array_t;
+
+void print_all(const board_t board, point_t emph_pos, const fboard_t prob);
+void print_emph(const board_t board, point_t emph_pos);
+void print_prob(const board_t board, const fboard_t prob);
 void print(const board_t board);
 
 void wrap_area(const board_t board, point_t* begin, point_t* end, int8_t margin);

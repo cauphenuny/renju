@@ -26,6 +26,9 @@ int parse(char s[])
     if (strcmp(s, "switch") == 0) {
         return GAMECTRL_SWITCH_PLAYER;
     }
+    if (strcmp(s, "eval") == 0) {
+        return GAMECTRL_EVALUATE;
+    }
     if (isupper(s[0])) return strlen(s) == 1 ? s[0] - 'A' : -1;
     if (islower(s[0])) return strlen(s) == 1 ? s[0] - 'a' : -1;
     if (!isdigit(s[0]) && s[0] != '-') return -1;
@@ -34,7 +37,7 @@ int parse(char s[])
     return tmp * (s[0] == '-' ? -1 : 1);
 }
 
-point_t manual(const game_t game, const void* assets)
+point_t input_manually(const game_t game, const void* assets)
 {
     (void)game, (void)assets;
 
@@ -52,12 +55,13 @@ point_t manual(const game_t game, const void* assets)
         case GAMECTRL_GIVEUP:
         case GAMECTRL_EXPORT:
         case GAMECTRL_WITHDRAW:
+        case GAMECTRL_EVALUATE:
         case GAMECTRL_SWITCH_PLAYER: return (point_t){first, second};
         default: {
             const point_t pos = (point_t){second - 1, first};
             if (in_board(pos)) return pos;
             log_e("invalid input.");
-            return manual(game, assets);
+            return input_manually(game, assets);
         }
     }
 #endif

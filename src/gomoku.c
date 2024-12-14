@@ -1,8 +1,8 @@
 // author: Cauphenuny
 // date: 2024/07/27
+#include "dataset.h"
 #include "game.h"
 #include "init.h"
-#include "dataset.h"
 #include "players.h"
 #include "server.h"
 #include "util.h"
@@ -14,6 +14,7 @@
 #include <string.h>
 
 #define GAME_STORAGE_SIZE 65536
+#define DATASET_SIZE      65536
 
 int statistics[3][3];
 // [0][0]: draw count [0][1/2]: normal / reverse count
@@ -44,24 +45,40 @@ static game_result_t results[GAME_STORAGE_SIZE];
 static int tot;
 static char* sample_file;
 static char* model_file;
-static predictor_network_t predictor;
+static network_t network;
+static dataset_t dataset;
 
 static void save_data()
 {
     log("save game data? [y/n]");
-    char c = prompt_pause();
+    int c;
+    do c = prompt_pause();
+    while (c != 'y' && c != 'n');
     if (c == 'y') {
-        char name[1024];
-        add_samples(results, tot, true);
+        char name[256];
+        log("transform? [y/n]");
+        int c;
+        do c = prompt_pause();
+        while (c != 'y' && c != 'n');
+        if (c == 'y')
+            add_games(&dataset, results, tot);
+        else
+            add_testgames(&dataset, results, tot);
         do {
             if (!sample_file) {
                 log("input file name: ");
+                prompt_scanf("%s", name);
             } else {
-                log("input file name (. for %s): ", sample_file);
+                log("input file name (empty for %s): ", sample_file);
+                int first = prompt_pause();
+                if (first == '\n' || first == EOF) {
+                    strcpy(name, sample_file);
+                } else {
+                    name[0] = first;
+                    chkscanf("%s", name + 1);
+                }
             }
-            prompt_scanf("%s", name);
-            if (strcmp(name, ".") == 0 && sample_file) strcpy(name, sample_file);
-        } while (export_samples(name));
+        } while (save_dataset(&dataset, name));
     }
 }
 
@@ -103,44 +120,54 @@ int main(int argc, char* argv[])
     log("gomoku v%s", VERSION);
     init();
 
+#ifdef DEFAULT_MODEL
+    char fullname[256];
+    snprintf(fullname, 256, "%s.v%d.%dch.mod", DEFAULT_MODEL, NETWORK_VERSION, MAX_CHANNEL);
+    if (file_exists(fullname)) {
+        model_file = fullname;
+        load_network(&network, model_file);
+        bind_network(&network, false);
+    }
+#endif
+
     if (argc > 1) {
         for (int i = 1; i < argc; i++) {
             char* p = argv[i] + strlen(argv[i]);
             while (*p != '.' && p > argv[i]) p--;
             if (strcmp(p, ".dat") == 0 && !sample_file && file_exists(argv[i])) {
-                sample_file = argv[i], import_samples(sample_file);
-            }
-            if (strcmp(p, ".mod") == 0 && !model_file && file_exists(argv[i])) {
-                model_file = argv[i];
-                if (predictor_load(&predictor, model_file)) {
-                    model_file = NULL;
+                sample_file = argv[i], load_dataset(&dataset, sample_file);
+            } else if (strcmp(p, ".mod") == 0 && !model_file) {
+                if (!load_network(&network, argv[i])) {
+                    bind_network(&network, false);
+                    model_file = argv[i];
                 } else {
-                    bind_network(&predictor);
+                    log_e("invalid model: %s", argv[i]);
                 }
+            } else {
+                log_e("invalid argument: %s", argv[i]);
             }
         }
     }
 
+    if (dataset.capacity == 0) {
+        dataset = new_dataset(DATASET_SIZE);
+    }
+
     if (model_file == NULL) {
-        char default_model[] = "model/default";
-        if (predictor_load(&predictor, default_model)) {
-            log_e("failed to load network. usage: %s {model basename with path}", argv[0]);
-            return 1;
-        } else {
-            bind_network(&predictor);
-        }
+        log_e("network not found. usage: %s {.mod file}", argv[0]);
     }
 
     log_i("available modes: ");
     for (int i = 0; i < PRESET_SIZE; i++) {
         if (preset_modes[i].time_limit > 0)
-            log_i("#%d: %s vs %s\t%dms", i + 1, preset_players[preset_modes[i].p1].name,
+            log_i("%d: %s vs %s\t%dms", i + 1, preset_players[preset_modes[i].p1].name,
                   preset_players[preset_modes[i].p2].name, preset_modes[i].time_limit);
         else
-            log_i("#%d: %s vs %s", i + 1, preset_players[preset_modes[i].p1].name,
+            log_i("%d: %s vs %s", i + 1, preset_players[preset_modes[i].p1].name,
                   preset_players[preset_modes[i].p2].name);
     }
-    log_i("#0: custom");
+    log_i("0: custom");
+    log_i("input mode:");
 
     int player1, player2, time_limit;
 #ifndef DEBUG
@@ -150,13 +177,13 @@ int main(int argc, char* argv[])
     } while (mode < 0 || mode > PRESET_SIZE);
     if (!mode) {
         log_i("available players:");
-        for (int i = 0; i < PLAYER_CNT; i++) log_i("#%d: %s", i, preset_players[i].name);
-        log_i("input player1 player2:");
+        for (int i = 0; i < PLAYER_CNT; i++) log_i("%d: %s", i, preset_players[i].name);
+        log_i("input player1 player2 (%%d %%d):");
         do {
             prompt();
             chkscanf("%d%d", &player1, &player2)
         } while (player1 < 0 || player1 >= PLAYER_CNT || player2 < 0 || player2 >= PLAYER_CNT);
-        log_i("input time limit (-1 if no limit): ");
+        log_i("input time limit (unit: ms) (-1 if no limit): ");
         prompt_scanf("%d", &time_limit);
     } else {
         player1 = preset_modes[mode - 1].p1, player2 = preset_modes[mode - 1].p2;
@@ -169,7 +196,7 @@ int main(int argc, char* argv[])
     int id = 1;
     while (1) {
         const game_result_t result = start_game(preset_players[player1], preset_players[player2],
-                                                id, time_limit, model_file ? &predictor : NULL);
+                                                id, time_limit, model_file ? &network : NULL);
         if (tot < GAME_STORAGE_SIZE) results[tot++] = result;
         const int winner = result.winner;
         statistics[0][id]++;

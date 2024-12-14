@@ -4,6 +4,6 @@
 #include "board.h"
 #include "game.h"
 
-point_t manual(game_t, const void*);
+point_t input_manually(game_t, const void*);
 
 #endif

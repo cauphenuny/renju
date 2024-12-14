@@ -22,15 +22,23 @@ typedef struct {
     int kernel_size, stride;
 } max_pool_params_t;
 
-const static struct checker_params_t {
-    conv_params_t conv;
-    linear_params_t linear;
-    max_pool_params_t max_pool;
-} checker_params = {
-    .conv = {1, 32, 5, 2},
-    .max_pool = {32, 5, 5},
-    .linear = {288, 3},
-};
+#define NETWORK_VERSION 5
+
+#define MAX_CHANNEL 128
+
+typedef struct {
+    struct {
+        conv_params_t conv1, conv2, conv3;
+    } shared;
+    struct {
+        conv_params_t conv;
+        linear_params_t linear;
+    } value;
+    struct {
+        conv_params_t conv1, conv2;
+        linear_params_t linear;
+    } policy;
+} network_params_t;
 
 #define CONV(name, ich, och, ksize, pd)          \
     struct {                                     \
@@ -43,72 +51,59 @@ const static struct checker_params_t {
         float bias[osize];           \
     } name
 
-typedef struct {
-    CONV(conv, 1, 32, 5, 2);
-    LINEAR(linear, 288, 3);
-} checker_network_t;
-
-#define NETWORK_VERSION 1
-
-#define MAX_CHANNEL 64
+static const network_params_t network_params = {
+    .shared =
+        {
+            .conv1 = {4, 32, 5, 2},
+            .conv2 = {32, 64, 5, 2},
+            .conv3 = {64, MAX_CHANNEL, 3, 1},
+        },
+    .value =
+        {
+            .conv = {MAX_CHANNEL, 4, 3, 1},
+            .linear = {4 * 15 * 15, 3},
+        },
+    .policy =
+        {
+            .conv1 = {MAX_CHANNEL, 32, 3, 1},
+            .conv2 = {32, 1, 3, 1},
+            .linear = {1 * 15 * 15, 225},
+        },
+};
 
 typedef struct {
     struct {
-        CONV(conv1, 2, 32, 5, 2);
+        CONV(conv1, 4, 32, 5, 2);
         CONV(conv2, 32, 64, 5, 2);
         CONV(conv3, 64, MAX_CHANNEL, 3, 1);
     } shared;
     struct {
-        CONV(conv, MAX_CHANNEL, 4, 1, 0);
-        LINEAR(linear1, 4 * 15 * 15, 128);
-        LINEAR(linear2, 128, 1);
+        CONV(conv, MAX_CHANNEL, 4, 3, 1);
+        LINEAR(linear, 4 * 15 * 15, 3);
     } value;
     struct {
         CONV(conv1, MAX_CHANNEL, 32, 3, 1);
-        CONV(conv2, 32, 1, 1, 0);
+        CONV(conv2, 32, 1, 3, 1);
+        LINEAR(linear, 1 * 15 * 15, 225);
     } policy;
-} predictor_network_t;
-
-const static struct predictor_params_t {
-    struct {
-        conv_params_t conv1, conv2, conv3;
-    } shared;
-    struct {
-        conv_params_t conv;
-        linear_params_t linear1, linear2;
-    } value;
-    struct {
-        conv_params_t conv1, conv2;
-    } policy;
-} predictor_params = {
-    .shared = {{2, 32, 5, 2},             //
-               {32, 64, 5, 2},            //
-               {64, MAX_CHANNEL, 3, 1}},  //
-    .value = {{MAX_CHANNEL, 4, 1, 0},     //
-              {4 * 15 * 15, 128},         //
-              {128, 1}},                  //
-    .policy = {{MAX_CHANNEL, 32, 3, 1},   //
-               {32, 1, 1, 0}},            //
-};
+} network_t;
 
 #undef CONV
 #undef LINEAR
-
-checker_network_t checker_load(const char* file_name);
-int checker_forward(const checker_network_t* network, const board_t board);
-void checker_save(const checker_network_t* network, const char* file_name);
 
 typedef struct {
     double eval;
     fboard_t prob;
 } prediction_t;
 
-prediction_t predict(const predictor_network_t* predictor, const board_t board, int first_id,
-                     int cur_id);
-void print_prediction(const prediction_t prediction);
-int predictor_load(predictor_network_t* network, const char* file_basename);
-int predictor_save(const predictor_network_t* network, const char* file_basename);
+extern int predict_sum_time, predict_cnt;
 
-point_t move_nn(game_t game, const void* assets);
+prediction_t predict(const network_t* network,  //
+                     const board_t board, point_t last_move, int first_id, int cur_id);
+void print_prediction(const prediction_t prediction);
+int load_network(network_t* network, const char* file_basename);
+int save_network(const network_t* network, const char* file_basename);
+
+point_t nn_move(game_t game, const void* assets);
 
 #endif

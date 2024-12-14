@@ -1,9 +1,11 @@
 #ifndef NEURO_H
 #define NEURO_H
+#include <stdbool.h>
 
 void softmax(float x[], int size);
 void relu(float x[], int size);
 void tanh_(float x[], int size);
+double entropy(const float x[], int size, bool normalize);
 void conv2d_impl(const float* restrict input, int input_channel, int input_x, int input_y,
                  float* restrict output, int output_channel, int* output_x, int* output_y,
                  const float* restrict kernel, const float* restrict bias, int kernel_size,

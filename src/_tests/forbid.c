@@ -30,7 +30,7 @@ int test_forbid(void)
     for (int i = 0; i < TESTS; i++) {
         log("i = %d", i);
         pos = parse_board(board, tests[i].str);
-        emphasis_print(board, pos);
+        print_emph(board, pos);
         const pattern4_t forbid = is_forbidden(board, pos, 1, true);
         log("got %s, expected %s", pattern4_typename[forbid], pattern4_typename[tests[i].id]);
         if (forbid != tests[i].id) {

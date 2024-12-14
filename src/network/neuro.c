@@ -4,11 +4,8 @@
 #include "neuro.h"
 
 #include "board.h"
-#include "util.h"
 
-#undef log
 #include <math.h>
-#define log log_l
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -32,6 +29,22 @@ void softmax(float x[], int size)
     }
 }
 
+void sigmoid(float x[], int size)
+{
+    // log("sigmoid: %d", size);
+    for (int i = 0; i < size; i++) {
+        x[i] = 1 / (1 + exp(-x[i]));
+    }
+}
+
+void silu(float x[], int size)
+{
+    // log("silu: %d", size);
+    for (int i = 0; i < size; i++) {
+        x[i] = x[i] / (1 + exp(-x[i]));
+    }
+}
+
 void relu(float x[], int size)
 {
     // log("relu: %d", size);
@@ -48,16 +61,37 @@ void tanh_(float x[], int size)
     }
 }
 
-/*
-double mean(float x[], int size)
+float mean(float x[], int size)
 {
-    double sum = 0;
+    float sum = 0;
     for (int i = 0; i < size; i++) {
         sum += x[i];
     }
     return sum / size;
 }
-*/
+
+double entropy(const float x[], int size, bool normalize)
+{
+    float* arr = (float*)malloc(size * sizeof(float));
+    memcpy(arr, x, size * sizeof(float));
+    if (normalize) {
+        float sum = 0;
+        for (int i = 0; i < size; i++) {
+            sum += arr[i];
+        }
+        for (int i = 0; i < size; i++) {
+            arr[i] /= sum;
+        }
+    }
+    double ans = 0;
+    for (int i = 0; i < size; i++) {
+        if (arr[i] > 1e-8) {
+            ans -= arr[i] * log(arr[i]);
+        }
+    }
+    free(arr);
+    return ans;
+}
 
 void conv2d_impl(const float* restrict input, int input_channel, int input_x, int input_y,
                  float* restrict output, int output_channel, int* output_x, int* output_y,
@@ -81,7 +115,6 @@ void conv2d_impl(const float* restrict input, int input_channel, int input_x, in
                     const int x = i - padding, y = j - padding;
                     float sum = 0;
                     for (int offset_x = 0; offset_x < kernel_size; offset_x++) {
-#pragma omp simd
                         for (int offset_y = 0; offset_y < kernel_size; offset_y++) {
                             const int cur_x = x + offset_x, cur_y = y + offset_y;
                             if (cur_x >= 0 && cur_x < input_x && cur_y >= 0 && cur_y < input_y) {
@@ -98,7 +131,6 @@ void conv2d_impl(const float* restrict input, int input_channel, int input_x, in
             }
         }
     }
-#pragma omp parallel for collapse(2)
     for (int och = 0; och < output_channel; och++) {
         for (int i = 0; i < _output_x; i++) {
             for (int j = 0; j < _output_y; j++) {

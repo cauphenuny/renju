@@ -63,7 +63,7 @@
 #    define RESET     ""
 #endif
 
-char pause();
+int pause();
 #define prompt_pause() (fprintf(stderr, "(%s) ", __func__), pause())
 #define prompt()       fprintf(stderr, "(%s) ", __func__)
 

@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 3.5)
 project (
     gomoku
-    VERSION 2.3.0
+    VERSION 2.4.0
     LANGUAGES C
 )
 set (CMAKE_VERBOSE_MAKEFILE OFF)
@@ -55,6 +55,7 @@ file(GLOB_RECURSE INCLUDE_LIST "*.h")
 
 add_library(gomoku_objects OBJECT ${SRC_LIST})
 target_link_libraries(gomoku_objects m)
+# target_compile_definitions(gomoku_objects PRIVATE NO_FORBID)
 
 add_library(libgomoku SHARED $<TARGET_OBJECTS:gomoku_objects>)
 set_target_properties(libgomoku PROPERTIES OUTPUT_NAME "gomoku")

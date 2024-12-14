@@ -7,7 +7,7 @@
 #include <stdint.h>
 
 #define SEGMENT_LEN  9       // 2 * WIN_LENGTH - 1
-#define PATTERN_SIZE 262144  // PIECE_SIZE ** SEGMENT_LEN
+#define SEGMENT_MASK 262144  // PIECE_SIZE ** SEGMENT_LEN
 
 typedef enum {
     PAT_ETY,  // empty
@@ -43,14 +43,13 @@ typedef struct {
     piece_t pieces[SEGMENT_LEN];  // something like . . o . . x . o .
 } segment_t;
 
-int segment_encode(segment_t s);
-segment_t segment_decode(int v);
-void segment_print(segment_t s);
+int encode_segment(segment_t s);
+segment_t decode_segment(int v);
+void print_segment(segment_t s);
 
-pattern_t to_pattern(int segment_value);
-pattern4_t to_pattern4(int x, int y, int u, int v);
+pattern_t to_pattern(int segment_value, bool check_forbid);
+pattern4_t to_pattern4(int x, int y, int u, int v, bool check_forbid);
 void pattern_init(void);
 void get_upgrade_columns(int segment_value, int* cols, int limit);
-void get_patterns(const board_t board, point_t pos, pattern_t arr[]);
 
 #endif

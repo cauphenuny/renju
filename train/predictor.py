@@ -1,141 +1,112 @@
 # %%
 #!/usr/bin/env python3
-# author: Cauphenuny <https://cauphenuny.github.io/>
 
 from IPython import display
 from colorama import Fore
 from lib import libgomoku as gomoku
-import random
-import torch
 from d2l import torch as d2l
-from torch import nn
+from collections import OrderedDict
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 import ctypes
 import sys
+from dataset import GomokuDataset, to_tensor
 from export import to_ctype
+import random
 
 def cpu():
+    return torch.device("cpu")
+
+def try_cuda():
+    if torch.cuda.is_available():
+        return torch.device("cuda")
     return torch.device("cpu")
 
 def try_mps():
     if torch.backends.mps.is_available():
         return torch.device("mps")
-    return torch.device("cpu")
+    return try_cuda() 
 
-def to_input_tensor(input):
-    return torch.stack([torch.tensor(input.board, dtype=torch.float32), 
-                        torch.tensor(input.cur_id, dtype=torch.float32)])
-
-def to_tensor(raw_sample, device = cpu()):
-    X = torch.stack([torch.tensor(raw_sample.board, dtype=torch.float32), 
-                     torch.tensor(raw_sample.cur_id, dtype=torch.float32)])
-    prob = torch.tensor(raw_sample.prob, dtype=torch.float32).reshape(225)
-    eval = torch.tensor(raw_sample.result, dtype=torch.float32).reshape(1)
-    return X.to(device), prob.to(device), eval.to(device)
-    
-
-class GomokuDataset(torch.utils.data.IterableDataset):
-    def __init__(self, batch_size, start, end):
-        self.samples = list(range(start, end))
-        random.shuffle(self.samples)
-        self.batch_size = batch_size
-        self.index = 0
-        print(f'{Fore.GREEN}initialized dataset [{start}, {end}) with batch_size={batch_size}{Fore.RESET}')
-
-    def __len__(self):
-        return len(self.samples)
-
-    def __next__(self):
-        if self.index + self.batch_size > len(self.samples):
-            raise StopIteration
-        input_array  = []
-        prob_array  = []
-        eval_array = []
-        for i in self.samples[self.index : self.index + self.batch_size]:
-            X, prob, eval = to_tensor(gomoku.find_sample(i))
-            input_array.append(X)
-            prob_array.append(prob)
-            eval_array.append(eval)
-        self.index += self.batch_size
-        return torch.stack(input_array), torch.stack(prob_array), torch.stack(eval_array)
-
-    def __iter__(self):
-        self.index = 0
-        while self.index + self.batch_size <= len(self.samples):
-            yield next(self)
-
-test_size = 0
-
-def test_iter(batch_size):
-    return GomokuDataset(batch_size, 0, test_size)
-
-def train_iter(batch_size):
-    return GomokuDataset(batch_size, test_size, gomoku.dataset_size())
-
-def evaluate_loss(net, device, iter, loss):
+def evaluate_accuracy(net, device, iter, loss1, loss2):
     if isinstance(net, nn.Module):
         net.eval()
         if not device:
             device = next(iter(net.parameters())).device
-    metric = d2l.Accumulator(2)
+    metric = d2l.Accumulator(3)
     with torch.no_grad():
-        for X, _, y in iter:
-            X, y = X.to(device), y.to(device)
-            y_hat = net(X)
-            l = loss(y_hat, y)
-            metric.add(l * X.shape[0], X.shape[0])
-    return metric[0] / metric[1]
+        for X, y2, y1 in iter:
+            X, y2, y1 = X.to(device), y2.to(device), y1.to(device)
+            y2_hat, y1_hat = net(X)
+            l1, l2 = loss1(y1_hat, y1), loss2(y2_hat, y2)
+            metric.add(X.shape[0], X.shape[0] * l1, X.shape[0] * l2)
+    return metric[1] / metric[0], metric[2] / metric[0]
 
-def evaluate_accuracy_gpu(net, data_iter, device=None):
+def evaluate_accuracy(net, device, iter):
     if isinstance(net, nn.Module):
         net.eval()
         if not device:
             device = next(iter(net.parameters())).device
-    metric = d2l.Accumulator(2)
+    metric = d2l.Accumulator(3)
     with torch.no_grad():
-        for X, _, y in data_iter:
-            if isinstance(X, list):
-                X = [x.to(device) for x in X]
-            else:
-                X = X.to(device)
-            y = y.to(device)
-            metric.add(d2l.accuracy(net(X), y), y.numel())
-    return metric[0] / metric[1]
+        for X, y2, y1 in iter:
+            X, y2, y1 = X.to(device), y2.to(device), y1.to(device)
+            y2_hat, y1_hat = net(X)
+            metric.add(X.shape[0], 
+                       torch.sum(torch.argmax(y1_hat, dim=1) == torch.argmax(y1, dim=1)).item(), 
+                       torch.sum(torch.argmax(y2_hat, dim=1) == torch.argmax(y2, dim=1)).item())
+    return metric[1] / metric[0], metric[2] / metric[0]
 
-class Predictor(nn.Module):
-    def __init__(self, max_channel = 64, model_name = None):
+class Residual(nn.Module):
+    def __init__(self, layer):
         super().__init__()
-        """
-shared = 2 * 32 * 225 * 9 + 32 * 64 * 225 * 25 + 64 * 128 * 225 * 9
-value = 128 * 4 * 1 + 4 * 225 * 128 + 128 * 1
-policy = 128 * 32 * 225 * 9 + 16 * 1 * 225 * 1
-print(f'shared: {shared}, value: {value}, policy: {policy}, sum: {(shared+value+policy)/1e6}')
-        """
-        self.shared = nn.Sequential(
-            nn.Conv2d(2, 32, kernel_size=5, padding=2), nn.ReLU(), 
-            nn.Conv2d(32, 64, kernel_size=5, padding=2), nn.ReLU(), nn.Dropout(), 
-            nn.Conv2d(64, max_channel, kernel_size=3, padding=1), nn.ReLU()
-        )
-        self.value_net = nn.Sequential(
-            self.shared, 
-            nn.Conv2d(max_channel, 4, kernel_size=1, padding=0), nn.ReLU(), 
-            nn.Flatten(),
-            nn.Linear(4 * 15 * 15, 128), nn.ReLU(), nn.Dropout(), 
-            nn.Linear(128, 1), nn.Tanh()
-        )
-        self.policy_net = nn.Sequential(
-            self.shared, 
-            nn.Conv2d(max_channel, 32, kernel_size=3, padding=1), nn.ReLU(), nn.Dropout(), 
-            nn.Conv2d(32, 1, kernel_size=1, padding=0),
-            nn.Flatten(), nn.LogSoftmax(dim=1)
-        )
+        self.content = layer
+        self.weight = layer.weight
+        self.bias = layer.bias
+    
+    def forward(self, X):
+        return X + self.content(X)
+
+# %%
+class Predictor(nn.Module):
+    def __init__(self, max_channel=gomoku.MAX_CHANNEL, model_name=None, device=try_mps()):
+        super().__init__()
+        self.shared = nn.Sequential(OrderedDict([
+            ('conv1', nn.Conv2d(4, 32, kernel_size=5, padding=2)), ('relu1', nn.ReLU()), 
+            ('dropout1', nn.Dropout()),
+            ('conv2', nn.Conv2d(32, 64, kernel_size=5, padding=2)), ('relu2', nn.ReLU()), 
+            ('conv3', nn.Conv2d(64, max_channel, kernel_size=3, padding=1)), ('relu3', nn.ReLU()), 
+            ('dropout2', nn.Dropout()),
+        ]))
+        self.value = nn.Sequential(OrderedDict([
+            ('conv', nn.Conv2d(max_channel, 4, kernel_size=3, padding=1)), ('relu1', nn.ReLU()),
+            ('flatten', nn.Flatten()),
+            ('linear', nn.Linear(4 * 15 * 15, 3)), 
+            ('logsoftmax', nn.LogSoftmax(dim=1)),
+        ]))
+        self.policy = nn.Sequential(OrderedDict([
+            ('conv1', nn.Conv2d(max_channel, 32, kernel_size=3, padding=1)), ('relu1', nn.ReLU()),
+            ('conv2', nn.Conv2d(32, 1, kernel_size=3, padding=1)), ('relu2', nn.ReLU()),
+            ('flatten', nn.Flatten()),
+            ('linear', Residual(nn.Linear(15 * 15, 225))), 
+            ('logsoftmax', nn.LogSoftmax(dim=1)),
+        ]))
         self.max_channel = max_channel
+        self.to(device)
+        self.model_name = model_name
         if model_name != None:
             self.load(model_name)
-        self.model_name = model_name
+
+    def forward(self, x):
+        shared_output = self.shared(x)
+        policy_output = self.policy(shared_output)
+        value_output = self.value(shared_output)
+        return policy_output, value_output
 
     def save(self, basename):
         name = f'{basename}.v{gomoku.NETWORK_VERSION}.{self.max_channel}ch.params'
         torch.save(self.state_dict(), name)
+        print(f'saved params to {name}')
 
     def load(self, basename):
         name = f'{basename}.v{gomoku.NETWORK_VERSION}.{self.max_channel}ch.params'
@@ -143,28 +114,16 @@ print(f'shared: {shared}, value: {value}, policy: {policy}, sum: {(shared+value+
         print(f'load params from {name}')
         self.load_state_dict(torch.load(name))
 
-    def forward(self, X):
-        return self.policy_net(X), self.value_net(X)
-    
     def to_ctype(self):
-        net = gomoku.predictor_network_t()
-        print('created')
-        net.shared.conv1.weight, net.shared.conv1.bias = to_ctype(self.shared[0])
-        print('completed 1')
-        net.shared.conv2.weight, net.shared.conv2.bias = to_ctype(self.shared[2])
-        print('completed 2')
-        net.shared.conv3.weight, net.shared.conv3.bias = to_ctype(self.shared[5])
-        print('completed 3')
-        net.value.conv.weight, net.value.conv.bias = to_ctype(self.value_net[1])
-        print('completed 4')
-        net.value.linear1.weight, net.value.linear1.bias = to_ctype(self.value_net[4])
-        print('completed 5')
-        net.value.linear2.weight, net.value.linear2.bias = to_ctype(self.value_net[7])
-        print('completed 6')
-        net.policy.conv1.weight, net.policy.conv1.bias = to_ctype(self.policy_net[1])
-        print('completed 7')
-        net.policy.conv2.weight, net.policy.conv2.bias = to_ctype(self.policy_net[4])
-        print('completed 8')
+        layers = [
+            'shared.conv1', 'shared.conv2', 'shared.conv3',
+            'value.conv', 'value.linear',
+            'policy.conv1', 'policy.conv2', 'policy.linear',
+        ]
+        net = gomoku.network_t()
+        for i, layer in enumerate(layers):
+            exec(f"net.{layer}.weight, net.{layer}.bias = to_ctype(self.{layer})")
+            print(f'converted {layer}, {i+1}/{len(layers)}')
         return net
 
     def export_ctype(self, name = None):
@@ -174,80 +133,87 @@ print(f'shared: {shared}, value: {value}, policy: {policy}, sum: {(shared+value+
             name = input('input model name: ')
         print(f'exporting model "{name}"')
         ctype_net = self.to_ctype()
-        gomoku.predictor_save(ctypes.pointer(ctype_net), name)
+        gomoku.save_network(ctypes.pointer(ctype_net), name)
 
 # %%
 def calculate_entropy(tensor):
     return -torch.sum(torch.exp(tensor) * tensor)
 
 def print_sample(sample):
-    # gomoku.print_sample(sample)
+    gomoku.print_sample(sample)
     X, prob, eval = to_tensor(sample)
-    X = X.reshape(1, 2, 15, 15)
 
     print(f'eval: {eval}')
     print(f'entropy: {calculate_entropy(prob)}')
     print(f'prob detail: {prob}')
 
 # %%
-def train(animated, net, train_iter, test_iter, num_epochs, lr, device):
-    print('training on', device)
+def cross_entropy_loss(log_y_hat, y):
+    return -torch.mean(torch.sum(y * log_y_hat, dim=1))
+
+def train(net, train_iter, test_iter, num_epochs, lr, device):
+    print(f'training on {device}, lr: {lr}, num_epochs: {num_epochs}')
     net.to(device)
     optimizer = torch.optim.SGD(net.parameters(), lr=lr, momentum=0.9)
     # optimizer = torch.optim.Adam(net.parameters(), lr=lr)
     timer, num_batches = d2l.Timer(), len(train_iter)
     print(f'num_batches: {num_batches}')
-    loss = nn.MSELoss()
+    # mse_loss = nn.MSELoss()
     metric_record = []
-    if animated:
-        animator = d2l.Animator(xlabel='epoch', xlim=[1, num_epochs], ylim=[0, 3.0],
-                        legend=['train loss', 'test loss', 'entropy'])
     for epoch in range(num_epochs):
-        metric = d2l.Accumulator(4)
+        metric = d2l.Accumulator(5)
         net.train()
+        cnt = 0
+        acc_count = 0
         for i, (X, policy, value) in enumerate(train_iter):
             timer.start()
             optimizer.zero_grad()
             X, policy, value = X.to(device), policy.to(device), value.to(device)
             policy_hat, value_hat = net(X)
-            value_loss = loss(value_hat, value)
-            policy_loss = -torch.mean(torch.sum(policy * policy_hat, dim=1))
+            value_loss = cross_entropy_loss(value_hat, value)
+            policy_loss = cross_entropy_loss(policy_hat, policy) 
             l = value_loss + policy_loss
+            l2_lambda = 0.001
+            l2_reg = torch.tensor(0., requires_grad=True)
+            for param in net.parameters():
+                l2_reg = l2_reg + torch.norm(param)
+            l += l2_lambda * l2_reg
             l.backward()
             optimizer.step()
+            acc_count += torch.sum(torch.argmax(value_hat, dim=1) == torch.argmax(value, dim=1)).item()
             with torch.no_grad():
                 metric.add(X.shape[0], 
                            value_loss * X.shape[0],
                            policy_loss * X.shape[0],
-                           sum(calculate_entropy(policy_hat[i]) for i in range(X.shape[0])))
+                           sum(calculate_entropy(policy_hat[i]) for i in range(X.shape[0])), 
+                           sum(calculate_entropy(value_hat[i]) for i in range(X.shape[0])))
             timer.stop()
-        train_l1 = metric[1] / metric[0]
-        train_l2 = metric[2] / metric[0]
+            cnt += 1
+        # print(cnt)
+        train_loss1 = metric[1] / metric[0]
+        train_loss2 = metric[2] / metric[0]
+        train_acc = acc_count / metric[0]
         entropy = metric[3] / metric[0]
-        test_l1 = evaluate_loss(net.value_net, device, test_iter, loss)
-        metric_record.append([train_l1, test_l1, train_l2, entropy])
-        if animated:
-            animator.add(epoch + 1, (train_l1, test_l1, entropy))
+        value_entropy = metric[4] / metric[0]
+        if test_iter != None:
+            test_acc1, test_acc2 = evaluate_accuracy(net, device, test_iter)
         else:
-            print(f'epoch {epoch + 1}, loss {train_l1:.3f}, {train_l2:.3f}, test value loss {test_l1:.3f}, entropy {entropy:.3f}')
-    print(f'value loss {train_l1:.3f}, policy loss {train_l2:.3f}, test value loss {test_l1:.3f}, entropy {entropy:.3f}')
+            test_acc1, test_acc2 = 0, 0
+        metric_record.append([train_loss1, train_loss2, test_acc1, test_acc2, entropy])
+        print(f'epoch {epoch + 1}, loss {train_loss1:.3f}, {train_loss2:.3f}, acc {train_acc:.3f}, test acc {test_acc1:.3f}, {test_acc2:.3f}, val entropy {value_entropy:.3f}, entropy {entropy:.3f}')
+    print(f'value loss {train_loss1:.3f}, policy loss {train_loss2:.3f}, test acc {test_acc1:.3f}, {test_acc2:.3f}, entropy {entropy:.3f}')
     print(f'{metric[0] * num_epochs / timer.sum():.1f} examples/sec on {str(device)}')
     return metric_record
 
-
 # %%
 def test_sample(net, ctype_net, sample):
+    gomoku.print_sample(sample)
+
     X, prob, eval = to_tensor(sample)
-    X = X.reshape(1, 2, 15, 15).to(try_mps())
+    X = X.reshape(1, 4, 15, 15).to(try_mps())
     net.to(try_mps())
     net.eval()
-
-    # print(X)
-
-    # detail(net, X)
-
     log_prob_hat, eval_hat = net(X)
-
     prob_hat = torch.exp(log_prob_hat)
 
     print("probability:")
@@ -256,25 +222,28 @@ def test_sample(net, ctype_net, sample):
     prob_array = gomoku.fboard_t()
     for x in range(15):
         for y in range(15):
-            board_array[x][y] = 0 if sample.board[x][y] == 0 else (1 if sample.board[x][y] == 1 else 2)
+            if sample.input.p1_pieces[x][y] != 0:
+                board_array[x][y] = 1
+            elif sample.input.p2_pieces[x][y] != 0:
+                board_array[x][y] = 2
+            else:
+                board_array[x][y] = 0
             prob_array[x][y] = prob_hat[0][x * 15 + y].item()
-    print(calculate_entropy(prob_hat[0]))
-    gomoku.probability_print(board_array, prob_array)
-
+    gomoku.print_prob(board_array, prob_array)
+    print(f'entropy: {calculate_entropy(log_prob_hat[0]).item():.3f}')
     print(f'eval: {eval_hat[0][0].item():.3f}')
 
-    cur_id = sample.cur_id[0][0]
-    if cur_id == -1:
-        cur_id = 2
-    print('call gomoku.predict...')
-    prediction = gomoku.predict(ctypes.pointer(ctype_net), board_array, 1, 0)
-    print(f'result eval: {prediction.eval}')
-    gomoku.probability_print(board_array, prediction.prob)
-
-# %%
-
-def interactive_train(net):
-    pass
+    if ctype_net != None:
+        cur_id = sample.input.current_player
+        if cur_id == -1:
+            cur_id = 2
+        print('call gomoku.predict...')
+        prediction = gomoku.predict(ctypes.pointer(ctype_net), 
+                                    board_array, 
+                                    sample.input.last_move, 
+                                    1, 
+                                    cur_id)
+        gomoku.print_prediction(prediction)
 
 # %%
 def detail(net, X):
@@ -295,61 +264,90 @@ def detail(net, X):
                         f.write('\n')
                     f.write('\n')
 
+class CombinedIterator:
+    def __init__(self, iterators):
+        self.iterators = iterators
+        self.available = list(range(len(iterators)))
+
+    def __len__(self):
+        return sum(len(it) for it in self.iterators)
+
+    def __iter__(self):
+        self.available = list(range(len(self.iterators)))
+        return self
+
+    def __next__(self):
+        if not self.available:
+            raise StopIteration
+        index = random.choice(self.available)
+        try:
+            return next(self.iterators[index])
+        except StopIteration:
+            self.available.remove(index)
+            return self.__next__()
 
 # %%
 if __name__ == '__main__':
     gomoku.init()
-    gomoku.import_samples('data/5000ms.tr.dat')
-    # if len(sys.argv) != 2:
-    #     print(f'usage: {sys.argv[0]} [.dat file]')
-    #     sys.exit(1)
-    # if gomoku.import_samples(sys.argv[1]):
-    #     sys.exit(2)
-    test_size = gomoku.dataset_size() // 10
-    print(f'dataset size: {gomoku.dataset_size()}, test size: {test_size}')
+    if len(sys.argv) != 3:
+        train_files = ["data/3000ms.dat", "data/5000ms.dat"]
+        test_file = "data/3000ms-raw.dat"
+    else:
+        train_files = [sys.argv[1]]
+        test_file = sys.argv[2]
+    train_iters = lambda batch_size: [GomokuDataset(file=train_file, batch_size=batch_size, device=try_mps()) for train_file in train_files]
+    train_iter = lambda batch_size: CombinedIterator(train_iters(batch_size))
+    test_iter = lambda batch_size: GomokuDataset(file=test_file, batch_size=batch_size, device=try_mps())
 
-    batch_size = 256
+    batch_size = 64
 
-    predictor = Predictor()
-
+    network = Predictor(128)
     X, policy, value = next(train_iter(batch_size))
     print(f'dataset output shape: {policy.shape}, {value.shape}')
 
+    policy_hat, value_hat = network(X)
+    print(f'network output shape: {policy_hat.shape}, {value_hat.shape}')
+
 # %%
-    batch_size = 32
     num_epochs = 10
     lr = 0.005
-    metrics = train(False, predictor, train_iter(batch_size), test_iter(batch_size), num_epochs, lr, try_mps())
-    animator1 = d2l.Animator(xlabel='epoch', xlim=[1, num_epochs], ylim=[0, 1], 
+    batch_size = 32
+    metrics = train(network, train_iter(batch_size), test_iter(batch_size), num_epochs, lr, try_mps())
+    animator1 = d2l.Animator(xlabel='epoch', xlim=[1, num_epochs], ylim=[0, 1.5], 
                              legend=['train value loss', 'test value loss'])
     animator2 = d2l.Animator(xlabel='epoch', xlim=[1, num_epochs], ylim=[2, 5], 
-                             legend=['train policy loss', 'entropy'])
+                             legend=['train policy loss', 'test policy loss', 'entropy'])
     for i, metric in enumerate(metrics):
         animator1.add(i + 1, (metric[0], metric[1]))
-        animator2.add(i + 1, (metric[2], metric[3]))
-    predictor.to(cpu())
+        animator2.add(i + 1, (metric[2], metric[3], metric[4]))
+    network.to(cpu())
 
     print(f'completed, loss: {metrics[-1][0]:.3f}, {metrics[-1][2]:.3f}, test loss {metrics[-1][1]:.3f}, entropy {metrics[-1][3]:.3f}')
-
-    # predictor.save("model/predictor_min.params")
-    # print('start load')
-    # predictor.load("model/predictor_min.params")
-    # input('press enter to continue')
-    # predictor.to_ctype("model/predictor_min_tmp.mod")
-
-    # ctype_net = predictor.to_ctype()
-    # gomoku.predictor_save(ctypes.pointer(ctype_net), 'model/predictor_min.tmp.mod')
-
-    # ctype_net = gomoku.predictor_network_t()
-    # gomoku.predictor_load(ctypes.pointer(ctype_net), 'model/predictor_min.tmp.mod')
-
 # %%
+    name = input('input model name: ')
+    if name != "":
+        name = f'model/{name}'
+        network.save(name)
+        network.export_ctype(name)
+
+    # network.save("model/network_min.params")
+    # print('start load')
+    # network.load("model/network_min.params")
+    # input('press enter to continue')
+    # network.to_ctype("model/network_min_tmp.mod")
+
+    # ctype_net = network.to_ctype()
+    # gomoku.save_network(ctypes.pointer(ctype_net), 'model/network_min.tmp.mod')
+
+    # ctype_net = gomoku.network_network_t()
+    # gomoku.network_load(ctypes.pointer(ctype_net), 'model/network_min.tmp.mod')
+
     # for i in range(gomoku.dataset_size()):
     #     sample=gomoku.find_sample(i)
     #     if sample.winner == 0:
     #         print(i)
     #         continue
     #     gomoku.print_sample(sample)
-    #     test_sample(predictor, ctype_net, sample)
+    #     test_sample(network, ctype_net, sample)
     #     input('press enter to continue')
 # %%

@@ -4,6 +4,7 @@
 #include "util.h"
 
 #include <stdarg.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
@@ -79,13 +80,14 @@ int get_time(int start_time) {
 }
 
 /// @brief pause until inputting a char, ignores inputs before
-/// @return char
-char pause()
+/// @return char, as int type for EOF
+int pause()
 {
     const int tim = record_time();
-    const char ch = getchar();
-    if (get_time(tim) < 10 && ch != EOF) return pause();
-    else return ch;
+    const int ch = getchar();
+    if (ch == EOF) exit(1);
+    if (get_time(tim) < 10) return pause();
+    return ch;
 }
 
 /// @brief get basename of a filename with path

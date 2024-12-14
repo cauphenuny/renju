@@ -14,7 +14,6 @@ bool zobrist_initialized = 0;
 
 void zobrist_init()
 {
-    srand(time(NULL));
     for (int i = 0; i < BOARD_SIZE; i++) {
         for (int j = 0; j < BOARD_SIZE; j++) {
             for (int k = 0; k < 2; k++) {

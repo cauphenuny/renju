@@ -4,6 +4,7 @@
 #include "mcts.h"
 
 #include "board.h"
+#include "distribute.h"
 #include "network.h"
 #include "pattern.h"
 #include "util.h"
@@ -22,8 +23,8 @@
 typedef struct {
     comp_board_t board, visited;
     int piece_cnt, visited_cnt;
-    int result, count;
-    double prior_prob;
+    int count;
+    double prior_P, post_Q;
     bool evaluated;
     int capacity;
     point_t begin, end;
@@ -51,16 +52,14 @@ static edge_t* edge_buffer;
 
 static int tot, edge_tot;
 static int first_id, current_check_depth;
-static int start_time;
+static int start_time, time_limit;
 static mcts_param_t param;
+static double prior_weight;
 
-#ifdef BOTZONE
-#    define MAX_TREE_SIZE 1001000
-#    define NODE_LIMIT    1000000
-#else
-#    define MAX_TREE_SIZE 30001000
-#    define NODE_LIMIT    30000000
-#endif
+#define MAX_TREE_SIZE 30001000
+#define NODE_LIMIT    30000000
+
+static int max_tree_size = MAX_TREE_SIZE, node_limit = NODE_LIMIT;
 
 static int is_forbidden_comp(comp_board_t bd, point_t pos, int id, int depth);
 
@@ -73,6 +72,7 @@ static pattern4_t pattern4_type_comp(comp_board_t board, point_t pos, int depth)
     const int8_t mid = WIN_LENGTH - 1, arrows[4][2] = {{1, 1}, {1, -1}, {1, 0}, {0, 1}};
     int idx[4];
     int piece;
+    bool check_forbid = depth > 0 && id == first_id;
     for (int8_t i = 0, dx, dy; i < 4; i++) {
         dx = arrows[i][0], dy = arrows[i][1];
         segment_t seg;
@@ -85,9 +85,9 @@ static pattern4_t pattern4_type_comp(comp_board_t board, point_t pos, int depth)
             } else
                 seg.pieces[mid + j] = ((piece == id) ? SELF_PIECE : OPPO_PIECE);
         }
-        // segment_print(seg);
-        int segment_value = segment_encode(seg);
-        idx[i] = to_pattern(segment_value);
+        // print_segment(seg);
+        int segment_value = encode_segment(seg);
+        idx[i] = to_pattern(segment_value, check_forbid);
         if (depth > 1 && idx[i] >= PAT_A3 && idx[i] <= PAT_A4) {
             int col[2];
             get_upgrade_columns(segment_value, col, 2);
@@ -109,14 +109,7 @@ static pattern4_t pattern4_type_comp(comp_board_t board, point_t pos, int depth)
     // print_compressed_board(board, pos);
     // log("%s | %s | %s | %s", pattern_typename[idx[0]], pattern_typename[idx[1]],
     //     pattern_typename[idx[2]], pattern_typename[idx[3]]);
-    pattern4_t pat4 = to_pattern4(idx[0], idx[1], idx[2], idx[3]);
-    // log("=> pat4: %s", pattern4_typename[pat4]);
-    if (id != first_id || depth == 0) {
-        if (pat4 == PAT4_TL)
-            pat4 = PAT4_WIN;
-        else if (pat4 > PAT4_WIN)
-            pat4 = PAT4_OTHERS;
-    }
+    pattern4_t pat4 = to_pattern4(idx[0], idx[1], idx[2], idx[3], check_forbid);
     return pat4;
 }
 
@@ -165,7 +158,8 @@ static void print_state(const state_t st)
 */
 
 /// @brief get positions which are winning pos after last move
-static void get_win_pos(state_t* st) {
+static void get_win_pos(state_t* st)
+{
     const point_t pos = st->pos;
     memset(st->win_pos, -1, sizeof(st->win_pos));
     if (!in_board(pos)) return;
@@ -188,7 +182,7 @@ static void get_win_pos(state_t* st) {
             val = val * PIECE_SIZE +
                   (piece == id ? SELF_PIECE : (piece == oppo ? OPPO_PIECE : EMPTY_PIECE));
         }
-        pattern = to_pattern(val);
+        pattern = to_pattern(val, id == first_id);
         if (pattern == PAT_D4 || pattern == PAT_A4) {
             int col[2];
             get_upgrade_columns(val, col, 2);
@@ -214,7 +208,7 @@ static state_t empty_state(point_t begin, point_t end, int next_id)
     st.begin = begin;
     st.end = end;
     st.id = next_id;
-    st.prior_prob = 1;
+    st.prior_P = 1;
     st.capacity = ((int)end.x - begin.x) * ((int)end.y - begin.y);
     st.pos = (point_t){-1, -1};
     get_win_pos(&st);
@@ -232,13 +226,8 @@ static state_t update_state(state_t state, point_t pos, pattern4_t new_pat4)
     if (in_area(pos, state.begin, state.end)) {
         state.piece_cnt++;
     }
-    if (param.dynamic_area) {
-        chkmin(state.begin.x, max(0, pos.x - param.wrap_rad));
-        chkmin(state.begin.y, max(0, pos.y - param.wrap_rad));
-        chkmax(state.end.x, min(BOARD_SIZE - 1, pos.x + param.wrap_rad));
-        chkmax(state.end.y, min(BOARD_SIZE, pos.y + param.wrap_rad));
-    }
-    state.count = 0, state.result = 0;
+    // state.result = 0
+    state.count = 0, state.post_Q = 0;
     state.visited_cnt = state.piece_cnt;
     assert(!state.score);
     if (new_pat4 == PAT4_WIN) {
@@ -249,7 +238,7 @@ static state_t update_state(state_t state, point_t pos, pattern4_t new_pat4)
     }
     get_win_pos(&state);
     state.id = 3 - state.id;  // change player
-    state.prior_prob = 1, state.evaluated = false;
+    state.prior_P = 1, state.evaluated = false;
     return state;
 }
 
@@ -257,7 +246,7 @@ static state_t update_state(state_t state, point_t pos, pattern4_t new_pat4)
 /// @param state state of the node
 static node_t* create_node(state_t state)
 {
-    if (tot >= NODE_LIMIT) return NULL;
+    if (tot >= node_limit) return NULL;
     node_t* node = node_buffer + tot++;
     // node = (node_t*)malloc(sizeof(node_t));
     memset(node, 0, sizeof(node_t));
@@ -287,11 +276,15 @@ static int append_child(node_t* node, node_t* child)
 static double ucb_eval(const node_t* node)
 {
     const int flag = (node->parent->state.id == 1) ? 1 : -1;
-    const int win_cnt = node->state.count + flag * node->state.result;
-    const double Q = (double)win_cnt / node->state.count;
+    // const int win_cnt = flag * node->state.result;
+    // const double post_Q = (double)win_cnt / node->state.count;
+    const double post_Q = flag * node->state.post_Q;
+    // const double Q = node->state.evaluated
+    //                      ? (post_Q * (1 - prior_weight) + node->state.prior_eval * prior_weight)
+    //                      : post_Q;
     const double U = sqrt(log(node->parent->state.count) / node->state.count);
-    const double P = node->state.prior_prob;
-    return Q + param.C_puct * P * U;
+    const double P = pow(node->state.prior_P, 0.3);
+    return post_Q + param.C_puct * P * U;
 }
 
 static double entropy(const node_t* node)
@@ -319,7 +312,6 @@ static node_t* max_count(node_t* node)
     }
     return child;
 }
-
 
 /// @brief select child of {node} which has the minimum count, the node must have at least one child
 static node_t* min_count(node_t* node)
@@ -351,21 +343,25 @@ static node_t* ucb_select(const node_t* node)
     return best;
 }
 
+static void backpropagate(node_t* node, double value, int count, bool remain_count);
+
 static void evaluate_children(node_t* node)
 {
-    if (param.network) {
-        board_t board;
-        decode(node->state.board, board);
-        prediction_t prediction = predict(param.network, board, first_id, node->state.id);
-        // log("evaluated:");
-        // probability_print(board, prediction.prob);
-        for (edge_t* e = node->child_edge; e; e = e->next) {
-            const point_t pos = e->to->state.pos;
-            e->to->state.prior_prob = prediction.prob[pos.x][pos.y] * BOARD_SIZE * BOARD_SIZE; // for normalization
-        }
-        // prompt_pause();
+    if (predict_sum_time > time_limit / 3) return;
+    board_t board;
+    decode(node->state.board, board);
+    prediction_t prediction =
+        predict(param.network, board, node->state.pos, first_id, node->state.id);
+    // log("evaluated:");
+    // print_prob(board, prediction.prob);
+    for (edge_t* e = node->child_edge; e; e = e->next) {
+        const point_t pos = e->to->state.pos;
+        e->to->state.prior_P = (double)prediction.prob[pos.x][pos.y] * BOARD_AREA;
+        // for normalization, now E(prob) = 1
     }
+    // prompt_pause();
     node->state.evaluated = true;
+    backpropagate(node, prediction.eval - node->state.post_Q, node->state.count, true);
 }
 
 /// @brief check if state is terminated
@@ -460,7 +456,7 @@ static node_t* traverse(node_t* node)
         return traverse(put_piece(node, empty_pos, pat4));
     }
     if (node->child_cnt) {
-        if (!node->state.evaluated) {
+        if (param.network && !node->state.evaluated) {
             evaluate_children(node);
         }
         return traverse(ucb_select(node));
@@ -469,47 +465,67 @@ static node_t* traverse(node_t* node)
     return node;
 }
 
+static void backpropagate(node_t* node, double value, int count, bool remain_count)
+{
+    while (node != NULL) {
+        if (remain_count) {
+            node->state.post_Q += value * count / node->state.count;
+        } else {
+            node->state.count += count;
+            node->state.post_Q += (value - node->state.post_Q) * count / node->state.count;
+        }
+        node = node->parent;
+    }
+}
+
 static void simulate(node_t* start_node)
 {
-    current_check_depth = 5;
+#ifndef NO_FORBID
+    current_check_depth = 4;
+#else
+    current_check_depth = 0;
+#endif
     node_t* leaf = traverse(start_node);
     if (leaf == NULL) return;
-    const int score = leaf->state.score;
-    while (leaf != NULL) {
-        leaf->state.result += score;
-        leaf->state.count++;
-        assert(leaf->state.result <= leaf->state.count && -leaf->state.result <= leaf->state.count);
-        leaf = leaf->parent;
-    }
+    backpropagate(leaf, leaf->state.score, 1, false);
+    // const int score = leaf->state.score;
+    // while (leaf != NULL) {
+    //     leaf->state.result += score;
+    //     leaf->state.count++;
+    //     assert(leaf->state.result <= leaf->state.count && -leaf->state.result <=
+    //     leaf->state.count); leaf = leaf->parent;
+    // }
 }
 
 /// @brief get next move by mcts algorithm
 point_t mcts(const game_t game, const void* assets)
 {
+    start_time = record_time();
     if (game.count == 0) {
         return (point_t){BOARD_SIZE / 2, BOARD_SIZE / 2};
     }
 
-    start_time = record_time();
-
     param = *((mcts_param_t*)assets);
-    if (node_buffer == NULL) node_buffer = (node_t*)malloc(MAX_TREE_SIZE * sizeof(node_t));
-    if (edge_buffer == NULL) edge_buffer = (edge_t*)malloc(MAX_TREE_SIZE * sizeof(edge_t));
+
+    while (node_buffer == NULL || edge_buffer == NULL) {
+        free(node_buffer), node_buffer = NULL;
+        free(edge_buffer), edge_buffer = NULL;
+        node_buffer = (node_t*)malloc(max_tree_size * sizeof(node_t));
+        edge_buffer = (edge_t*)malloc(max_tree_size * sizeof(edge_t));
+        if (edge_buffer == NULL || edge_buffer == NULL) max_tree_size /= 2, node_limit /= 2;
+    }
 
     srand(time(0));
 
     tot = edge_tot = 0;
     first_id = game.first_id;
+    time_limit = game.time_limit;
 
     point_t wrap_begin, wrap_end;
     int radius = param.wrap_rad;
-    if (param.dynamic_area)
+    do {
         wrap_area(game.board, &wrap_begin, &wrap_end, radius);
-    else {
-        do {
-            wrap_area(game.board, &wrap_begin, &wrap_end, radius);
-        } while (((wrap_end.y - wrap_begin.y) * (wrap_end.x - wrap_begin.x) < 80) && ++radius);
-    }
+    } while (((wrap_end.y - wrap_begin.y) * (wrap_end.x - wrap_begin.x) < 80) && ++radius);
 
     node_t* root = create_node(empty_state(wrap_begin, wrap_end, game.first_id));
     for (int i = 0; i < game.count; i++) {
@@ -524,27 +540,50 @@ point_t mcts(const game_t game, const void* assets)
     }
 #endif
 
+    if (param.network) {
+        log("original: ");
+        prediction_t prediction = predict(param.network, game.board, game.steps[game.count - 1],
+                                          game.first_id, game.cur_id);
+        print_prob(game.board, prediction.prob);
+    }
+
     int tim, cnt = 0;
     const int target_count = param.min_count * (root->state.capacity + game.count * 2);
 
-    log("simulating (C: %.1lf, time: %d~%d, depth: %d)", param.C_puct, param.min_time,
-        game.time_limit, param.check_depth);
-    // int base = 1;
+    log("simulating (C: %.3lf, time: %d~%d, check: %d)", param.C_puct, param.min_time, time_limit,
+        param.check_depth);
+    // if (param.network) {
+    //     print_prediction(predict(param.network, game.board, game.first_id, game.cur_id));
+    // }
+    //  int base = 1;
+    predict_sum_time = predict_cnt = 0;
     while ((tim = get_time(start_time)) < param.min_time ||
            max_count(root)->state.count < target_count) {
-        if (tim > game.time_limit - 10 || tot >= NODE_LIMIT) break;
-        // param.C_puct =
-        //     param.start_c + (param.end_c - param.start_c) * (double)tim / game.time_limit;
+        if (tim > time_limit - 10 || tot >= node_limit) break;
+        // prior_weight = 1 - ((double)tim / time_limit) / 2;
+        prior_weight = 1;
         simulate(root), cnt++;
-        if (!root->state.evaluated && root->state.visited_cnt == root->state.capacity) {
-            evaluate_children(root);
-        }
+        // if (param.network && root->state.visited_cnt == root->state.capacity &&
+        // !root->state.evaluated) {
+        //     evaluate_children(root);
+        // }
     }
     log("simulated %d times, average %.2lf us, speed %.2lf", cnt, tim * 1000.0 / cnt,
         (double)cnt / tim);
-    log("consumption: %d nodes, %d ms", tot, get_time(start_time));
-    log("entropy: %.3lf, min count: %d, max count: %d", entropy(root), min_count(root)->state.count, max_count(root)->state.count);
-    log("visualize:");
+    if (param.network) {
+        log("consumption: %d ms", tim);
+        log("  - search(%.1lf%%): size of search tree: %d", (tim - predict_sum_time) * 100.0 / tim,
+            tot);
+        if (predict_cnt) {
+            log("  - network(%.1lf%%): evaluated %d nodes, average %.3lf ms",
+                predict_sum_time * 100.0 / tim, predict_cnt, predict_sum_time * 1.0 / predict_cnt);
+        }
+    } else {
+        log("consumption: %dms, %d nodes", tim, tot);
+    }
+    log("entropy: %.3lf, min count: %d, max count: %d", entropy(root), min_count(root)->state.count,
+        max_count(root)->state.count);
+    log("probability result:");
     fboard_t prob = {0};
     for (const edge_t* e = root->child_edge; e; e = e->next) {
         const node_t* child = e->to;
@@ -554,18 +593,24 @@ point_t mcts(const game_t game, const void* assets)
     if (param.output_prob != NULL) {
         memcpy(param.output_prob, prob, sizeof(prob));
     }
-    board_t board;
-    decode(root->state.board, board);
-    probability_print(board, prob);
+    print_prob(game.board, prob);
     if (((mcts_param_t*)assets)->output_prob) {
         memcpy(((mcts_param_t*)assets)->output_prob, prob, sizeof(prob));
     }
+    node_t* move;
 
-    const node_t* move = max_count(root);
+    if (param.network && param.is_train) {
+        int index = sample_from_dist((float*)prob, BOARD_AREA);
+        point_t pos = (point_t){index / BOARD_SIZE, index % BOARD_SIZE};
+        move = find_child(root, pos);
+    } else {
+        move = max_count(root);
+    }
+
     const state_t st = move->state;
     int level, f = game.cur_id == 1 ? 1 : -1;
-    const double rate = ((double)(st.count + f * st.result) / 2 / st.count * 100);
-    if (rate < 85 && rate > 15)
+    const double rate = ((f * st.post_Q + 1) / 2 * 100);
+    if (rate > 15 && rate < 85)
         level = PROMPT_LOG;
     else
         level = PROMPT_WARN;
@@ -580,7 +625,7 @@ point_t mcts(const game_t game, const void* assets)
             if (in_board(pos)) {
                 const node_t* child = find_child(root, pos);
                 const double tmp = ((double)(child->state.count + (f)*child->state.result) / 2 /
-                              child->state.count * 100);
+                                    child->state.count * 100);
                 log("count: %d(%.2lf%%), win: %.2lf%%", child->state.count,
                     child->state.count * 100.0 / root->state.count, tmp);
             } else {

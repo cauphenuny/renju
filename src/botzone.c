@@ -28,7 +28,7 @@ int main()
     log_lock();
     init();
 
-    game_t game = game_new(1, 990 - get_time(tim));
+    game_t game = new_game(1, 990 - get_time(tim));
 
     int n;
     scanf("%d", &n);
@@ -36,7 +36,7 @@ int main()
     for (int i = 0; i < 2 * n - 1; i++) {
         read_pos(&p);
         if (in_board(p)) {
-            game_add_step(&game, p);
+            add_step(&game, p);
         }
     }
     const player_t player = preset_players[MCTS_BZ];
@@ -47,7 +47,7 @@ int main()
     // while (1) {
     //     p = player.move(game, player.assets);
 
-    //     game_add_step(&game, p);
+    //     add_step(&game, p);
 
     //     print_pos(p);
     //     log_flush();
@@ -56,6 +56,6 @@ int main()
     //     fflush(stdout);
 
     //     read_pos(&p);
-    //     game_add_step(&game, p);
+    //     add_step(&game, p);
     // }
 }

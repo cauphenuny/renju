@@ -298,7 +298,8 @@ point_t minimax(const game_t game, const void* assets)
     for (int8_t i = 0; i < BOARD_SIZE; i++) {
         for (int8_t j = 0; j < BOARD_SIZE; j++) {
             const point_t p = {i, j};
-            if (available(board, p) && !is_forbidden(board, p, game.cur_id, false)) {
+            if (available(board, p) &&
+                (game.cur_id != game.first_id || !is_forbidden(board, p, game.cur_id, false))) {
                 pos = p;
                 break;
             }
@@ -307,7 +308,7 @@ point_t minimax(const game_t game, const void* assets)
     int maxdepth = 0;
     result_t best_result = {0};
     log("searching...");
-    for (int i = 1;; i++) {
+    for (int i = 2;; i += 2) {
         const result_t ret = minimax_search(i, -0x7f7f7f7f, 0x7f7f7f7f);
         if (get_time(tim) < time_limit - 10 && in_board(ret.pos))
             best_result = ret, maxdepth = i, pos = best_result.pos;

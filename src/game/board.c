@@ -13,10 +13,44 @@
 
 #define printf(...) log_s(__VA_ARGS__)
 
-/// @brief print {board} with one emphasized position {pos} or predicted probability
-void print_implement(const board_t board, point_t emph_pos, const fboard_t prob)
+/// @brief deserialize a board from a string representation {str}, save it to {dest}
+void board_deserialize(board_t dest, const char* str)
 {
-    if (log_locked()) return;
+    memset(dest, 0, sizeof(board_t));
+    int x = 0, y = 0, l = strlen(str);
+    point_t pos;
+    for (int i = 0; i < l; i++) {
+        switch (str[i]) {
+            case '.': y++; break;
+            case 'o': dest[x][++y] = 1; break;
+            case 'x': dest[x][++y] = 2; break;
+            case '\\': y = 0, x++;
+        }
+    }
+}
+
+/// @brief serialize {board} to a string representation {dest}
+void board_serialize(const board_t board, char* dest)
+{
+    int p = 0;
+    for (int i = 0; i < BOARD_SIZE; i++) {
+        for (int j = 0; j < BOARD_SIZE; j++) {
+            switch (board[i][j]) {
+                case 0: dest[p++] = '.'; break;
+                case 1: dest[p++] = 'o'; break;
+                case 2: dest[p++] = 'x'; break;
+            }
+            dest[p++] = ' ';
+        }
+        dest[p++] = '\\';
+    }
+    dest[p] = '\0';
+}
+
+/// @brief print {board} with one emphasized position {pos} or predicted probability
+void print_all(const board_t board, point_t emph_pos, const fboard_t prob)
+{
+    if (log_locked() || log_disabled()) return;
 #define dark(x) DARK x RESET
     const char* border_line[3][5] = {{dark("╔"), dark("═"), dark("╤"), dark("═"), dark("╗")},   //
                                      {dark("╟"), dark("─"), dark("┼"), dark("─"), dark("╢")},   //
@@ -93,21 +127,21 @@ void print_implement(const board_t board, point_t emph_pos, const fboard_t prob)
 }
 
 /// @brief print {board} with one emphasized position
-void emphasis_print(const board_t board, point_t emph_pos)
+void print_emph(const board_t board, point_t emph_pos)
 {
     fboard_t prob;
     memset(prob, 0, sizeof(prob));
-    print_implement(board, emph_pos, prob);
+    print_all(board, emph_pos, prob);
 }
 
 /// @brief print {board} predicted probability
-void probability_print(const board_t board, const fboard_t prob)
+void print_prob(const board_t board, const fboard_t prob)
 {
-    print_implement(board, (point_t){-1, -1}, prob);
+    print_all(board, (point_t){-1, -1}, prob);
 }
 
 /// @brief print {board} without emphasis
-void print(const board_t board) { return emphasis_print(board, (point_t){-1, -1}); }
+void print(const board_t board) { return print_emph(board, (point_t){-1, -1}); }
 
 /// @brief get a minimal area [{begin}, {end}) that wraps up pieces in {board}
 /// @param begin left-top corner of wrapped area
@@ -229,7 +263,7 @@ int is_forbidden(board_t board, point_t pos, int id, bool enable_log)
     pattern4_t pat4;
     segment_t seg[4] = {0};
 
-    // emphasis_print(board, pos);
+    // print_emph(board, pos);
     // pause();
     board[pos.x][pos.y] = id;
     for (int8_t i = 0, dx, dy; i < 4; i++) {
@@ -244,8 +278,8 @@ int is_forbidden(board_t board, point_t pos, int id, bool enable_log)
                 seg[i].pieces[mid + j] = board[np.x][np.y] == id ? SELF_PIECE : OPPO_PIECE;
             }
         }
-        int value = segment_encode(seg[i]);
-        idx[i] = to_pattern(segment_encode(seg[i]));
+        int value = encode_segment(seg[i]);
+        idx[i] = to_pattern(encode_segment(seg[i]), true);
         if (idx[i] >= PAT_A3 && idx[i] <= PAT_A4) {
             int cols[2];
             get_upgrade_columns(value, cols, 2);
@@ -260,7 +294,7 @@ int is_forbidden(board_t board, point_t pos, int id, bool enable_log)
                 }
             }
         }
-        pat4 = to_pattern4(idx[0], idx[1], idx[2], idx[3]);
+        pat4 = to_pattern4(idx[0], idx[1], idx[2], idx[3], true);
     }
     board[pos.x][pos.y] = 0;
 
@@ -268,9 +302,9 @@ int is_forbidden(board_t board, point_t pos, int id, bool enable_log)
     if (enable_log) {
         log("forbidden pos, reason: %s", pattern4_typename[pat4]);
         log("detailed information:");
-        emphasis_print(board, pos);
+        print_emph(board, pos);
         for (int i = 0; i < 4; i++) {
-            segment_print(seg[i]);
+            print_segment(seg[i]);
         }
     }
     return (int)pat4;
@@ -303,5 +337,5 @@ void print_compressed_board(const comp_board_t board, point_t emph_pos)
 {
     board_t b;
     decode(board, b);
-    emphasis_print(b, emph_pos);
+    print_emph(b, emph_pos);
 }

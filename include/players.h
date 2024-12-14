@@ -8,10 +8,8 @@
 enum {
     MANUAL,
     MCTS,     // default MCTS
-    MCTS_BZ,  // for botzone
     MCTS_NN,  // MCTS with neural network
     MINIMAX,
-    MINIMAX_TS,
     NEURAL_NETWORK,  // pure neural network
     PLAYER_CNT,
 };
@@ -30,7 +28,7 @@ point_t move(const game_t, player_t);
 
 void player_init(void);
 
-void bind_network(predictor_network_t*);
+void bind_network(network_t* network, bool is_train);
 void bind_output_prob(pfboard_t output_array);
 
 #endif

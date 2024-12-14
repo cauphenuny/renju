@@ -1,6 +1,4 @@
-ctypesgen==1.1.1
-ctype
 torch
+colorama
 d2l
 IPython
-colorama
