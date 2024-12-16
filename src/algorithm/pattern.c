@@ -33,19 +33,18 @@ typedef struct {
     int defend_col[SEGMENT_MASK][COL_STORAGE_SIZE];
     int defend_col_cnt[SEGMENT_MASK];
     pattern_t pattern[SEGMENT_MASK];
+    pattern_t parent_pattern[SEGMENT_MASK];
     pattern4_t pattern4[PAT_TYPE_SIZE][PAT_TYPE_SIZE][PAT_TYPE_SIZE][PAT_TYPE_SIZE];
 } memo_t;
 
 memo_t forbid, no_forbid;
 static int pattern_initialized;
 
-static int update(int prev, int pos, piece_t new_piece)
-{
+static int update(int prev, int pos, piece_t new_piece) {
     return prev + new_piece * (1 << (pos * 2));
 }
 
-static void dp(memo_t* memo, bool consider_forbid)
-{
+static void dp(memo_t* memo, bool consider_forbid) {
     /// in a reverse order,
     /// to calculate states that can be transferred to current state {idx} before visiting {idx}
     for (int idx = SEGMENT_MASK - 1, left, right; idx >= 0; idx--) {
@@ -97,6 +96,7 @@ static void dp(memo_t* memo, bool consider_forbid)
             }
         }
 
+        memo->parent_pattern[idx] = parent_pattern;
         switch (parent_pattern) {
             case PAT_TL:
                 if (right - left < 8)
@@ -167,8 +167,7 @@ static void dp(memo_t* memo, bool consider_forbid)
 }
 
 /// @brief calculate pattern type and store it
-void pattern_init()
-{
+void pattern_init() {
     /// terminate state: overline > 5
     for (int idx = 0; idx < SEGMENT_MASK; idx++) {
         for (int cover_start = 0; cover_start < SEGMENT_LEN - WIN_LENGTH; cover_start++) {
@@ -217,8 +216,7 @@ void pattern_init()
 }
 
 /// @brief generate a int value from segment
-int encode_segment(segment_t s)
-{
+int encode_segment(segment_t s) {
     const piece_t* a = s.pieces;
     int result = 0;
     for (int i = 0; i < SEGMENT_LEN; i++) {
@@ -229,8 +227,7 @@ int encode_segment(segment_t s)
 }
 
 /// @brief decode the segment from int value
-segment_t decode_segment(int v)
-{
+segment_t decode_segment(int v) {
     segment_t result;
     for (int i = 0; i < SEGMENT_LEN; i++) {
         result.pieces[i] = (piece_t)(v % (int)PIECE_SIZE);
@@ -239,8 +236,7 @@ segment_t decode_segment(int v)
     return result;
 }
 
-bool segment_valid(segment_t s)
-{
+bool segment_valid(segment_t s) {
     for (int i = 0; i < SEGMENT_LEN; i++) {
         if (s.pieces[i] != EMPTY_PIECE && s.pieces[i] != SELF_PIECE && s.pieces[i] != OPPO_PIECE) {
             return false;
@@ -250,8 +246,7 @@ bool segment_valid(segment_t s)
 }
 
 /// @brief print a segment and its data
-void print_segment(segment_t s, bool consider_forbid)
-{
+void print_segment(segment_t s, bool consider_forbid) {
     memo_t* memo = consider_forbid ? &forbid : &no_forbid;
     const char ch[4] = {'-', 'o', 'x', '?'};
     printf("%5d [%c", encode_segment(s), ch[s.pieces[0]]);
@@ -277,8 +272,7 @@ void print_segment(segment_t s, bool consider_forbid)
     printf("]\n");
 }
 
-segment_t get_segment(board_t board, point_t pos, int dx, int dy)
-{
+segment_t get_segment(board_t board, point_t pos, int dx, int dy) {
     segment_t seg;
     const int id = board[pos.x][pos.y];
     for (int8_t j = -HALF; j <= HALF; j++) {
@@ -295,8 +289,7 @@ segment_t get_segment(board_t board, point_t pos, int dx, int dy)
 }
 
 /// @brief convert int value of segment to pattern type
-pattern_t to_pattern(int segment_value, bool consider_forbid)
-{
+pattern_t to_pattern(int segment_value, bool consider_forbid) {
     assert(pattern_initialized);
     if (consider_forbid)
         return forbid.pattern[segment_value];
@@ -304,9 +297,16 @@ pattern_t to_pattern(int segment_value, bool consider_forbid)
         return no_forbid.pattern[segment_value];
 }
 
+pattern_t to_upgraded_pattern(int segment_value, bool consider_forbid) {
+    assert(pattern_initialized);
+    if (consider_forbid)
+        return forbid.parent_pattern[segment_value];
+    else
+        return no_forbid.parent_pattern[segment_value];
+}
+
 /// @brief convert 4 values of segments at 4 directions to pattern4 type
-pattern4_t to_pattern4(int x, int y, int u, int v, bool consider_forbid)
-{
+pattern4_t to_pattern4(int x, int y, int u, int v, bool consider_forbid) {
     assert(pattern_initialized);
     if (consider_forbid) {
         return forbid.pattern4[x][y][u][v];
@@ -319,8 +319,7 @@ pattern4_t to_pattern4(int x, int y, int u, int v, bool consider_forbid)
 /// @param segment_value the int value of segment
 /// @param cols array that stores columns
 /// @param limit array size
-void get_upgrade_columns(int segment_value, bool consider_forbid, int* cols, int limit)
-{
+void get_upgrade_columns(int segment_value, bool consider_forbid, int* cols, int limit) {
     assert(pattern_initialized);
     memset(cols, -1, limit * sizeof(int));
     memo_t* memo = consider_forbid ? &forbid : &no_forbid;
@@ -332,19 +331,17 @@ void get_upgrade_columns(int segment_value, bool consider_forbid, int* cols, int
     }
 };
 
-static point_t column_to_point(point_t pos, int dx, int dy, int col)
-{
+point_t column_to_point(point_t pos, int dx, int dy, int col) {
     return (point_t){pos.x + dx * (col - HALF), pos.y + dy * (col - HALF)};
 }
 
-vector_t find_relative_points(int type, board_t board, point_t pos, int dx, int dy)
-{
+vector_t find_relative_points(int type, board_t board, point_t pos, int dx, int dy) {
     int id = board[pos.x][pos.y];
-    vector_t vec = vector_new(point_t);
+    vector_t vec = vector_new(point_t, NULL);
     if (!id) return vec;
     memo_t* memo = id == 1 ? &forbid : &no_forbid;
     int seg_value = encode_segment(get_segment(board, pos, dx, dy));
-    int* col, size;
+    int *col, size;
     switch (type) {
         case UPGRADE:
             col = memo->upgrade_col[seg_value], size = memo->upgrade_col_cnt[seg_value];
@@ -355,11 +352,11 @@ vector_t find_relative_points(int type, board_t board, point_t pos, int dx, int 
         case DEFEND:
             col = memo->defend_col[seg_value], size = memo->defend_col_cnt[seg_value];
             break;
-        default:
-            return vec;
+        default: return vec;
     }
     for (int i = 0; i < size; i++) {
         point_t np = column_to_point(pos, dx, dy, col[i]);
+        if (np.x == pos.x && np.y == pos.y) continue;
         assert(in_board(np));
         vector_push_back(vec, np);
     }
@@ -370,8 +367,7 @@ int is_forbidden_comp(comp_board_t bd, point_t pos, int id, int depth);
 
 /// @brief get pattern by compressed board {bd} and position {pos}
 /// @return pattern type
-pattern4_t pattern4_type_comp(comp_board_t board, point_t pos, int depth)
-{
+pattern4_t pattern4_type_comp(comp_board_t board, point_t pos, int depth) {
     int id;
     if (!in_board(pos) || !((id = get(board, pos)))) return PAT4_OTHERS;
     const int8_t mid = WIN_LENGTH - 1;
@@ -417,8 +413,7 @@ pattern4_t pattern4_type_comp(comp_board_t board, point_t pos, int depth)
 
 /// @brief get pattern after putting a piece of player{id} at {pos}
 /// @return pattern type
-pattern4_t virtual_pat4type_comp(comp_board_t board, point_t pos, int id, int depth)
-{
+pattern4_t virtual_pat4type_comp(comp_board_t board, point_t pos, int id, int depth) {
     assert(in_board(pos) && !get(board, pos));
     add(board, pos, id);
     const pattern4_t pat4 = pattern4_type_comp(board, pos, depth);
@@ -428,8 +423,7 @@ pattern4_t virtual_pat4type_comp(comp_board_t board, point_t pos, int id, int de
 
 /// @brief check if {pos} is forbidden for player{id}
 /// @return 0 if not forbidden, pattern4 type otherwise.
-int is_forbidden_comp(comp_board_t board, point_t pos, int id, int depth)
-{
+int is_forbidden_comp(comp_board_t board, point_t pos, int id, int depth) {
     assert(in_board(pos));
     if (id != 1) return 0;
     const pattern4_t pat4 = virtual_pat4type_comp(board, pos, id, depth);

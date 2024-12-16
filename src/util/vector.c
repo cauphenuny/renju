@@ -5,29 +5,49 @@
 #include <stdlib.h>
 #include <string.h>
 
-void vector_init_impl(vector_t* vector, size_t element_size) {
+void vector_init_impl(vector_t* vector, size_t element_size, free_func_t free_func) {
     vector->element_size = element_size;
     vector->size = 0;
     vector->capacity = 4;
     vector->data = malloc(vector->capacity * element_size);
+    vector->free_func = free_func;
 }
 
-vector_t vector_new_impl(size_t element_size) {
+vector_t vector_new_impl(size_t element_size, free_func_t free_func) {
     vector_t vector;
-    vector_init_impl(&vector, element_size);
+    vector_init_impl(&vector, element_size, free_func);
     return vector;
+}
+
+void vector_free(void* ptr) {
+    vector_t* vec = ptr;
+    if (!vec->capacity) return;
+    if (vec->free_func) {
+        for (size_t i = 0; i < vec->size; i++) {
+            vec->free_func((char*)vec->data + i * vec->element_size);
+        }
+    }
+    free(vec->data);
+    vec->data = NULL;
+    vec->free_func = NULL;
+    vec->size = 0;
+    vec->capacity = 0;
 }
 
 void vector_realloc_impl(vector_t* vector, size_t new_capacity) {
     if (vector->capacity >= new_capacity) return;
-    vector->data = realloc(vector->data, new_capacity * vector->element_size);
+    void* new_data = realloc(vector->data, new_capacity * vector->element_size);
+    if (new_data == NULL) {
+        fprintf(stderr, "failed to reallocate memory\n");
+        exit(EXIT_FAILURE);
+    }
+    vector->data = new_data;
     vector->capacity = new_capacity;
 }
 
 void vector_push_back_impl(vector_t* vector, void* element) {
     if (vector->size == vector->capacity) {
-        vector->capacity *= 2;
-        vector->data = realloc(vector->data, vector->capacity * vector->element_size);
+        vector_realloc_impl(vector, vector->capacity * 2);
     }
     memcpy((char*)vector->data + vector->size * vector->element_size, element,
            vector->element_size);
@@ -48,11 +68,16 @@ void vector_cat_impl(vector_t* dest, vector_t* src) {
     dest->size += src->size;
 }
 
-void vector_free_impl(vector_t* ptr) {
-    free(ptr->data);
-    ptr->data = NULL;
-    ptr->size = 0;
-    ptr->capacity = 0;
+void vector_copy_impl(vector_t* dest, vector_t* src) {
+    vector_realloc_impl(dest, src->size);
+    memcpy(dest->data, src->data, src->size * src->element_size);
+    dest->size = src->size;
+}
+
+vector_t vector_clone_impl(vector_t* src) {
+    vector_t dest = vector_new_impl(src->element_size, src->free_func);
+    vector_copy_impl(&dest, src);
+    return dest;
 }
 
 bool vector_contains_impl(vector_t* vector, void* element, size_t element_size) {

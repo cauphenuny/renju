@@ -216,8 +216,8 @@ static result_t minimax_search(int depth, int alpha, int beta)
 }
 
 point_t minimax(game_t game, const void* assets) {
-    (void)assets;
-    point_t trivial_pos = trivial_move(game);
+    bool use_vcf = *(bool*)assets;
+    point_t trivial_pos = trivial_move(game, use_vcf);
     if (in_board(trivial_pos)) {
         return trivial_pos;
     }

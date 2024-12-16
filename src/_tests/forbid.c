@@ -13,12 +13,21 @@ point_t parse_board(board_t dest, const char* str)
     for (int i = 0; i < l; i++) {
         switch (str[i]) {
             case '.': y++; break;
-            case 'o': dest[x][++y] = 1; break;
-            case 'x': dest[x][++y] = 2; break;
-            case '?': pos = (point_t){x, ++y}; break;
+            case 'o': dest[x][y++] = 1; break;
+            case 'x': dest[x][y++] = 2; break;
+            case '?': pos = (point_t){x, y++}; break;
             case '\\': y = 0, x++;
         }
     }
+    for (int line = 0; line < BOARD_SIZE / 2; line++) {
+        int match_line = BOARD_SIZE - 1 - line;
+        for (int col = 0; col < BOARD_SIZE; col++) {
+            int tmp = dest[line][col];
+            dest[line][col] = dest[match_line][col];
+            dest[match_line][col] = tmp;
+        }
+    }
+    pos.x = BOARD_SIZE - 1 - pos.x;
     return pos;
 }
 

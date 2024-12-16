@@ -11,6 +11,7 @@ enum {
     MCTS_ADV, // MCTS with trivial evaluation
     MCTS_NN,  // MCTS with neural network
     MINIMAX,
+    MINIMAX_ADV, 
     NEURAL_NETWORK,  // pure neural network
     PLAYER_CNT,
 };

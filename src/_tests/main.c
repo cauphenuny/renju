@@ -52,12 +52,39 @@ void test_minimax(void)
 }
 
 void test_upd();
+void test_eval();
+void test_threat();
+void test_threat_tree();
+
+void test_vector() {
+    vector_t vec = vector_new(int, NULL);
+    for (int i = 0; i < 10; i++) {
+        vector_push_back(vec, i);
+    }
+    for_each(int, vec, x) { log("%d", x); }
+    vector_free(&vec);
+
+    vector_t str = vector_new(char, NULL);
+    char s[] = "Hello World";
+    for (int i = 0, l = strlen(s); i < l; i++) {
+        vector_push_back(str, s[i]);
+    }
+    char tmp = '\0';
+    vector_t str2 = vector_new(char, NULL);
+    tmp = '\n', vector_push_back(str2, tmp);
+    tmp = '\0', vector_push_back(str2, tmp);
+    vector_cat(str, str2);
+    printf("%s", (char*)str.data);
+}
 
 int main()
 {
     init();
     int ret = 0;
     log("running test");
+
+    // log("test vector");
+    // test_vector();
 
     // log("test pattern");
     // test_pattern();
@@ -90,8 +117,11 @@ int main()
     // log("test neuro");
     // test_neuro();
 
-    log("test vcx");
+    log("test threat");
     test_upd();
+    test_eval();
+    test_threat();
+    test_threat_tree();
     log_i("all tests passed.");
     return 0;
 }

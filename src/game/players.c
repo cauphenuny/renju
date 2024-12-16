@@ -26,14 +26,15 @@ mcts_param_t mcts_params_default = {
 };
 static mcts_param_t mcts_params_nn, mcts_params_adv;
 
-const bool use_external_eval = 1, use_internal_eval = 0;
+const bool true_var = 1, false_var = 0;
 
 player_t preset_players[MAX_PLAYERS] = {
     [MANUAL] = {"human", input_manually, NULL},                 //
     [MCTS] = {"AI (MCTS)", mcts, &mcts_params_default},         //
     [MCTS_ADV] = {"AI (MCTS, advanced)", mcts, &mcts_params_adv},         //
     [MCTS_NN] = {"AI (MCTS, NN)", mcts_nn, &mcts_params_nn},    //
-    [MINIMAX] = {"AI (minimax)", minimax, &use_external_eval},  //
+    [MINIMAX] = {"AI (minimax)", minimax, &false_var},  //
+    [MINIMAX_ADV] = {"AI (minimax with VCF)", minimax, &true_var},  //
     [NEURAL_NETWORK] = {"AI (pure NN)", nn_move, NULL}};
 
 point_t move(game_t game, player_t player) { return player.move(game, player.assets); }
