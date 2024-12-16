@@ -57,7 +57,6 @@ static void save_data()
     if (c == 'y') {
         char name[256];
         log("transform? [y/n]");
-        int c;
         do c = prompt_pause();
         while (c != 'y' && c != 'n');
         if (c == 'y')
@@ -108,8 +107,8 @@ struct {
     int p1, p2;
     int time_limit;
 } preset_modes[PRESET_SIZE] = {
-    {MANUAL, MCTS_NN, GAME_TIME_LIMIT},
-    {MCTS_NN, MANUAL, GAME_TIME_LIMIT},
+    {MANUAL, MCTS_ADV, GAME_TIME_LIMIT},
+    {MCTS_ADV, MANUAL, GAME_TIME_LIMIT},
     {MANUAL, MANUAL, -1},
 };
 
@@ -157,6 +156,8 @@ int main(int argc, char* argv[])
         log_e("network not found. usage: %s {.mod file}", argv[0]);
     }
 
+    int player1, player2, time_limit;
+#ifndef NO_INTERACTIVE
     log_i("available modes: ");
     for (int i = 0; i < PRESET_SIZE; i++) {
         if (preset_modes[i].time_limit > 0)
@@ -169,7 +170,6 @@ int main(int argc, char* argv[])
     log_i("0: custom");
     log_i("input mode:");
 
-    int player1, player2, time_limit;
 #ifndef DEBUG
     int mode = -1;
     do {
@@ -191,6 +191,9 @@ int main(int argc, char* argv[])
     }
 #else
     player1 = MCTS, player2 = MCTS, time_limit = -1;
+#endif
+#else
+    player1 = MINIMAX, player2 = MINIMAX, time_limit = 5000;
 #endif
 
     int id = 1;

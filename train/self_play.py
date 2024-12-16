@@ -6,22 +6,25 @@ from colorama import Fore
 import ctypes
 import time
 
-eval_time = 200
+eval_time = 500
 
 def eval(ctype_net, n=20):
     global eval_time
     print("start evaluating")
     gomoku.bind_network(ctypes.pointer(ctype_net), False)
-    p1, p2 = gomoku.preset_players[gomoku.MCTS_NN], gomoku.preset_players[gomoku.MCTS]
+    p1, p2 = gomoku.preset_players[gomoku.MCTS_NN], gomoku.preset_players[gomoku.MINIMAX]
     first_id = 1
     win_cnt = [0, 0, 0]
-    gomoku.log_disable()
     for i in range(n):
+        gomoku.log_disable()
         result = gomoku.start_game(p1, p2, first_id, eval_time, ctypes.pointer(ctype_net))
+        gomoku.log_enable()
         win_cnt[result.winner] += 1
+        gomoku.print_game(result.game)
+        print(f'winner: {result.winner}, {win_cnt[1]}:{win_cnt[2]}')
+        first_id = 3 - first_id
         if (i + 1) % (n // 5) == 0:
             print(f"finished {i + 1} games, now {win_cnt[1]}:{win_cnt[2]}")
-    gomoku.log_enable()
     win_rate = win_cnt[1] * 100 / (win_cnt[1] + win_cnt[2])
     if win_rate < 30:
         color = Fore.RED
@@ -69,8 +72,11 @@ if __name__ == "__main__":
 # %%
     play_games = 400
     sum = 0
-    tim = 200
-    ctype_net = net.to_ctype()
+    tim = 500
+    # ctype_net = net.to_ctype()
+    ctype_net = gomoku.network_t()
+    gomoku.load_network(ctypes.pointer(ctype_net), "model/static.v5.128ch.mod")
+    input('press enter to conitnue')
     eval(ctype_net)
     input('press enter to conitnue')
     while True:

@@ -7,7 +7,7 @@ AlignTrailingComments: true
 AlignConsecutiveMacros: 'true'
 AlignEscapedNewlines: 'Left'
 AllowAllParametersOfDeclarationOnNextLine: true
-#AlignConsecutiveAssignments: 'true'
+# AlignConsecutiveAssignments: 'true'
 AllowShortFunctionsOnASingleLine: All
 SpacesBeforeTrailingComments: 2
 AlwaysBreakTemplateDeclarations: MultiLine
@@ -15,7 +15,7 @@ AllowShortCaseLabelsOnASingleLine: true
 AllowShortIfStatementsOnASingleLine: true
 AllowShortLoopsOnASingleLine: true
 BreakBeforeBinaryOperators: false
-BreakBeforeBraces: Linux
+BreakBeforeBraces: Attach
 IndentWidth: 4
 TabWidth: 4
 IncludeBlocks: Regroup

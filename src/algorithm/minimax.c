@@ -2,94 +2,37 @@
 // date: 2024/09/21
 
 #include "board.h"
+#include "eval.h"
 #include "game.h"
 #include "util.h"
 #include "zobrist.h"
+#include "trivial.h"
 
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-static int evaluate_pos(board_t board, point_t pos, int sgn)
-{
-    const int id = sgn == 1 ? 1 : 2;
-    const int8_t dir[4][2] = {{1, 0}, {0, 1}, {1, 1}, {1, -1}};
-    int score = 0;
-    for (int k = 0; k < 4; k++) {
-        const int8_t dx = dir[k][0], dy = dir[k][1];
-        for (int8_t offset = -4; offset <= 0; offset++) {
-            int cur_score = 0;
-            int count = 0;
-            int blocked = 0;
-            for (int i = 0; i < 5; i++) {
-                const point_t p = {pos.x + (i + offset) * dx, pos.y + (i + offset) * dy};
-                if (in_board(p)) {
-                    if (board[p.x][p.y] == id) {
-                        count++;
-                    } else {
-                        if (board[p.x][p.y]) {
-                            blocked = 1;
-                            break;
-                        }
-                    }
-                }
-            }
-            if (!blocked) {
-                switch (count) {
-                    case 5: cur_score += 10000; break;
-                    case 4: cur_score += 1000; break;
-                    case 3: cur_score += 100; break;
-                    case 2: cur_score += 10; break;
-                    case 1: cur_score += 1; break;
-                    default:;
-                }
-            }
-            score += cur_score;
-        }
-    }
-    score *= sgn;
-    return score;
-}
-
-static int first_id;
-
-static int evaluate(board_t board, int sgn)
-{
-    int sum = 0;
-    for (int x = 0; x < BOARD_SIZE; x++) {
-        for (int y = 0; y < BOARD_SIZE; y++) {
-            if (!board[x][y]) continue;
-            int pos_val;
-            pos_val = evaluate_pos(board, (point_t){x, y}, sgn);
-            sum += pos_val;
-        }
-    }
-    return sum;
-}
-
 typedef struct {
     board_t board;
     zobrist_t hash;
-    int value;
+    long long value;
     int id;
     int result;
     point_t pos;
 } mmstate_t;
 
-static mmstate_t mm_put_piece(mmstate_t state, point_t pos, int sgn)
-{
-    mmstate_t ret = state;
+static mmstate_t mm_put_piece(mmstate_t state, point_t pos, int sgn) {
     const int put_id = sgn == 1 ? 1 : 2;
-    ret.hash = zobrist_update(ret.hash, pos, ret.board[pos.x][pos.y], put_id);
-    ret.board[pos.x][pos.y] = put_id;
-    ret.pos = pos;
-    ret.value = evaluate(ret.board, sgn);
-    ret.result = check(ret.board, pos);
-    // print(ret.board);
+    state.hash = zobrist_update(state.hash, pos, state.board[pos.x][pos.y], put_id);
+    state.board[pos.x][pos.y] = put_id;
+    state.pos = pos;
+    state.value = eval(state.board, NULL);
+    state.result = check(state.board, pos);
+    // print(state.board);
     // getchar();
-    ret.id = -sgn;
-    return ret;
+    state.id = -sgn;
+    return state;
 }
 
 static mmstate_t mm_remove_piece(mmstate_t state, point_t pos)
@@ -242,7 +185,7 @@ static result_t minimax_search(int depth, int alpha, int beta)
         for (int j = 0; j < BOARD_SIZE; j++) {
             const point_t pos = (point_t){i, j};
             if (adjacent(cur_state.board, pos) &&
-                ((put_id != first_id) || !is_forbidden(cur_state.board, pos, put_id, false))) {
+                ((put_id != 1) || !is_forbidden(cur_state.board, pos, put_id, false))) {
                 cur_state = mm_put_piece(cur_state, pos, id);
                 const result_t child = minimax_search(depth - 1, alpha, beta);
                 cur_state = mm_remove_piece(cur_state, pos);
@@ -272,12 +215,12 @@ static result_t minimax_search(int depth, int alpha, int beta)
     return ret;
 }
 
-point_t minimax(const game_t game, const void* assets)
-{
-    first_id = game.first_id;
+point_t minimax(game_t game, const void* assets) {
     (void)assets;
-    board_t board;
-    memcpy(board, game.board, sizeof(board));
+    point_t trivial_pos = trivial_move(game);
+    if (in_board(trivial_pos)) {
+        return trivial_pos;
+    }
 
     max_cnt = 0;
     time_limit = game.time_limit - 10;
@@ -293,13 +236,13 @@ point_t minimax(const game_t game, const void* assets)
     cur_state.id = game.cur_id == 1 ? 1 : -1;
     cur_state.pos = game.steps[game.count - 1];
     cur_state.result = 0;
-    cur_state.value = evaluate(cur_state.board, cur_state.id);
+    cur_state.value = eval(cur_state.board, NULL);
     point_t pos = {-1, -1};
     for (int8_t i = 0; i < BOARD_SIZE; i++) {
         for (int8_t j = 0; j < BOARD_SIZE; j++) {
             const point_t p = {i, j};
-            if (available(board, p) &&
-                (game.cur_id != game.first_id || !is_forbidden(board, p, game.cur_id, false))) {
+            if (available(game.board, p) &&
+                (game.cur_id != 1 || !is_forbidden(game.board, p, game.cur_id, false))) {
                 pos = p;
                 break;
             }

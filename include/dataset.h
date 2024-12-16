@@ -4,8 +4,6 @@
 #include "board.h"
 #include "game.h"
 
-typedef int8_t cboard_t[BOARD_SIZE][BOARD_SIZE];  // board with type `signed char`
-
 typedef struct {
     cboard_t p1_pieces;     // p1: first player
     cboard_t p2_pieces;     // p2: second player

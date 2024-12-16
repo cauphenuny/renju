@@ -184,14 +184,13 @@ void add_testgames(dataset_t* dataset, const game_result_t* results, int count)
     for (int i = 0; i < count && dataset->size < dataset->capacity; i++) {
         if (!results[i].winner) continue;
         int step_cnt = results[i].game.count;
-        int first_id = results[i].game.first_id;
-        game_t tmp = new_game(first_id, results[i].game.time_limit);
+        game_t tmp = new_game(results[i].game.time_limit);
         for (int j = 0; j < step_cnt; j++) {
             point_t pos = results[i].game.steps[j];
             add_step(&tmp, pos);
             int id = tmp.cur_id;
             int current = (j == step_cnt - 1) ? 0 : id;
-            sample_t raw_sample = to_sample(tmp.board, pos, first_id, current,
+            sample_t raw_sample = to_sample(tmp.board, pos, 1, current,
                                             results[i].prob[j + 1], results[i].winner);
             add_sample(dataset, raw_sample);
         }
@@ -204,14 +203,13 @@ void add_games(dataset_t* dataset, const game_result_t* results, int count)
     for (int i = 0; i < count && dataset->size < dataset->capacity; i++) {
         if (!results[i].winner) continue;
         int step_cnt = results[i].game.count;
-        int first_id = results[i].game.first_id;
-        game_t tmp = new_game(first_id, results[i].game.time_limit);
+        game_t tmp = new_game(results[i].game.time_limit);
         for (int j = 0; j < step_cnt; j++) {
             point_t pos = results[i].game.steps[j];
             add_step(&tmp, pos);
             int id = tmp.cur_id;
             int current = (j == step_cnt - 1) ? 0 : id;
-            sample_t raw_sample = to_sample(tmp.board, pos, first_id, current,
+            sample_t raw_sample = to_sample(tmp.board, pos, 1, current,
                                             results[i].prob[j + 1], results[i].winner);
             add_sample(dataset, raw_sample);
             if (j > 2) {

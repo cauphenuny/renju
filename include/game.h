@@ -10,7 +10,7 @@
 #define GAMECTRL_EVALUATE      0x74
 
 #ifndef GAME_TIME_LIMIT
-#    define GAME_TIME_LIMIT 5000
+#    define GAME_TIME_LIMIT 15000
 #endif
 
 typedef struct {
@@ -19,7 +19,6 @@ typedef struct {
     int time_limit;
     int count;
     int cur_id;
-    int first_id;
 } game_t;
 
 typedef struct {
@@ -28,11 +27,11 @@ typedef struct {
     int winner;
 } game_result_t;
 
-game_t new_game(int first_id, int time_limit);
+game_t new_game(int time_limit);
 void add_step(game_t* game, point_t pos);
 game_t backward(game_t game, int after_step);
 void print_game(game_t game);
 void serialize_game(game_t game, const char* file);
-game_t restore_game(int time_limit, int first_id, int count, point_t moves[]);
+game_t restore_game(int time_limit, int count, point_t moves[]);
 
 #endif

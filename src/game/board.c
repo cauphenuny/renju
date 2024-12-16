@@ -3,12 +3,13 @@
 
 #include "board.h"
 
-#include "util.h"
 #include "pattern.h"
+#include "util.h"
 
 #include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define printf(...) log_s(__VA_ARGS__)
@@ -18,7 +19,6 @@ void board_deserialize(board_t dest, const char* str)
 {
     memset(dest, 0, sizeof(board_t));
     int x = 0, y = 0, l = strlen(str);
-    point_t pos;
     for (int i = 0; i < l; i++) {
         switch (str[i]) {
             case '.': y++; break;
@@ -47,9 +47,12 @@ void board_serialize(const board_t board, char* dest)
     dest[p] = '\0';
 }
 
-/// @brief print {board} with one emphasized position {pos} or predicted probability
-void print_all(const board_t board, point_t emph_pos, const fboard_t prob)
-{
+static bool point_vector_contains(vector_t vec, point_t pos) {
+    return vector_contains(point_t, vec, pos);
+}
+
+void print_impl(const board_t board, vector_t emph_pos, const fboard_t prob) {
+
     if (log_locked() || log_disabled()) return;
 #define dark(x) DARK x RESET
     const char* border_line[3][5] = {{dark("╔"), dark("═"), dark("╤"), dark("═"), dark("╗")},   //
@@ -83,9 +86,9 @@ void print_all(const board_t board, point_t emph_pos, const fboard_t prob)
             default: line_type = 1;
         }
 #if DEBUG_LEVEL >= 2
-        printf("%2d%c", i, " ["[emph_pos.x == i && emph_pos.y == 0]);
+        printf("%2d%c", i, " ["[point_vector_contains(emph_pos, (point_t){i, 0})]);
 #else
-        printf("%2d%c", i + 1, " ["[emph_pos.x == i && emph_pos.y == 0]);
+        printf("%2d%c", i + 1, " ["[point_vector_contains(emph_pos, (point_t){i, 0})]);
 #endif
         for (int j = 0; j < 2 * BOARD_SIZE - 1; j++) {
             switch (j) {
@@ -94,15 +97,17 @@ void print_all(const board_t board, point_t emph_pos, const fboard_t prob)
                 default: col_type = 2 + (j & 1);
             }
             if (j & 1) {
-                if (emph_pos.x == i && emph_pos.y == j / 2)
-                    printf("]");
-                else if (emph_pos.x == i && emph_pos.y == (j + 1) / 2)
-                    printf("[");
-                else
-                    printf("%s", border_line[line_type][col_type]);
+                int flag = (int)point_vector_contains(emph_pos, (point_t){i, j / 2}) +
+                           2 * (int)point_vector_contains(emph_pos, (point_t){i, (j + 1) / 2});
+                switch (flag) {
+                    case 0b00: printf("%s", border_line[line_type][col_type]); break;
+                    case 0b01: printf("]"); break;
+                    case 0b10: printf("["); break;
+                    case 0b11: printf("|"); break;
+                }
             } else if (board[i][j / 2]) {
                 printf("%s", piece_ch[board[i][j / 2]]);
-            } else if (prob[i][j / 2] > levels[0].thresh) {
+            } else if (prob && prob[i][j / 2] > levels[0].thresh) {
                 int level = 0;
                 for (int k = 0; k < LEVELS; k++) {
                     if (prob[i][j / 2] > levels[k].thresh) level = k;
@@ -112,7 +117,7 @@ void print_all(const board_t board, point_t emph_pos, const fboard_t prob)
                 printf("%s", border_line[line_type][col_type]);
             }
         }
-        printf("%c\n", " ]"[emph_pos.x == i && emph_pos.y == BOARD_SIZE - 1]);
+        printf("%c\n", " ]"[point_vector_contains(emph_pos, (point_t){i, BOARD_SIZE - 1})]);
     }
     printf("   ");
     for (int i = 0; i < 2 * BOARD_SIZE - 1; i++) {
@@ -126,18 +131,27 @@ void print_all(const board_t board, point_t emph_pos, const fboard_t prob)
 #undef LEVELS
 }
 
-/// @brief print {board} with one emphasized position
-void print_emph(const board_t board, point_t emph_pos)
-{
-    fboard_t prob;
-    memset(prob, 0, sizeof(prob));
-    print_all(board, emph_pos, prob);
+/// @brief print {board} with one emphasized position {pos} or predicted probability
+void print_all(const board_t board, point_t emph_pos, const fboard_t prob) {
+    vector_t points = vector_new(point_t);
+    vector_push_back(points, emph_pos);
+    print_impl(board, points, prob);
+    vector_free_impl(&points);
 }
+
+/// @brief print {board} with one emphasized position
+void print_emph(const board_t board, point_t emph_pos) { print_all(board, emph_pos, NULL); }
 
 /// @brief print {board} predicted probability
 void print_prob(const board_t board, const fboard_t prob)
 {
     print_all(board, (point_t){-1, -1}, prob);
+}
+
+void print_emph_mutiple(const board_t board, vector_t points) {
+    fboard_t prob;
+    memset(prob, 0, sizeof(prob));
+    print_impl(board, points, prob);
 }
 
 /// @brief print {board} without emphasis
@@ -224,10 +238,8 @@ int check(const board_t board, point_t pos)
 {
     const int id = board[pos.x][pos.y];
     if (!id) return 0;
-    const int8_t arrows[4][2] = {{0, 1}, {1, 0}, {1, 1}, {-1, 1}};
-    int8_t dx, dy;
-    for (int i = 0, cnt; i < 4; i++) {
-        dx = arrows[i][0], dy = arrows[i][1];
+    int cnt = 0;
+    for_all_dir(d, dx, dy) {
         point_t np = {pos.x, pos.y};
         for (cnt = 0; in_board(np); np.x += dx, np.y += dy) {
             if (board[np.x][np.y] == id)
@@ -259,7 +271,7 @@ int is_forbidden(board_t board, point_t pos, int id, bool enable_log)
     // print(board);
     static const int8_t mid = WIN_LENGTH - 1, arrow[4][2] = {{1, 1}, {1, -1}, {1, 0}, {0, 1}};
 
-    pattern_t idx[4] = {PAT_ETY, PAT_ETY, PAT_ETY, PAT_ETY};
+    pattern_t pats[4] = {PAT_ETY, PAT_ETY, PAT_ETY, PAT_ETY};
     pattern4_t pat4;
     segment_t seg[4] = {0};
 
@@ -268,33 +280,24 @@ int is_forbidden(board_t board, point_t pos, int id, bool enable_log)
     board[pos.x][pos.y] = id;
     for (int8_t i = 0, dx, dy; i < 4; i++) {
         dx = arrow[i][0], dy = arrow[i][1];
-        for (int8_t j = -WIN_LENGTH + 1; j < WIN_LENGTH; j++) {
-            const point_t np = (point_t){pos.x + dx * j, pos.y + dy * j};
-            if (!in_board(np))
-                seg[i].pieces[mid + j] = OPPO_PIECE;
-            else if (!board[np.x][np.y]) {
-                seg[i].pieces[mid + j] = EMPTY_PIECE;
-            } else {
-                seg[i].pieces[mid + j] = board[np.x][np.y] == id ? SELF_PIECE : OPPO_PIECE;
-            }
-        }
+        seg[i] = get_segment(board, pos, dx, dy);
         int value = encode_segment(seg[i]);
-        idx[i] = to_pattern(encode_segment(seg[i]), true);
-        if (idx[i] >= PAT_A3 && idx[i] <= PAT_A4) {
+        pats[i] = to_pattern(value, true);
+        if (pats[i] >= PAT_A3 && pats[i] <= PAT_A4) {
             int cols[2];
-            get_upgrade_columns(value, cols, 2);
+            get_upgrade_columns(value, id == 1, cols, 2);
             for (int j = 0; j < 2; j++) {
                 if (cols[j] != -1) {
                     const point_t np =
                         (point_t){pos.x + dx * (cols[j] - mid), pos.y + dy * (cols[j] - mid)};
                     if (is_forbidden(board, np, id, false)) {
-                        idx[i] = PAT_ETY;  // incorrect, but enough for checking forbid
+                        pats[i] = PAT_ETY;  // incorrect, but enough for checking forbid
                         break;
                     }
                 }
             }
         }
-        pat4 = to_pattern4(idx[0], idx[1], idx[2], idx[3], true);
+        pat4 = to_pattern4(pats[0], pats[1], pats[2], pats[3], true);
     }
     board[pos.x][pos.y] = 0;
 
@@ -304,7 +307,7 @@ int is_forbidden(board_t board, point_t pos, int id, bool enable_log)
         log("detailed information:");
         print_emph(board, pos);
         for (int i = 0; i < 4; i++) {
-            print_segment(seg[i]);
+            print_segment(seg[i], true);
         }
     }
     return (int)pat4;

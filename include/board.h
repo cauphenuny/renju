@@ -1,6 +1,8 @@
 #ifndef BOARD_H
 #define BOARD_H
 
+#include "vector.h"
+
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -21,16 +23,13 @@ typedef struct {
 } point_t;
 
 typedef int board_t[BOARD_SIZE][BOARD_SIZE];
-typedef float fboard_t[BOARD_SIZE][BOARD_SIZE]; // board with float type
-typedef float (*pfboard_t)[BOARD_SIZE];         // same as fboard_t but is pointer rather than array
-
-typedef struct {
-    point_t* points;
-    int size;
-} point_array_t;
+typedef float fboard_t[BOARD_SIZE][BOARD_SIZE];  // board with float type
+typedef float (*pfboard_t)[BOARD_SIZE];  // same as fboard_t but is pointer rather than array
+typedef int8_t cboard_t[BOARD_SIZE][BOARD_SIZE];  // board with type `signed char`
 
 void print_all(const board_t board, point_t emph_pos, const fboard_t prob);
 void print_emph(const board_t board, point_t emph_pos);
+void print_emph_mutiple(const board_t board, vector_t points);
 void print_prob(const board_t board, const fboard_t prob);
 void print(const board_t board);
 
@@ -72,5 +71,9 @@ typedef line_t comp_board_t[BOARD_SIZE];  // compressed board
 void encode(const board_t src, comp_board_t dest);
 void decode(const comp_board_t src, board_t dest);
 void print_compressed_board(const comp_board_t board, point_t emph_pos);
+
+static const int DIRS[4][2] = {{1, 0}, {0, 1}, {1, 1}, {1, -1}};
+#define for_all_dir(i, dx, dy) \
+    for (int i = 0, dx, dy; i < 4 && (dx = DIRS[i][0], dy = DIRS[i][1], true); i++)
 
 #endif

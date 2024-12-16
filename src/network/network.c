@@ -13,13 +13,13 @@
 int predict_sum_time, predict_cnt;
 
 prediction_t predict(const network_t* network,  //
-                     const board_t board, point_t last_move, int first_id, int cur_id)
+                     const board_t board, point_t last_move, int cur_id)
 {
     int tim = record_time();
     // log("weight mean: %f", mean(network->shared.conv1.weight, 2 * 32 * 3 * 3));
     // log("bias mean: %f", mean(network->shared.conv1.bias, 32));
     prediction_t prediction = {0};
-    sample_input_t input = to_sample_input(board, last_move, first_id, cur_id);
+    sample_input_t input = to_sample_input(board, last_move, 1, cur_id);
     static float output[2][MAX_CHANNEL * N * N], shared_output[MAX_CHANNEL * N * N];
     memset(output, 0, sizeof(output));
     memset(shared_output, 0, sizeof(shared_output));
@@ -138,10 +138,9 @@ point_t nn_move(game_t game, const void* assets)
     const network_t* network = assets;
     board_t board;
     memcpy(board, game.board, sizeof(board_t));
-    prediction_t prediction =
-        predict(network, board, game.steps[game.count - 1], game.first_id, game.cur_id);
+    prediction_t prediction = predict(network, board, game.steps[game.count - 1], game.cur_id);
     point_t pos = {0, 0};
-    bool forbid = game.cur_id == game.first_id;
+    bool forbid = game.cur_id == 1;
     for (int8_t i = 0; i < N; i++) {
         for (int8_t j = 0; j < N; j++) {
             point_t cur = (point_t){i, j};

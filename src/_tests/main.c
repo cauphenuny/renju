@@ -24,8 +24,8 @@ static int test_pattern(void)
     */
     for (int idx = 0; idx < SEGMENT_MASK; idx++) {
         const segment_t seg = decode_segment(idx);
-        if (seg.pieces[WIN_LENGTH - 1] != SELF_PIECE) continue;
-        print_segment(decode_segment(idx));
+        if (!segment_valid(seg)) continue;
+        print_segment(seg, false);
     }
     return 0;
 }
@@ -33,7 +33,7 @@ static int test_pattern(void)
 void test_minimax(void)
 {
     game_t game = restore_game(
-        2000, 2, 90,
+        2000, 90,
         (point_t[]){
             {7, 7},   {8, 6},   {7, 8},  {7, 6},  {6, 6},  {5, 5},   {6, 7},   {8, 7},  {6, 8},
             {6, 5},   {6, 9},   {6, 10}, {9, 8},  {8, 8},  {8, 5},   {8, 9},   {8, 10}, {7, 9},
@@ -51,10 +51,11 @@ void test_minimax(void)
     assert(in_board(pos));
 }
 
+void test_upd();
+
 int main()
 {
     init();
-
     int ret = 0;
     log("running test");
 
@@ -85,9 +86,12 @@ int main()
     //     log("zobrist tests passed.");
     // }
 
-    void test_neuro();
-    log("test neuro");
-    test_neuro();
+    // void test_neuro();
+    // log("test neuro");
+    // test_neuro();
+
+    log("test vcx");
+    test_upd();
     log_i("all tests passed.");
     return 0;
 }

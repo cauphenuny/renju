@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 3.5)
 project (
     gomoku
-    VERSION 2.4.0
+    VERSION 2.5.0
     LANGUAGES C
 )
 set (CMAKE_VERBOSE_MAKEFILE OFF)
@@ -80,6 +80,7 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif ()
 
 add_executable (main src/gomoku.c $<TARGET_OBJECTS:gomoku_objects>)
+# target_compile_definitions(main PRIVATE NO_INTERACTIVE)
 
 file(GLOB TEST_SRC_LIST "${PROJECT_SOURCE_DIR}/src/_tests/*.c")
 add_executable (test ${TEST_SRC_LIST} ${SRC_LIST})

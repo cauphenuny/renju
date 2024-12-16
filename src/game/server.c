@@ -2,11 +2,14 @@
 // date: 2024/10/19
 
 #include "board.h"
+#include "eval.h"
 #include "game.h"
+#include "pattern.h"
 #include "players.h"
 #include "util.h"
-#include "pattern.h"
 
+#include <assert.h>
+#include <stdlib.h>
 #include <string.h>
 
 /// @brief start a game with player {p1} and {p2}, {p{first_id}} move first
@@ -16,7 +19,7 @@ game_result_t start_game(player_t p1, player_t p2, int first_id, int time_limit,
     player_t players[] = {{}, p1, p2};
     const char* colors[] = {"", L_GREEN, L_RED};
     log("start game: %s vs %s, first player: %d", p1.name, p2.name, first_id);
-    game_t game = new_game(first_id, time_limit);
+    game_t game = new_game(time_limit);
     game_result_t result = {0};
     print_game(game);
 #define WIN(winner_id)                                 \
@@ -24,11 +27,12 @@ game_result_t start_game(player_t p1, player_t p2, int first_id, int time_limit,
         result.game = game, result.winner = winner_id; \
         return result;                                 \
     } while (0)
+    int id = first_id;
     while (1) {
-        const int id = game.cur_id;
         // log_disable();
-        log_i("------ step %s#%d" RESET ", player%d's turn ------", colors[id], game.count + 1, id);
-        if (!have_space(game.board, id)) {
+        log_i("------ step %s#%d" RESET ", player%d's turn ------", colors[game.cur_id],
+              game.count + 1, id);
+        if (!have_space(game.board, game.cur_id)) {
             log("no more space for player%d", id);
             WIN(3 - id);
         }
@@ -65,11 +69,11 @@ game_result_t start_game(player_t p1, player_t p2, int first_id, int time_limit,
                     continue;
                 } else {
                     prediction_t prediction =
-                        predict(network, game.board, game.steps[game.count - 1], first_id, id);
+                        predict(network, game.board, game.steps[game.count - 1], game.cur_id);
                     if (pos.y) {
                         print_prediction(prediction);
                     } else {
-                        log("eval: %.3lf", prediction.eval * (game.first_id == 1 ? 1 : -1));
+                        log("eval: %.3lf", prediction.eval);
                     }
                     continue;
                 }
@@ -82,14 +86,14 @@ game_result_t start_game(player_t p1, player_t p2, int first_id, int time_limit,
         log_i("time: %dms, chose " BOLD UNDERLINE "(%c, %d)" RESET, get_time(tim), pos.y + 'A',
               pos.x + 1);
 #ifndef NO_FORBID
-        if (game.cur_id == game.first_id) {
-            const int forbid = is_forbidden(game.board, pos, id, true);
+        if (game.cur_id == 1) {
+            const int forbid = is_forbidden(game.board, pos, game.cur_id, true);
             // int forbid = false;
             if (forbid) {
                 log_e("forbidden position! (%s)", pattern4_typename[forbid]);
                 prompt_pause();
-                // continue;
-                WIN(3 - id);
+                continue;
+                // WIN(3 - id);
             }
         }
 #endif
@@ -107,5 +111,6 @@ game_result_t start_game(player_t p1, player_t p2, int first_id, int time_limit,
 
         if (is_draw(game.board)) WIN(0);
         if (check(game.board, pos)) WIN(id);
+        id = 3 - id;
     }
 }

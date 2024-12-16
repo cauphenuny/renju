@@ -8,6 +8,7 @@
 enum {
     MANUAL,
     MCTS,     // default MCTS
+    MCTS_ADV, // MCTS with trivial evaluation
     MCTS_NN,  // MCTS with neural network
     MINIMAX,
     NEURAL_NETWORK,  // pure neural network

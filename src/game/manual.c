@@ -37,7 +37,7 @@ int parse(char s[])
     return tmp * (s[0] == '-' ? -1 : 1);
 }
 
-point_t input_manually(const game_t game, const void* assets)
+point_t input_manually(game_t game, const void* assets)
 {
     (void)game, (void)assets;
 

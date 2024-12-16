@@ -96,10 +96,8 @@ typedef struct {
     fboard_t prob;
 } prediction_t;
 
-extern int predict_sum_time, predict_cnt;
-
 prediction_t predict(const network_t* network,  //
-                     const board_t board, point_t last_move, int first_id, int cur_id);
+                     const board_t board, point_t last_move, int cur_id);
 void print_prediction(const prediction_t prediction);
 int load_network(network_t* network, const char* file_basename);
 int save_network(const network_t* network, const char* file_basename);

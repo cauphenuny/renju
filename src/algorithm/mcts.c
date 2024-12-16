@@ -5,8 +5,11 @@
 
 #include "board.h"
 #include "distribute.h"
+#include "eval.h"
 #include "network.h"
+#include "neuro.h"
 #include "pattern.h"
+#include "trivial.h"
 #include "util.h"
 
 #include <assert.h>
@@ -51,8 +54,9 @@ static node_t* node_buffer;
 static edge_t* edge_buffer;
 
 static int tot, edge_tot;
-static int first_id, current_check_depth;
+static int current_check_depth;
 static int start_time, time_limit;
+static int predict_sum_time, predict_cnt;
 static mcts_param_t param;
 static double prior_weight;
 
@@ -60,80 +64,6 @@ static double prior_weight;
 #define NODE_LIMIT    30000000
 
 static int max_tree_size = MAX_TREE_SIZE, node_limit = NODE_LIMIT;
-
-static int is_forbidden_comp(comp_board_t bd, point_t pos, int id, int depth);
-
-/// @brief get pattern by compressed board {bd} and position {pos}
-/// @return pattern type
-static pattern4_t pattern4_type_comp(comp_board_t board, point_t pos, int depth)
-{
-    int id;
-    if (!in_board(pos) || !((id = get(board, pos)))) return PAT4_OTHERS;
-    const int8_t mid = WIN_LENGTH - 1, arrows[4][2] = {{1, 1}, {1, -1}, {1, 0}, {0, 1}};
-    int idx[4];
-    int piece;
-    bool check_forbid = depth > 0 && id == first_id;
-    for (int8_t i = 0, dx, dy; i < 4; i++) {
-        dx = arrows[i][0], dy = arrows[i][1];
-        segment_t seg;
-        for (int8_t j = -WIN_LENGTH + 1; j < WIN_LENGTH; j++) {
-            const point_t np = (point_t){pos.x + dx * j, pos.y + dy * j};
-            if (!in_board(np))
-                seg.pieces[mid + j] = OPPO_PIECE;
-            else if (!((piece = get(board, np)))) {
-                seg.pieces[mid + j] = EMPTY_PIECE;
-            } else
-                seg.pieces[mid + j] = ((piece == id) ? SELF_PIECE : OPPO_PIECE);
-        }
-        // print_segment(seg);
-        int segment_value = encode_segment(seg);
-        idx[i] = to_pattern(segment_value, check_forbid);
-        if (depth > 1 && idx[i] >= PAT_A3 && idx[i] <= PAT_A4) {
-            int col[2];
-            get_upgrade_columns(segment_value, col, 2);
-            for (int j = 0; j < 2; j++) {
-                if (col[j] != -1) {
-                    const point_t np =
-                        (point_t){pos.x + dx * (col[j] - mid), pos.y + dy * (col[j] - mid)};
-                    // pattern4_t pat4;
-                    // if ((pat4 = is_forbidden_comp(board, np, id, depth - 1))) {
-                    if (is_forbidden_comp(board, np, id, depth - 1)) {
-                        // log("fallback at (%d, %d) for %s", np.x, np.y, pattern4_typename[pat4]);
-                        idx[i] = PAT_ETY;
-                        break;
-                    }
-                }
-            }
-        }
-    }
-    // print_compressed_board(board, pos);
-    // log("%s | %s | %s | %s", pattern_typename[idx[0]], pattern_typename[idx[1]],
-    //     pattern_typename[idx[2]], pattern_typename[idx[3]]);
-    pattern4_t pat4 = to_pattern4(idx[0], idx[1], idx[2], idx[3], check_forbid);
-    return pat4;
-}
-
-/// @brief get pattern after putting a piece of player{id} at {pos}
-/// @return pattern type
-static pattern4_t virtual_pat4type_comp(comp_board_t board, point_t pos, int id, int depth)
-{
-    assert(in_board(pos) && !get(board, pos));
-    add(board, pos, id);
-    const pattern4_t pat4 = pattern4_type_comp(board, pos, depth);
-    minus(board, pos, id);
-    return pat4;
-}
-
-/// @brief check if {pos} is forbidden for player{id}
-/// @return 0 if not forbidden, pattern4 type otherwise.
-static int is_forbidden_comp(comp_board_t board, point_t pos, int id, int depth)
-{
-    assert(in_board(pos));
-    if (id != first_id) return 0;
-    const pattern4_t pat4 = virtual_pat4type_comp(board, pos, id, depth);
-    if (pat4 <= PAT4_WIN) return 0;
-    return pat4;
-}
 
 /*
 /// @brief print data of state {st}
@@ -168,13 +98,12 @@ static void get_win_pos(state_t* st)
     if (!id) {
         return;
     }
-    const int8_t arrows[4][2] = {{0, 1}, {1, 0}, {1, 1}, {-1, 1}};
     point_t tmp;
     // print_state(*st), log("start");
     int8_t dx, dy;
     const int mid = WIN_LENGTH - 1;  // . . . . X . . . .
     for (int i = 0, val, pattern, piece, cnt = 0; i < 4 && cnt < WINPOS_SIZE; i++) {
-        dx = arrows[i][0], dy = arrows[i][1];
+        dx = DIRS[i][0], dy = DIRS[i][1];
         val = 0;
         for (int j = mid; j >= -mid; j--) {
             tmp = (point_t){pos.x + dx * j, pos.y + dy * j};
@@ -182,10 +111,10 @@ static void get_win_pos(state_t* st)
             val = val * PIECE_SIZE +
                   (piece == id ? SELF_PIECE : (piece == oppo ? OPPO_PIECE : EMPTY_PIECE));
         }
-        pattern = to_pattern(val, id == first_id);
+        pattern = to_pattern(val, id == 1);
         if (pattern == PAT_D4 || pattern == PAT_A4) {
             int col[2];
-            get_upgrade_columns(val, col, 2);
+            get_upgrade_columns(val, id == 1, col, 2);
             for (int j = 0; j < 2 && cnt < WINPOS_SIZE; j++) {
                 if (col[j] != -1) {
                     tmp = (point_t){pos.x + dx * (col[j] - mid), pos.y + dy * (col[j] - mid)};
@@ -283,12 +212,12 @@ static double ucb_eval(const node_t* node)
     //                      ? (post_Q * (1 - prior_weight) + node->state.prior_eval * prior_weight)
     //                      : post_Q;
     const double U = sqrt(log(node->parent->state.count) / node->state.count);
-    const double P = pow(node->state.prior_P, 0.3);
+    const double P = pow(node->state.prior_P, 0.5);
+    // const double P = node->state.prior_P;
     return post_Q + param.C_puct * P * U;
 }
 
-static double entropy(const node_t* node)
-{
+static double node_entropy(const node_t* node) {
     double sum = 0;
     for (const edge_t* e = node->child_edge; e; e = e->next) {
         const double prob = (double)e->to->state.count / node->state.count;
@@ -348,20 +277,58 @@ static void backpropagate(node_t* node, double value, int count, bool remain_cou
 static void evaluate_children(node_t* node)
 {
     if (predict_sum_time > time_limit / 3) return;
+    int time = record_time();
     board_t board;
     decode(node->state.board, board);
-    prediction_t prediction =
-        predict(param.network, board, node->state.pos, first_id, node->state.id);
+    prediction_t prediction = predict(param.network, board, node->state.pos, node->state.id);
     // log("evaluated:");
     // print_prob(board, prediction.prob);
     for (edge_t* e = node->child_edge; e; e = e->next) {
         const point_t pos = e->to->state.pos;
-        e->to->state.prior_P = (double)prediction.prob[pos.x][pos.y] * BOARD_AREA;
+        e->to->state.prior_P = (double)prediction.prob[pos.x][pos.y] + 1;
         // for normalization, now E(prob) = 1
     }
     // prompt_pause();
     node->state.evaluated = true;
-    backpropagate(node, prediction.eval - node->state.post_Q, node->state.count, true);
+    predict_sum_time += get_time(time);
+    predict_cnt++;
+}
+
+static void trivial_evaluate_children(node_t* node) {
+    if (predict_sum_time > time_limit / 3) return;
+    int time = record_time();
+    vector_t points[5];
+    for (int i = 0; i < 5; i++) points[i] = vector_new(point_t);
+    point_storage_t storage = {
+        [PAT_A4] = &points[0], [PAT_D4] = &points[0],  //
+        [PAT_A3] = &points[1], [PAT_D3] = &points[2],  //
+        [PAT_A2] = &points[3], [PAT_D2] = &points[4],  //
+    };
+    find_points(node->state.board, node->state.id, storage);
+    find_points(node->state.board, 3 - node->state.id, storage);
+    float prob[BOARD_AREA] = {0};
+    float weight[5] = {3, 1.5, 1, 0.5, 0.3};
+    for (int i = 0; i < 5; i++) {
+        for_all_elements(point_t, points[i], pos) { prob[pos.x * BOARD_SIZE + pos.y] += weight[i]; }
+    }
+    softmax(prob, BOARD_AREA);
+    // fboard_t fboard = {0};
+    // for (int x = 0; x < BOARD_SIZE; x++) {
+    //     for (int y = 0; y < BOARD_SIZE; y++) {
+    //         fboard[x][y] = prob[x * BOARD_SIZE + y];
+    //     }
+    // }
+    // board_t board = {0};
+    // decode(node->state.board, board);
+    // print_prob(board, fboard);
+    for (edge_t* e = node->child_edge; e; e = e->next) {
+        const point_t pos = e->to->state.pos;
+        e->to->state.prior_P = prob[pos.x * BOARD_SIZE + pos.y] * BOARD_AREA;
+    }
+    predict_sum_time += get_time(time);
+    predict_cnt++;
+    for (int i = 0; i < 5; i++) vector_free_impl(&points[i]);
+    node->state.evaluated = true;
 }
 
 /// @brief check if state is terminated
@@ -456,8 +423,12 @@ static node_t* traverse(node_t* node)
         return traverse(put_piece(node, empty_pos, pat4));
     }
     if (node->child_cnt) {
-        if (param.network && !node->state.evaluated) {
-            evaluate_children(node);
+        if (!node->state.evaluated) {
+            switch (param.eval_type) {
+                case NETWORK: evaluate_children(node); break;
+                case TRIVIAL: trivial_evaluate_children(node); break;
+                default: break;
+            }
         }
         return traverse(ucb_select(node));
     }
@@ -501,11 +472,13 @@ static void simulate(node_t* start_node)
 point_t mcts(const game_t game, const void* assets)
 {
     start_time = record_time();
-    if (game.count == 0) {
-        return (point_t){BOARD_SIZE / 2, BOARD_SIZE / 2};
-    }
-
     param = *((mcts_param_t*)assets);
+
+    point_t trivial_pos = trivial_move(game);
+    if (in_board(trivial_pos)) {
+        if (param.output_prob) param.output_prob[trivial_pos.x][trivial_pos.y] = 1;
+        return trivial_pos;
+    }
 
     while (node_buffer == NULL || edge_buffer == NULL) {
         free(node_buffer), node_buffer = NULL;
@@ -518,7 +491,6 @@ point_t mcts(const game_t game, const void* assets)
     srand(time(0));
 
     tot = edge_tot = 0;
-    first_id = game.first_id;
     time_limit = game.time_limit;
 
     point_t wrap_begin, wrap_end;
@@ -527,7 +499,7 @@ point_t mcts(const game_t game, const void* assets)
         wrap_area(game.board, &wrap_begin, &wrap_end, radius);
     } while (((wrap_end.y - wrap_begin.y) * (wrap_end.x - wrap_begin.x) < 80) && ++radius);
 
-    node_t* root = create_node(empty_state(wrap_begin, wrap_end, game.first_id));
+    node_t* root = create_node(empty_state(wrap_begin, wrap_end, 1));
     for (int i = 0; i < game.count; i++) {
         root = put_piece(root, game.steps[i], PAT4_OTHERS);
     }
@@ -540,11 +512,16 @@ point_t mcts(const game_t game, const void* assets)
     }
 #endif
 
+    predict_sum_time = predict_cnt = 0;
+
     if (param.network) {
         log("original: ");
-        prediction_t prediction = predict(param.network, game.board, game.steps[game.count - 1],
-                                          game.first_id, game.cur_id);
+        prediction_t prediction =
+            predict(param.network, game.board, game.steps[game.count - 1], game.cur_id);
         print_prob(game.board, prediction.prob);
+    } else {
+        // log("original: ");
+        // trivial_evaluate_children(root);
     }
 
     int tim, cnt = 0;
@@ -552,37 +529,32 @@ point_t mcts(const game_t game, const void* assets)
 
     log("simulating (C: %.3lf, time: %d~%d, check: %d)", param.C_puct, param.min_time, time_limit,
         param.check_depth);
-    // if (param.network) {
-    //     print_prediction(predict(param.network, game.board, game.first_id, game.cur_id));
-    // }
-    //  int base = 1;
-    predict_sum_time = predict_cnt = 0;
     while ((tim = get_time(start_time)) < param.min_time ||
            max_count(root)->state.count < target_count) {
         if (tim > time_limit - 10 || tot >= node_limit) break;
         // prior_weight = 1 - ((double)tim / time_limit) / 2;
         prior_weight = 1;
         simulate(root), cnt++;
-        // if (param.network && root->state.visited_cnt == root->state.capacity &&
-        // !root->state.evaluated) {
-        //     evaluate_children(root);
+        // if (!root->state.evaluated && root->state.visited_cnt == root->state.capacity) {
+        //     if (param.network) {
+        //         evaluate_children(root);
+        //     } else {
+        //         log("evaluated root");
+        //         trivial_evaluate_children(root);
+        //     }
         // }
     }
     log("simulated %d times, average %.2lf us, speed %.2lf", cnt, tim * 1000.0 / cnt,
         (double)cnt / tim);
-    if (param.network) {
-        log("consumption: %d ms", tim);
-        log("  - search(%.1lf%%): size of search tree: %d", (tim - predict_sum_time) * 100.0 / tim,
-            tot);
-        if (predict_cnt) {
-            log("  - network(%.1lf%%): evaluated %d nodes, average %.3lf ms",
-                predict_sum_time * 100.0 / tim, predict_cnt, predict_sum_time * 1.0 / predict_cnt);
-        }
-    } else {
-        log("consumption: %dms, %d nodes", tim, tot);
+    log("consumption: %d ms", tim);
+    log("  - search(%.1lf%%): size of search tree: %d", (tim - predict_sum_time) * 100.0 / tim,
+        tot);
+    if (predict_cnt) {
+        log("  - evaluate(%.1lf%%): evaluated %d nodes, average %.3lf ms",
+            predict_sum_time * 100.0 / tim, predict_cnt, predict_sum_time * 1.0 / predict_cnt);
     }
-    log("entropy: %.3lf, min count: %d, max count: %d", entropy(root), min_count(root)->state.count,
-        max_count(root)->state.count);
+    log("node_entropy: %.3lf, min count: %d, max count: %d", node_entropy(root),
+        min_count(root)->state.count, max_count(root)->state.count);
     log("probability result:");
     fboard_t prob = {0};
     for (const edge_t* e = root->child_edge; e; e = e->next) {
@@ -616,24 +588,6 @@ point_t mcts(const game_t game, const void* assets)
         level = PROMPT_WARN;
     log_add(level, "(%d, %d) -> prob: %.2lf%% (%d), win: %.2lf%%.", st.pos.x, st.pos.y,
             (double)st.count / root->state.count * 100, st.count, rate);
-#ifdef TEST
-    point_t manual(game_t, const void*);
-    if (level == PROMPT_WARN) {
-        print_state(root->state);
-        while (1) {
-            const point_t pos = manual(game, assets);
-            if (in_board(pos)) {
-                const node_t* child = find_child(root, pos);
-                const double tmp = ((double)(child->state.count + (f)*child->state.result) / 2 /
-                                    child->state.count * 100);
-                log("count: %d(%.2lf%%), win: %.2lf%%", child->state.count,
-                    child->state.count * 100.0 / root->state.count, tmp);
-            } else {
-                break;
-            }
-        }
-    }
-#endif
     return st.pos;
 }
 

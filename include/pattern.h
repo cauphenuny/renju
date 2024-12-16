@@ -22,7 +22,7 @@ typedef enum {
     PAT_A3,   // alive 3   . . o o o . . . .
     PAT_D4,   // dead 4    . o o o o x . . .
     PAT_A4,   // alive 4   . o o o o . . . .
-    PAT_5,    // 5         . o o o o o . . .
+    PAT_WIN,  // 5         . o o o o o . . .
     PAT_TYPE_SIZE,
 } pattern_t;
 
@@ -45,11 +45,24 @@ typedef struct {
 
 int encode_segment(segment_t s);
 segment_t decode_segment(int v);
-void print_segment(segment_t s);
+void print_segment(segment_t s, bool consider_forbid);
+bool segment_valid(segment_t s);
+segment_t get_segment(board_t board, point_t pos, int dx, int dy);
+enum {
+    UPGRADE,
+    CONSIST,
+    DEFEND,
+};
 
-pattern_t to_pattern(int segment_value, bool check_forbid);
-pattern4_t to_pattern4(int x, int y, int u, int v, bool check_forbid);
+vector_t find_relative_points(int type, board_t board, point_t pos, int dx, int dy);
+
+pattern_t to_pattern(int segment_value, bool consider_forbid);
+pattern4_t to_pattern4(int x, int y, int u, int v, bool consider_forbid);
 void pattern_init(void);
-void get_upgrade_columns(int segment_value, int* cols, int limit);
+void get_upgrade_columns(int segment_value, bool consider_forbid, int* cols, int limit);
+
+pattern4_t pattern4_type_comp(comp_board_t board, point_t pos, int depth);
+pattern4_t virtual_pat4type_comp(comp_board_t board, point_t pos, int id, int depth);
+int is_forbidden_comp(comp_board_t bd, point_t pos, int id, int depth);
 
 #endif

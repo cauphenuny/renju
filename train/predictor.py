@@ -307,6 +307,7 @@ if __name__ == '__main__':
 
     policy_hat, value_hat = network(X)
     print(f'network output shape: {policy_hat.shape}, {value_hat.shape}')
+    network.load("model/static")
 
 # %%
     num_epochs = 10

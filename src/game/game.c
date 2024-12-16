@@ -7,10 +7,10 @@
 #include <string.h>
 
 /// @brief create a new game, player{first_id} moves first, time limit {time_limit}ms
-game_t new_game(int first_id, int time_limit)
+game_t new_game(int time_limit)
 {
     game_t game = {0};
-    game.first_id = game.cur_id = first_id;
+    game.cur_id = 1;
     if (time_limit > 0)
         game.time_limit = time_limit;
     else
@@ -30,7 +30,7 @@ void add_step(game_t* game, point_t pos)
 /// @return generated game
 game_t backward(game_t game, int count)
 {
-    game_t subgame = new_game(game.first_id, game.time_limit);
+    game_t subgame = new_game(game.time_limit);
     for (int i = 0; i < count; i++) {
         add_step(&subgame, game.steps[i]);
     }
@@ -55,9 +55,9 @@ void print_game(game_t game)
 /// @param first_id first player
 /// @param count count of existed pieces
 /// @param moves positions of each piece
-game_t restore_game(int time_limit, int first_id, int count, point_t moves[])
+game_t restore_game(int time_limit, int count, point_t moves[])
 {
-    game_t game = new_game(first_id, time_limit);
+    game_t game = new_game(time_limit);
     for (int i = 0; i < count; i++) {
         add_step(&game, moves[i]);
     }
@@ -78,7 +78,7 @@ void serialize_game(game_t game, const char* file)
     } else {
         fp = stdout;
     }
-    fprintf(fp, "restore_game(%d,%d,%d,(point_t[]){", game.time_limit, game.first_id, game.count);
+    fprintf(fp, "restore_game(%d,%d,(point_t[]){", game.time_limit, game.count);
     for (int i = 0; i < game.count; i++) {
         fprintf(fp, "{%d,%d}", game.steps[i].x, game.steps[i].y);
         if (i != game.count - 1) fprintf(fp, ",");

@@ -5,6 +5,12 @@
 #include "game.h"
 #include "network.h"
 
+enum {
+    NONE,
+    TRIVIAL, 
+    NETWORK, 
+};
+
 typedef struct {
     double C_puct;
     int min_time;
@@ -14,6 +20,7 @@ typedef struct {
     network_t* network;
     pfboard_t output_prob;
     bool is_train;
+    int eval_type;
 } mcts_param_t;  // parameters for mcts
 
 point_t mcts(game_t game, const void* assets);
