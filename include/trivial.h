@@ -4,6 +4,8 @@
 #include "game.h"
 #include "board.h"
 
-point_t trivial_move(game_t game, bool use_vcf);
+point_t random_move(game_t game);
+
+point_t trivial_move(game_t game, bool use_vct);
 
 #endif

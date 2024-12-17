@@ -10,12 +10,13 @@
 
 #define N BOARD_SIZE
 
-int predict_sum_time, predict_cnt;
+double predict_sum_time;
+int predict_cnt;
 
 prediction_t predict(const network_t* network,  //
                      const board_t board, point_t last_move, int cur_id)
 {
-    int tim = record_time();
+    double tim = record_time();
     // log("weight mean: %f", mean(network->shared.conv1.weight, 2 * 32 * 3 * 3));
     // log("bias mean: %f", mean(network->shared.conv1.bias, 32));
     prediction_t prediction = {0};
@@ -145,7 +146,7 @@ point_t nn_move(game_t game, const void* assets)
         for (int8_t j = 0; j < N; j++) {
             point_t cur = (point_t){i, j};
             if (game.board[i][j]) continue;
-            if (forbid && is_forbidden(game.board, cur, game.cur_id, false)) continue;
+            if (forbid && is_forbidden(game.board, cur, game.cur_id, -1)) continue;
             if (prediction.prob[i][j] > prediction.prob[pos.x][pos.y]) {
                 pos = cur;
             }

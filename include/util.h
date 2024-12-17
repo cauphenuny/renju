@@ -9,7 +9,7 @@
 #define chkmin(x, y) (x = min(x, y))
 #define chkmax(x, y) (x = max(x, y))
 
-#ifndef NOCOLOR
+#ifndef NO_COLOR
 #    define BLACK     "\033[0;30m"
 #    define L_BLACK   "\033[1;30m"
 #    define RED       "\033[0;31m"
@@ -73,8 +73,10 @@ enum log_prompts {
     PROMPT_EMPTY, 
     PROMPT_LOG,
     PROMPT_INFO,
+    PROMPT_NOTE,
     PROMPT_WARN,
     PROMPT_ERROR,
+    PROMPT_SIZE, 
 };
 
 #define LOG_BUFFER_SIZE 512
@@ -99,14 +101,15 @@ int log_write(int level, const char* fmt, ...);
 #define log_l(...) log_add(PROMPT_LOG,   __VA_ARGS__)
 #define log_i(...) log_add(PROMPT_INFO,  __VA_ARGS__)
 #define log_w(...) log_add(PROMPT_WARN,  __VA_ARGS__)
+#define log_n(...) log_add(PROMPT_NOTE,  __VA_ARGS__)
 #define log_e(...) log_add(PROMPT_ERROR, __VA_ARGS__)
 #define log_s(...) log_write(PROMPT_EMPTY, __VA_ARGS__)
 
 #define chkscanf(...) { if (scanf(__VA_ARGS__) == EOF) exit(1); }
 #define prompt_scanf(...) { prompt(); chkscanf(__VA_ARGS__); }
 
-int record_time(void);
-int get_time(int start_time);
+double record_time(void);
+double get_time(double start_time);
 
 bool file_exists(const char* file_name);
 

@@ -24,7 +24,7 @@ void print_pos(point_t p)
 
 int main()
 {
-    const int tim = record_time();
+    const double tim = record_time();
     log_lock();
     init();
 

@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 3.5)
 project (
     gomoku
-    VERSION 2.6.0
+    VERSION 2.7.0
     LANGUAGES C
 )
 set (CMAKE_VERBOSE_MAKEFILE OFF)
@@ -56,6 +56,7 @@ file(GLOB_RECURSE INCLUDE_LIST "*.h")
 add_library(gomoku_objects OBJECT ${SRC_LIST})
 target_link_libraries(gomoku_objects m)
 # target_compile_definitions(gomoku_objects PRIVATE NO_FORBID)
+# target_compile_definitions(gomoku_objects PRIVATE NO_COLOR)
 
 add_library(libgomoku SHARED $<TARGET_OBJECTS:gomoku_objects>)
 set_target_properties(libgomoku PROPERTIES OUTPUT_NAME "gomoku")
@@ -85,6 +86,7 @@ add_executable (main src/gomoku.c $<TARGET_OBJECTS:gomoku_objects>)
 file(GLOB TEST_SRC_LIST "${PROJECT_SOURCE_DIR}/src/_tests/*.c")
 add_executable (test ${TEST_SRC_LIST} ${SRC_LIST})
 target_compile_definitions(test PRIVATE TEST)
+# target_compile_definitions(test PRIVATE NO_COLOR)
 set_target_properties(test PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
 add_executable (botzone src/botzone.c ${SRC_LIST})

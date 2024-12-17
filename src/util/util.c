@@ -10,10 +10,11 @@
 
 static char log_buffer[LOG_BUFFER_SIZE];
 static int cur_len;
-static const char* prompts[] = {
+static const char* prompts[PROMPT_SIZE] = {
     [PROMPT_EMPTY] = "",
     [PROMPT_LOG] = BLUE "[LOG] " RESET,
     [PROMPT_INFO] = GREEN "[INFO] " RESET,
+    [PROMPT_NOTE] = PURPLE "[NOTE]" RESET,
     [PROMPT_WARN] = YELLOW "[WARN] " RESET,
     [PROMPT_ERROR] = RED "[ERROR] " RESET,
 };
@@ -62,28 +63,23 @@ int log_write(int log_level, const char* fmt, ...)
     return cur_len;
 }
 
-long long get_raw_time(void) {
+double get_raw_time(void) {
     struct timespec time;
     clock_gettime(CLOCK_REALTIME, &time);
-    const long long tim = time.tv_sec * 1000 + time.tv_nsec / 1000000;
-    return tim;
+    return time.tv_sec * 1000 + time.tv_nsec / 1000000.0;
 }
 
 /// @brief get a timestamp
-int record_time(void) {
-    return get_raw_time();
-}
+double record_time(void) { return get_raw_time(); }
 
 /// @brief get current time (ms) after {start_time}
-int get_time(int start_time) {
-    return (int)(get_raw_time() - start_time);
-}
+double get_time(double start_time) { return (get_raw_time() - start_time); }
 
 /// @brief pause until inputting a char, ignores inputs before
 /// @return char, as int type for EOF
 int pause()
 {
-    const int tim = record_time();
+    const double tim = record_time();
     const int ch = getchar();
     if (ch == EOF) exit(1);
     if (get_time(tim) < 10) return pause();

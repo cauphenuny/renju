@@ -19,9 +19,15 @@ enum {
 #define MAX_PLAYERS 20
 
 typedef struct {
+    bool no_time_limit;
+    bool enable_vct;
+} player_attribute_t;
+
+typedef struct {
     const char* name;
     point_t (*move)(game_t, const void* assets);
     const void* assets;
+    player_attribute_t attribute;
 } player_t;
 
 extern player_t preset_players[MAX_PLAYERS];

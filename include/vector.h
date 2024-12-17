@@ -14,23 +14,25 @@ typedef struct {
     free_func_t free_func;
 } vector_t;
 
-vector_t vector_new_impl(size_t element_size, free_func_t free_func);
-void vector_free(void* ptr);
-void vector_push_back_impl(vector_t* vector, void* element);
-void* vector_get_impl(vector_t* vector, size_t index);
-void vector_cat_impl(vector_t* dest, vector_t* src);
-void vector_copy_impl(vector_t* dest, vector_t* src);
-vector_t vector_clone_impl(vector_t* src);
-bool vector_contains_impl(vector_t* vector, void* element, size_t element_size);
+vector_t vector_new_p(size_t element_size, free_func_t free_func);
+void vector_free_p(void* ptr);
+void vector_push_back_p(vector_t* vector, void* element);
+void* vector_get_p(vector_t* vector, size_t index);
+void vector_cat_p(vector_t* dest, vector_t* src);
+void vector_copy_p(vector_t* dest, vector_t* src);
+vector_t vector_clone(vector_t src);
+void vector_shuffle(vector_t src);
+void vector_reverse(vector_t src);
+bool vector_contains_p(vector_t* vector, void* element, size_t element_size);
 
-#define vector_new(type, free_func)       vector_new_impl(sizeof(type), free_func)
-#define vector_init(type, vec)            vector_init_impl(&(vec), sizeof(type))
-#define vector_push_back(vec, value)      vector_push_back_impl(&(vec), &(value))
-#define vector_get(type, vec, index)      (*(type*)vector_get_impl(&(vec), (index)))
-#define vector_cat(dest, src)             vector_cat_impl(&(dest), &(src))
-#define vector_copy(dest, src)            vector_copy_impl(&(dest), &(src))
-#define vector_clone(src)                 vector_clone_impl(&(src))
-#define vector_contains(type, vec, value) vector_contains_impl(&(vec), &(value), sizeof(type))
+#define vector_new(type, free_func)       vector_new_p(sizeof(type), free_func)
+#define vector_init(type, vec)            vector_init_p(&(vec), sizeof(type))
+#define vector_push_back(vec, value)      vector_push_back_p(&(vec), &(value))
+#define vector_get(type, vec, index)      (*(type*)vector_get_p(&(vec), (index)))
+#define vector_cat(dest, src)             vector_cat_p(&(dest), &(src))
+#define vector_copy(dest, src)            vector_copy_p(&(dest), &(src))
+#define vector_contains(type, vec, value) vector_contains_p(&(vec), &(value), sizeof(type))
+#define vector_free(vec)                  vector_free_p(&(vec))
 
 #define for_each(type, vec, element)                                                             \
     for (type* element##_iter = (type*)(vec).data, element;                                      \

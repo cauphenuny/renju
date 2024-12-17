@@ -50,6 +50,7 @@ static dataset_t dataset;
 
 static void save_data()
 {
+    return;
     log("save game data? [y/n]");
     int c;
     do c = prompt_pause();
@@ -107,8 +108,8 @@ struct {
     int p1, p2;
     int time_limit;
 } preset_modes[PRESET_SIZE] = {
-    {MANUAL, MCTS_ADV, GAME_TIME_LIMIT},
-    {MCTS_ADV, MANUAL, GAME_TIME_LIMIT},
+    {MANUAL, MINIMAX_ADV, GAME_TIME_LIMIT},
+    {MINIMAX_ADV, MANUAL, GAME_TIME_LIMIT},
     {MANUAL, MANUAL, -1},
 };
 

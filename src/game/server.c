@@ -6,39 +6,53 @@
 #include "game.h"
 #include "pattern.h"
 #include "players.h"
+#include "threat.h"
 #include "util.h"
 
 #include <assert.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
-/// @brief start a game with player {p1} and {p2}, {p{first_id}} move first
+long long vct_depth_sum, game_cnt;
+
+/// @brief start a game with player {p1} and {p2}, {first_player} moves first
 /// @param time_limit game time limit
-game_result_t start_game(player_t p1, player_t p2, int first_id, int time_limit, network_t* network)
-{
+game_result_t start_game(player_t p1, player_t p2, int first_player, int time_limit,
+                         network_t* network) {
+    game_cnt++;
     player_t players[] = {{}, p1, p2};
     const char* colors[] = {"", L_GREEN, L_RED};
-    log("start game: %s vs %s, first player: %d", p1.name, p2.name, first_id);
-    game_t game = new_game(time_limit);
+    set_color(first_player == 1);
     game_result_t result = {0};
-    print_game(game);
-#define WIN(winner_id)                                 \
-    do {                                               \
-        result.game = game, result.winner = winner_id; \
-        return result;                                 \
+    int claim_winner = 0;
+    int player = first_player;
+#define WIN(winner_id)                                                                 \
+    do {                                                                               \
+        if (claim_winner && players[claim_winner].attribute.enable_vct &&              \
+            winner_id != claim_winner) {                                               \
+            log_w("claim incorrect!");                                                 \
+            prompt_pause();                                                            \
+        }                                                                              \
+        log("average depth of VCT sequence: %.2lf", (double)vct_depth_sum / game_cnt); \
+        result.game = game, result.winner = winner_id;                                 \
+        return result;                                                                 \
     } while (0)
-    int id = first_id;
+    log("start game: %s vs %s, %dms, first player: %d", p1.name, p2.name, time_limit, first_player);
+    game_t game = new_game(time_limit);
+    print_game(game);
     while (1) {
         // log_disable();
-        log_i("------ step %s#%d" RESET ", player%d's turn ------", colors[game.cur_id],
-              game.count + 1, id);
+        log_i("------ step %s#%d" RESET ", player%d's turn ------", colors[player], game.count + 1,
+              player);
         if (!have_space(game.board, game.cur_id)) {
-            log("no more space for player%d", id);
-            WIN(3 - id);
+            log("no more space for player%d", player);
+            WIN(3 - player);
         }
         bind_output_prob(result.prob[game.count]);
-        const int tim = record_time();
-        const point_t pos = players[id].move(game, players[id].assets);
+        const double tim = record_time();
+        const point_t pos = players[player].move(game, players[player].assets);
+        const double duration = get_time(tim);
 
         switch (pos.x) {
             case GAMECTRL_WITHDRAW:
@@ -54,11 +68,11 @@ game_result_t start_game(player_t p1, player_t p2, int first_id, int time_limit,
                 } else
                     log_e("invalid argument!");
                 continue;
-            case GAMECTRL_GIVEUP: log("player %d gave up.", id); WIN(3 - id);
+            case GAMECTRL_GIVEUP: log("player %d gave up.", player); WIN(3 - player);
             case GAMECTRL_SWITCH_PLAYER:
                 if (pos.y >= 0 && pos.y < PLAYER_CNT) {
-                    players[3 - id] = preset_players[pos.y];
-                    log("changed opponent to %s", players[3 - id].name);
+                    players[3 - player] = preset_players[pos.y];
+                    log("changed opponent to %s", players[3 - player].name);
                 } else {
                     log("invalid argument!");
                 }
@@ -81,13 +95,17 @@ game_result_t start_game(player_t p1, player_t p2, int first_id, int time_limit,
         }
         if (!available(game.board, pos)) {
             log_e("invalid position!");
+            prompt_pause();
             continue;
         }
-        log_i("time: %dms, chose " BOLD UNDERLINE "(%c, %d)" RESET, get_time(tim), pos.y + 'A',
-              pos.x + 1);
+        log_i("time: %.2lfms, chose " BOLD UNDERLINE "%c%d" RESET, duration, READABLE_POS(pos));
+        if (duration > game.time_limit && !players[player].attribute.no_time_limit) {
+            log_e("timeout.");
+            prompt_pause();
+        }
 #ifndef NO_FORBID
         if (game.cur_id == 1) {
-            const int forbid = is_forbidden(game.board, pos, game.cur_id, true);
+            const int forbid = is_forbidden(game.board, pos, game.cur_id, -1);
             // int forbid = false;
             if (forbid) {
                 log_e("forbidden position! (%s)", pattern4_typename[forbid]);
@@ -100,17 +118,24 @@ game_result_t start_game(player_t p1, player_t p2, int first_id, int time_limit,
 
         add_step(&game, pos);
         print_game(game);
-        // serialize_game(game, "");
-        // if (network != NULL) {
-        //     prediction_t pred = predict(network, game.board, game.first_id, 3 - game.cur_id);
-        //     log_i("evaluate: %f",
-        //           pred.eval *
-        //               (game.first_id == 1 ? 1 : -1));  // for 1.00 -> 'o' wins, -1.00 -> 'x' wins
-        //     // print_prob(game.board, pred.prob);
-        // }
+
+        serialize_game(game, "");
+        log("eval: %lld", eval(game.board, NULL));
 
         if (is_draw(game.board)) WIN(0);
-        if (check(game.board, pos)) WIN(id);
-        id = 3 - id;
+        if (check(game.board, pos)) WIN(player);
+        player = 3 - player;
+
+        if (!claim_winner) {
+            vector_t vct_sequence = vct(false, game.board, game.cur_id, 50);
+            if (vct_sequence.size) {
+                print_vct(vct_sequence);
+                vct_depth_sum += vct_sequence.size;
+                log_w("found VCT sequence, claim p%d will win", player);
+                claim_winner = player;
+                // if (vct_sequence.size < 3) prompt_pause();
+            }
+            vector_free(vct_sequence);
+        }
     }
 }

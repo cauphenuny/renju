@@ -40,7 +40,7 @@ int test_forbid(void)
         log("i = %d", i);
         pos = parse_board(board, tests[i].str);
         print_emph(board, pos);
-        const pattern4_t forbid = is_forbidden(board, pos, 1, true);
+        const pattern4_t forbid = is_forbidden(board, pos, 1, -1);
         log("got %s, expected %s", pattern4_typename[forbid], pattern4_typename[tests[i].id]);
         if (forbid != tests[i].id) {
             log_e("failed.");

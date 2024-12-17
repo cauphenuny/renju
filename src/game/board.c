@@ -15,8 +15,7 @@
 #define printf(...) log_s(__VA_ARGS__)
 
 /// @brief deserialize a board from a string representation {str}, save it to {dest}
-void board_deserialize(board_t dest, const char* str)
-{
+void board_deserialize(board_t dest, const char* str) {
     memset(dest, 0, sizeof(board_t));
     int x = 0, y = 0, l = strlen(str);
     for (int i = 0; i < l; i++) {
@@ -30,8 +29,7 @@ void board_deserialize(board_t dest, const char* str)
 }
 
 /// @brief serialize {board} to a string representation {dest}
-void board_serialize(const board_t board, char* dest)
-{
+void board_serialize(const board_t board, char* dest) {
     int p = 0;
     for (int i = 0; i < BOARD_SIZE; i++) {
         for (int j = 0; j < BOARD_SIZE; j++) {
@@ -42,7 +40,7 @@ void board_serialize(const board_t board, char* dest)
             }
             dest[p++] = ' ';
         }
-        dest[p++] = '\\';
+        dest[p++] = '\n';
     }
     dest[p] = '\0';
 }
@@ -51,26 +49,36 @@ static bool point_vector_contains(vector_t vec, point_t pos) {
     return vector_contains(point_t, vec, pos);
 }
 
-void print_impl(const board_t board, vector_t emph_pos, const fboard_t prob) {
+static char* piece_color[] = {RESET, GREEN, RED, L_GREEN, L_RED};
 
+void set_color(bool green_first) {
+    if (green_first) {
+        piece_color[1] = GREEN, piece_color[3] = L_GREEN;
+        piece_color[2] = RED, piece_color[4] = L_RED;
+    } else {
+        piece_color[1] = RED, piece_color[3] = L_RED;
+        piece_color[2] = GREEN, piece_color[4] = L_GREEN;
+    }
+}
+
+void print_impl(const board_t board, vector_t emph_pos, const fboard_t prob) {
     if (log_locked() || log_disabled()) return;
-#define dark(x) DARK x RESET
-    const char* border_line[3][5] = {{dark("╔"), dark("═"), dark("╤"), dark("═"), dark("╗")},   //
-                                     {dark("╟"), dark("─"), dark("┼"), dark("─"), dark("╢")},   //
-                                     {dark("╚"), dark("═"), dark("╧"), dark("═"), dark("╝")}};  //
+    const char* border_line[3][5] = {{"╔", "═", "╤", "═", "╗"},   //
+                                     {"╟", "─", "┼", "─", "╢"},   //
+                                     {"╚", "═", "╧", "═", "╝"}};  //
     const char* piece_ch[5] = {
-        " ",                // empty
-        GREEN "o" RESET,    // previous p1 pieces
-        RED "x" RESET,      // previous p2 pieces
-        L_GREEN "o" RESET,  // current p1 piece
-        L_RED "x" RESET,    // current p2 piece
+        " ",  // empty
+        "o",  // previous p1 pieces
+        "x",  // previous p2 pieces
+        "o",  // current p1 piece
+        "x",  // current p2 piece
     };
 #define LEVELS 7
     const struct {
         double thresh;
         const char* ch;
     } levels[LEVELS] = {
-        {0.01, dark("#")},                  // 0.01 < p <= 0.05
+        {0.01, DARK "#" RESET},             // 0.01 < p <= 0.05
         {0.05, "#"},                        // 0.05 < p <= 0.20
         {0.10, BOLD "#" RESET},             // 0.05 < p <= 0.20
         {0.20, L_YELLOW "#" RESET},         // 0.20 < p <= 0.50
@@ -78,7 +86,6 @@ void print_impl(const board_t board, vector_t emph_pos, const fboard_t prob) {
         {0.85, UNDERLINE L_RED "#" RESET},  // 0.85 < p <= 1
         {1.00, "?"},                        // invalid
     };
-#undef dark
     for (int i = BOARD_SIZE - 1, line_type, col_type; i >= 0; i--) {
         switch (i) {
             case BOARD_SIZE - 1: line_type = 0; break;
@@ -100,13 +107,14 @@ void print_impl(const board_t board, vector_t emph_pos, const fboard_t prob) {
                 int flag = (int)point_vector_contains(emph_pos, (point_t){i, j / 2}) +
                            2 * (int)point_vector_contains(emph_pos, (point_t){i, (j + 1) / 2});
                 switch (flag) {
-                    case 0b00: printf("%s", border_line[line_type][col_type]); break;
+                    case 0b00: printf(DARK "%s" RESET, border_line[line_type][col_type]); break;
                     case 0b01: printf("]"); break;
                     case 0b10: printf("["); break;
                     case 0b11: printf("|"); break;
                 }
             } else if (board[i][j / 2]) {
-                printf("%s", piece_ch[board[i][j / 2]]);
+                int p = board[i][j / 2];
+                printf("%s%s%s", piece_color[p], piece_ch[p], RESET);
             } else if (prob && prob[i][j / 2] > levels[0].thresh) {
                 int level = 0;
                 for (int k = 0; k < LEVELS; k++) {
@@ -114,7 +122,7 @@ void print_impl(const board_t board, vector_t emph_pos, const fboard_t prob) {
                 }
                 printf("%s", levels[level].ch);
             } else {
-                printf("%s", border_line[line_type][col_type]);
+                printf(DARK "%s" RESET, border_line[line_type][col_type]);
             }
         }
         printf("%c\n", " ]"[point_vector_contains(emph_pos, (point_t){i, BOARD_SIZE - 1})]);
@@ -136,15 +144,14 @@ void print_all(const board_t board, point_t emph_pos, const fboard_t prob) {
     vector_t points = vector_new(point_t, NULL);
     vector_push_back(points, emph_pos);
     print_impl(board, points, prob);
-    vector_free(&points);
+    vector_free(points);
 }
 
 /// @brief print {board} with one emphasized position
 void print_emph(const board_t board, point_t emph_pos) { print_all(board, emph_pos, NULL); }
 
 /// @brief print {board} predicted probability
-void print_prob(const board_t board, const fboard_t prob)
-{
+void print_prob(const board_t board, const fboard_t prob) {
     print_all(board, (point_t){-1, -1}, prob);
 }
 
@@ -161,8 +168,7 @@ void print(const board_t board) { return print_emph(board, (point_t){-1, -1}); }
 /// @param begin left-top corner of wrapped area
 /// @param end right-bottom corner of wrapped area
 /// @param margin min margin
-void wrap_area(const board_t board, point_t* begin, point_t* end, int8_t margin)
-{
+void wrap_area(const board_t board, point_t* begin, point_t* end, int8_t margin) {
     const int8_t n = BOARD_SIZE, mid = n / 2;
     begin->x = begin->y = mid - margin;
     end->x = end->y = mid + margin + 1;
@@ -181,8 +187,7 @@ void wrap_area(const board_t board, point_t* begin, point_t* end, int8_t margin)
 }
 
 /// @brief check if {pos} is in the board and is empty
-bool available(const board_t board, point_t pos)
-{
+bool available(const board_t board, point_t pos) {
     if (!in_board(pos) || board[pos.x][pos.y]) return false;
     return true;
 }
@@ -191,8 +196,7 @@ bool available(const board_t board, point_t pos)
 void put(board_t board, int id, point_t pos) { board[pos.x][pos.y] = id; }
 
 /// @brief check if {board} is a draw situation
-bool is_draw(const board_t board)
-{
+bool is_draw(const board_t board) {
     for (int i = 0; i < BOARD_SIZE; i++) {
         for (int j = 0; j < BOARD_SIZE; j++) {
             if (!board[i][j]) return false;
@@ -202,8 +206,7 @@ bool is_draw(const board_t board)
 }
 
 /// @brief check if {b1} is equal to {b2} at every position
-bool is_equal(const board_t b1, const board_t b2)
-{
+bool is_equal(const board_t b1, const board_t b2) {
     for (int i = 0; i < BOARD_SIZE; i++) {
         for (int j = 0; j < BOARD_SIZE; j++) {
             if (b1[i][j] != b2[i][j]) {
@@ -215,13 +218,12 @@ bool is_equal(const board_t b1, const board_t b2)
 }
 
 /// @brief check if {board} has available position for player{id}
-bool have_space(const board_t board, int id)
-{
+bool have_space(const board_t board, int id) {
     board_t dyn_board;
     memcpy(dyn_board, board, sizeof(board_t));
     for (int i = 0; i < BOARD_SIZE; i++) {
         for (int j = 0; j < BOARD_SIZE; j++) {
-            if (!board[i][j] && !is_forbidden(dyn_board, (point_t){i, j}, id, false)) {
+            if (!board[i][j] && !is_forbidden(dyn_board, (point_t){i, j}, id, 3)) {
                 return true;
             }
         }
@@ -234,8 +236,7 @@ bool have_space(const board_t board, int id)
 /// @param board current board
 /// @param pos position to check
 /// @return 1 for player 1 win, -1 for player 2 win, 0 for no winner
-int check(const board_t board, point_t pos)
-{
+int check(const board_t board, point_t pos) {
     const int id = board[pos.x][pos.y];
     if (!id) return 0;
     int cnt = 0;
@@ -265,9 +266,11 @@ int check(const board_t board, point_t pos)
 /// @param id current id
 /// @param enable_log enable logs when detects a forbidden pos
 /// @return 0 for accept, pat4 if forbidden
-int is_forbidden(board_t board, point_t pos, int id, bool enable_log)
-{
+bool enable_forbid_log;
+int is_forbidden(board_t board, point_t pos, int id, int max_depth) {
     assert(in_board(pos) && !board[pos.x][pos.y]);
+    if (max_depth == 0) return 0;
+    if (id != 1) return 0;
     // print(board);
     static const int8_t mid = WIN_LENGTH - 1, arrow[4][2] = {{1, 1}, {1, -1}, {1, 0}, {0, 1}};
 
@@ -290,7 +293,7 @@ int is_forbidden(board_t board, point_t pos, int id, bool enable_log)
                 if (cols[j] != -1) {
                     const point_t np =
                         (point_t){pos.x + dx * (cols[j] - mid), pos.y + dy * (cols[j] - mid)};
-                    if (is_forbidden(board, np, id, false)) {
+                    if (is_forbidden(board, np, id, max_depth > 0 ? max_depth - 1 : -1)) {
                         pats[i] = PAT_ETY;  // incorrect, but enough for checking forbid
                         break;
                     }
@@ -302,7 +305,7 @@ int is_forbidden(board_t board, point_t pos, int id, bool enable_log)
     board[pos.x][pos.y] = 0;
 
     if (pat4 <= PAT4_WIN) return 0;
-    if (enable_log) {
+    if (enable_forbid_log) {
         log("forbidden pos, reason: %s", pattern4_typename[pat4]);
         log("detailed information:");
         print_emph(board, pos);
@@ -314,8 +317,7 @@ int is_forbidden(board_t board, point_t pos, int id, bool enable_log)
 }
 
 /// @brief encode from raw board to compressed board
-void encode(const board_t src, comp_board_t dest)
-{
+void encode(const board_t src, comp_board_t dest) {
     for (int i = 0; i < BOARD_SIZE; i++) {
         dest[i] = 0;
         for (int j = BOARD_SIZE - 1; j >= 0; j--) {
@@ -325,8 +327,7 @@ void encode(const board_t src, comp_board_t dest)
 }
 
 /// @brief decode from compressed board to raw board
-void decode(const comp_board_t src, board_t dest)
-{
+void decode(const comp_board_t src, board_t dest) {
     for (int i = 0; i < BOARD_SIZE; i++) {
         line_t tmp = src[i];
         for (int j = 0; j < BOARD_SIZE; j++) {
@@ -336,8 +337,7 @@ void decode(const comp_board_t src, board_t dest)
     }
 }
 
-void print_compressed_board(const comp_board_t board, point_t emph_pos)
-{
+void print_compressed_board(const comp_board_t board, point_t emph_pos) {
     board_t b;
     decode(board, b);
     print_emph(b, emph_pos);

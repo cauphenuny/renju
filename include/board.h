@@ -27,6 +27,10 @@ typedef float fboard_t[BOARD_SIZE][BOARD_SIZE];  // board with float type
 typedef float (*pfboard_t)[BOARD_SIZE];  // same as fboard_t but is pointer rather than array
 typedef int8_t cboard_t[BOARD_SIZE][BOARD_SIZE];  // board with type `signed char`
 
+void board_deserialize(board_t dest, const char* str);
+void board_serialize(const board_t board, char* dest);
+
+void set_color(bool green_first);
 void print_all(const board_t board, point_t emph_pos, const fboard_t prob);
 void print_emph(const board_t board, point_t emph_pos);
 void print_emph_mutiple(const board_t board, vector_t points);
@@ -39,7 +43,8 @@ void wrap_area(const board_t board, point_t* begin, point_t* end, int8_t margin)
 #define in_area(pos, begin, end) \
     (pos.x >= begin.x && pos.x < end.x && pos.y >= begin.y && pos.y < end.y)
 bool available(const board_t board, point_t pos);
-int is_forbidden(board_t board, point_t pos, int id, bool enable_log);
+extern bool enable_forbid_log;
+int is_forbidden(board_t board, point_t pos, int id, int max_depth);
 
 void put(board_t board, int id, point_t pos);
 
@@ -47,6 +52,9 @@ int check(const board_t board, point_t pos);
 bool is_draw(const board_t board);
 bool have_space(const board_t board, int id);
 bool is_equal(const board_t b1, const board_t b2);
+
+#define EQUAL_XY(p1, p2)  ((p1).x == (p2).x && (p1).y == (p2).y)
+#define READABLE_POS(pos) (pos.y + 'A'), (pos.x + 1)
 
 #if BOARD_SIZE <= 16
 typedef uint32_t line_t;

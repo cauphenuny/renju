@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-void vector_init_impl(vector_t* vector, size_t element_size, free_func_t free_func) {
+void vector_init_p(vector_t* vector, size_t element_size, free_func_t free_func) {
     vector->element_size = element_size;
     vector->size = 0;
     vector->capacity = 4;
@@ -13,13 +13,13 @@ void vector_init_impl(vector_t* vector, size_t element_size, free_func_t free_fu
     vector->free_func = free_func;
 }
 
-vector_t vector_new_impl(size_t element_size, free_func_t free_func) {
+vector_t vector_new_p(size_t element_size, free_func_t free_func) {
     vector_t vector;
-    vector_init_impl(&vector, element_size, free_func);
+    vector_init_p(&vector, element_size, free_func);
     return vector;
 }
 
-void vector_free(void* ptr) {
+void vector_free_p(void* ptr) {
     vector_t* vec = ptr;
     if (!vec->capacity) return;
     if (vec->free_func) {
@@ -34,7 +34,7 @@ void vector_free(void* ptr) {
     vec->capacity = 0;
 }
 
-void vector_realloc_impl(vector_t* vector, size_t new_capacity) {
+void vector_realloc_p(vector_t* vector, size_t new_capacity) {
     if (vector->capacity >= new_capacity) return;
     void* new_data = realloc(vector->data, new_capacity * vector->element_size);
     if (new_data == NULL) {
@@ -45,42 +45,66 @@ void vector_realloc_impl(vector_t* vector, size_t new_capacity) {
     vector->capacity = new_capacity;
 }
 
-void vector_push_back_impl(vector_t* vector, void* element) {
+void vector_push_back_p(vector_t* vector, void* element) {
     if (vector->size == vector->capacity) {
-        vector_realloc_impl(vector, vector->capacity * 2);
+        vector_realloc_p(vector, vector->capacity * 2);
     }
     memcpy((char*)vector->data + vector->size * vector->element_size, element,
            vector->element_size);
     vector->size++;
 }
 
-void* vector_get_impl(vector_t* vector, size_t index) {
+void* vector_get_p(vector_t* vector, size_t index) {
     if (index < vector->size) {
         return (char*)vector->data + index * vector->element_size;
     }
     return NULL;
 }
 
-void vector_cat_impl(vector_t* dest, vector_t* src) {
-    vector_realloc_impl(dest, dest->size + src->size);
+void vector_cat_p(vector_t* dest, vector_t* src) {
+    vector_realloc_p(dest, dest->size + src->size);
     memcpy((char*)dest->data + dest->size * dest->element_size, src->data,
            src->size * src->element_size);
     dest->size += src->size;
 }
 
-void vector_copy_impl(vector_t* dest, vector_t* src) {
-    vector_realloc_impl(dest, src->size);
+void vector_copy_p(vector_t* dest, vector_t* src) {
+    vector_realloc_p(dest, src->size);
     memcpy(dest->data, src->data, src->size * src->element_size);
     dest->size = src->size;
 }
 
-vector_t vector_clone_impl(vector_t* src) {
-    vector_t dest = vector_new_impl(src->element_size, src->free_func);
-    vector_copy_impl(&dest, src);
+vector_t vector_clone(vector_t src) {
+    vector_t dest = vector_new_p(src.element_size, src.free_func);
+    vector_copy_p(&dest, &src);
     return dest;
 }
 
-bool vector_contains_impl(vector_t* vector, void* element, size_t element_size) {
+void vector_shuffle(vector_t vector) {
+    if (!vector.size) return;
+    for (size_t i = vector.size - 1; i > 0; i--) {
+        size_t j = rand() % (i + 1);
+        char* a = (char*)vector.data + i * vector.element_size;
+        char* b = (char*)vector.data + j * vector.element_size;
+        char temp[vector.element_size];
+        memcpy(temp, a, vector.element_size);
+        memcpy(a, b, vector.element_size);
+        memcpy(b, temp, vector.element_size);
+    }
+}
+
+void vector_reverse(vector_t vector) {
+    for (size_t i = 0; i < vector.size / 2; i++) {
+        char* a = (char*)vector.data + i * vector.element_size;
+        char* b = (char*)vector.data + (vector.size - i - 1) * vector.element_size;
+        char temp[vector.element_size];
+        memcpy(temp, a, vector.element_size);
+        memcpy(a, b, vector.element_size);
+        memcpy(b, temp, vector.element_size);
+    }
+}
+
+bool vector_contains_p(vector_t* vector, void* element, size_t element_size) {
     for (size_t i = 0; i < vector->size; i++) {
         if (memcmp((char*)vector->data + i * vector->element_size, element, element_size) == 0) {
             return true;

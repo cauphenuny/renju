@@ -7,8 +7,8 @@
 
 enum {
     NONE,
-    TRIVIAL, 
-    NETWORK, 
+    ADVANCED,
+    NETWORK,
 };
 
 typedef struct {

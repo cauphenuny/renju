@@ -1,6 +1,8 @@
 #include "board.h"
+#include "eval.h"
 #include "game.h"
 #include "init.h"
+#include "manual.h"
 #include "minimax.h"
 #include "pattern.h"
 #include "util.h"
@@ -25,30 +27,32 @@ static int test_pattern(void)
     for (int idx = 0; idx < SEGMENT_MASK; idx++) {
         const segment_t seg = decode_segment(idx);
         if (!segment_valid(seg)) continue;
-        print_segment(seg, false);
+        print_segment(seg, true);
     }
     return 0;
 }
 
 void test_minimax(void)
 {
-    game_t game = restore_game(
-        2000, 90,
-        (point_t[]){
-            {7, 7},   {8, 6},   {7, 8},  {7, 6},  {6, 6},  {5, 5},   {6, 7},   {8, 7},  {6, 8},
-            {6, 5},   {6, 9},   {6, 10}, {9, 8},  {8, 8},  {8, 5},   {8, 9},   {8, 10}, {7, 9},
-            {9, 7},   {5, 4},   {4, 3},  {5, 11}, {4, 12}, {9, 9},   {5, 6},   {4, 5},  {3, 5},
-            {3, 6},   {6, 3},   {4, 11}, {6, 11}, {10, 9}, {11, 9},  {11, 11}, {2, 7},  {7, 4},
-            {6, 4},   {8, 4},   {7, 3},  {5, 3},  {10, 6}, {2, 5},   {1, 4},   {1, 5},  {8, 3},
-            {9, 3},   {10, 4},  {7, 1},  {8, 0},  {11, 3}, {12, 3},  {3, 12},  {2, 11}, {1, 9},
-            {3, 7},   {13, 5},  {10, 2}, {12, 5}, {11, 5}, {9, 4},   {9, 2},   {11, 8}, {12, 7},
-            {12, 11}, {10, 11}, {12, 9}, {5, 7},  {4, 8},  {12, 12}, {4, 7},   {4, 9},  {13, 1},
-            {13, 10}, {10, 12}, {9, 13}, {4, 10}, {1, 7},  {5, 1},   {5, 2},   {3, 2},  {5, 10},
-            {3, 8},   {2, 8},   {13, 6}, {13, 4}, {7, 13}, {6, 12},  {13, 9},  {10, 5}, {10, 3}});
-    const point_t pos = minimax(game, NULL);
-    print_emph(game.board, pos);
-    log("got pos %d, %d", pos.x, pos.y);
-    assert(in_board(pos));
+    // clang-format off
+    // game_t game = restore_game(5000,7,(point_t[]){{7,7},{8,6},{7,5},{7,6},{6,6},{5,5},{5,7}});
+    game_t game = 
+restore_game(10000,11,(point_t[]){{7,7},{8,6},{8,8},{6,6},{9,7},{5,6},{7,6},{5,7},{10,6},{7,9},{8,7}});
+    // clang-format on
+    bool true_value = true;
+    while (1) {
+        {
+            const point_t pos = minimax(game, &true_value);
+            print_emph(game.board, pos);
+            log("got pos %d, %d", pos.x, pos.y);
+            assert(in_board(pos));
+        }
+        point_t pos = input_manually(game, NULL);
+        add_step(&game, pos);
+        print_game(game);
+        log("eval: %lld", eval(game.board, NULL));
+        game = backward(game, game.count - 1);
+    }
 }
 
 void test_upd();
@@ -62,7 +66,7 @@ void test_vector() {
         vector_push_back(vec, i);
     }
     for_each(int, vec, x) { log("%d", x); }
-    vector_free(&vec);
+    vector_free(vec);
 
     vector_t str = vector_new(char, NULL);
     char s[] = "Hello World";
@@ -100,7 +104,8 @@ int main()
 
     // log_i("mcts tests passed.");
 
-    // test_minimax();
+    log("test minimax");
+    test_minimax();
 
     // log_i("minimax tests passed.");
 
@@ -117,11 +122,12 @@ int main()
     // log("test neuro");
     // test_neuro();
 
-    log("test threat");
-    test_upd();
-    test_eval();
-    test_threat();
+    // log("test threat");
+    // test_upd();
+    // test_eval();
+    // test_threat();
     test_threat_tree();
+
     log_i("all tests passed.");
     return 0;
 }
