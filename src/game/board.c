@@ -274,9 +274,9 @@ int is_forbidden(board_t board, point_t pos, int id, int max_depth) {
     // print(board);
     static const int8_t mid = WIN_LENGTH - 1, arrow[4][2] = {{1, 1}, {1, -1}, {1, 0}, {0, 1}};
 
-    pattern_t pats[4] = {PAT_ETY, PAT_ETY, PAT_ETY, PAT_ETY};
+    pattern_t pats[4] = {PAT_EMPTY, PAT_EMPTY, PAT_EMPTY, PAT_EMPTY};
     pattern4_t pat4;
-    segment_t seg[4] = {{0}, {0}, {0}, {0}};
+    segment_t seg[4];
 
     // print_emph(board, pos);
     // pause();
@@ -294,7 +294,7 @@ int is_forbidden(board_t board, point_t pos, int id, int max_depth) {
                     const point_t np =
                         (point_t){pos.x + dx * (cols[j] - mid), pos.y + dy * (cols[j] - mid)};
                     if (is_forbidden(board, np, id, max_depth > 0 ? max_depth - 1 : -1)) {
-                        pats[i] = PAT_ETY;  // incorrect, but enough for checking forbid
+                        pats[i] = PAT_EMPTY;  // incorrect, but enough for checking forbid
                         break;
                     }
                 }

@@ -10,19 +10,19 @@
 #define SEGMENT_MASK 262144  // PIECE_SIZE ** SEGMENT_LEN
 
 typedef enum {
-    PAT_ETY,  // empty
-    PAT_44,   // double 4  x o o o o . o o o
-    PAT_ATL,  // almost tl . o o . o o o . .
-    PAT_TL,   // too long  . o o o o o o . .
-    PAT_D1,   // dead 1    . . . x o . . . .
-    PAT_A1,   // alive 1   . . . . o . . . .
-    PAT_D2,   // dead 2    . . x o o . . . .
-    PAT_A2,   // alive 2   . . . o o . . . .
-    PAT_D3,   // dead 3    . x o o o . . . .
-    PAT_A3,   // alive 3   . . o o o . . . .
-    PAT_D4,   // dead 4    . o o o o x . . .
-    PAT_A4,   // alive 4   . o o o o . . . .
-    PAT_WIN,  // 5         . o o o o o . . .
+    PAT_EMPTY,  // empty
+    PAT_44,     // double 4  x o o o o . o o o
+    PAT_ATL,    // almost tl . o o . o o o . .
+    PAT_TL,     // too long  . o o o o o o . .
+    PAT_D1,     // dead 1    . . . x o . . . .
+    PAT_A1,     // alive 1   . . . . o . . . .
+    PAT_D2,     // dead 2    . . x o o . . . .
+    PAT_A2,     // alive 2   . . . o o . . . .
+    PAT_D3,     // dead 3    . x o o o . . . .
+    PAT_A3,     // alive 3   . . o o o . . . .
+    PAT_D4,     // dead 4    . o o o o x . . .
+    PAT_A4,     // alive 4   . o o o o . . . .
+    PAT_WIN,    // 5         . o o o o o . . .
     PAT_TYPE_SIZE,
 } pattern_t;
 

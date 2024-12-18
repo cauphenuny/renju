@@ -8,7 +8,7 @@
 #include <string.h>
 
 const char* pattern_typename[] = {
-    [PAT_ETY] = "empty",   [PAT_44] = "double 4", [PAT_ATL] = "almost overline",
+    [PAT_EMPTY] = "empty", [PAT_44] = "double 4", [PAT_ATL] = "almost overline",
     [PAT_TL] = "overline", [PAT_D1] = "dead 1",   [PAT_A1] = "alive 1",
     [PAT_D2] = "dead 2",   [PAT_A2] = "alive 2",  [PAT_D3] = "dead 3",
     [PAT_A3] = "alive 3",  [PAT_D4] = "dead 4",   [PAT_A4] = "alive 4",
@@ -65,7 +65,7 @@ static void dp(memo_t* memo, bool consider_forbid) {
             continue;  /// is terminate state PAT_TL/PAT_WIN
         }
 
-        pattern_t parent_pattern = PAT_ETY;  /// best parent pattern
+        pattern_t parent_pattern = PAT_EMPTY;  /// best parent pattern
         memo->upgrade_col_cnt[idx] = 0;
         memset(memo->upgrade_col[idx], -1, sizeof(memo->upgrade_col[idx]));
         // fprintf(stderr, "cur: "), print_segment(line);
@@ -404,7 +404,7 @@ pattern4_t pattern4_type_comp(comp_board_t board, point_t pos, int depth) {
                     // if ((pat4 = is_forbidden_comp(board, np, id, depth - 1))) {
                     if (is_forbidden_comp(board, np, id, depth - 1)) {
                         // log("fallback at (%d, %d) for %s", np.x, np.y, pattern4_typename[pat4]);
-                        idx[i] = PAT_ETY;
+                        idx[i] = PAT_EMPTY;
                         break;
                     }
                 }

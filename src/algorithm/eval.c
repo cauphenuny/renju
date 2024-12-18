@@ -134,7 +134,7 @@ vector_t scan_threats_by_threshold(board_t board, int id, pattern_t threshold) {
 long long eval_pos(board_t board, point_t pos) {
     int id = board[pos.x][pos.y];
     long long score_board[PAT_TYPE_SIZE] = {
-        [PAT_ETY] = 0,   [PAT_44] = 0,     [PAT_ATL] = 0,      [PAT_TL] = 0,   [PAT_D1] = 5,
+        [PAT_EMPTY] = 0, [PAT_44] = 0,     [PAT_ATL] = 0,      [PAT_TL] = 0,   [PAT_D1] = 5,
         [PAT_A1] = 10,   [PAT_D2] = 10,    [PAT_A2] = 150,     [PAT_D3] = 100, [PAT_A3] = 1000,
         [PAT_D4] = 1000, [PAT_A4] = 10000, [PAT_WIN] = 100000,
     };
