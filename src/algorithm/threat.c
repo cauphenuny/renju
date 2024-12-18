@@ -234,8 +234,8 @@ bool chain_conflict(board_t board, threat_tree_node_t* chain[], int length) {
 void add_threat(threat_tree_node_t* node, threat_info_t threat) {
     if (node->threat.type >= PAT_A4) return;
     for (threat_tree_node_t* child = node->son; child; child = child->brother) {
-        if (EQUAL_XY(child->threat.action, threat.action) &&
-            EQUAL_XY(child->threat.dir, threat.dir)) {
+        if (point_equal(child->threat.action, threat.action) &&
+            point_equal(child->threat.dir, threat.dir)) {
             return;
         }
     }
@@ -364,7 +364,7 @@ bool try_defend_chain(board_t board, threat_tree_node_t* start, threat_tree_node
     bool result = false;
     if (five_defenses.size && chain[0]->threat.type < PAT_WIN) {
         for_each(threat_t, five_defenses, five) {
-            if (EQUAL_XY(five.pos, chain[0]->threat.action)) continue;
+            if (point_equal(five.pos, chain[0]->threat.action)) continue;
             // log("five defense on %c%d", READABLE_POS(five.pos));
             result = true;
             goto ret;
@@ -372,7 +372,7 @@ bool try_defend_chain(board_t board, threat_tree_node_t* start, threat_tree_node
     }
     if (alive_four_defenses.size && chain[0]->threat.type < PAT_D4) {
         for_each(threat_t, alive_four_defenses, alive_four) {
-            if (EQUAL_XY(alive_four.pos, chain[0]->threat.action)) continue;
+            if (point_equal(alive_four.pos, chain[0]->threat.action)) continue;
             // log("four defense on %c%d", READABLE_POS(alive_four.pos));
             result = true;
             goto ret;
@@ -380,7 +380,7 @@ bool try_defend_chain(board_t board, threat_tree_node_t* start, threat_tree_node
     }
     if (dead_four_defenses.size && chain[0]->threat.type < PAT_D4) {
         for_each(threat_t, dead_four_defenses, dead_four) {
-            if (EQUAL_XY(dead_four.pos, chain[0]->threat.action)) continue;
+            if (point_equal(dead_four.pos, chain[0]->threat.action)) continue;
             threat_info_t info = attach_threat_info(board, dead_four);
             act_round(board, info);
             indent++;
@@ -449,7 +449,7 @@ void validate_win_nodes(threat_tree_node_t* root) {
                 if (five_defenses.size) {
                     bool defended = false;
                     for_each(threat_t, five_defenses, five) {
-                        if (!EQUAL_XY(five.pos, child->threat.action)) {
+                        if (!point_equal(five.pos, child->threat.action)) {
                             defended = true;
                             break;
                         }
@@ -462,7 +462,7 @@ void validate_win_nodes(threat_tree_node_t* root) {
                 if (five_defenses.size) {
                     bool defended = false;
                     for_each(threat_t, five_defenses, five) {
-                        if (!EQUAL_XY(five.pos, child->threat.action)) {
+                        if (!point_equal(five.pos, child->threat.action)) {
                             defended = true;
                             break;
                         }
@@ -619,15 +619,15 @@ vector_t vct(bool only_four, board_t board, int id, double time_ms) {
     return sequence;
 }
 
-void print_vct(vector_t point_array) {
+void print_points(vector_t point_array, int log_level, const char* split) {
     if (point_array.size) {
         char buffer[1024] = {0};
         snprintf(buffer, sizeof(buffer), "%c%d", READABLE_POS(vector_get(point_t, point_array, 0)));
         for (size_t i = 1; i < point_array.size; i++) {
-            snprintf(buffer, sizeof(buffer), "%s -> %c%d", buffer,
+            snprintf(buffer, sizeof(buffer), "%s %s %c%d", buffer, split,
                      READABLE_POS(vector_get(point_t, point_array, i)));
         }
-        log_n("%s", buffer);
+        log_add(log_level, "%s", buffer);
     } else {
         log("empty");
     }

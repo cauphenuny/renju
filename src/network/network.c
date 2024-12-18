@@ -10,9 +10,6 @@
 
 #define N BOARD_SIZE
 
-double predict_sum_time;
-int predict_cnt;
-
 prediction_t predict(const network_t* network,  //
                      const board_t board, point_t last_move, int cur_id)
 {
@@ -70,8 +67,6 @@ prediction_t predict(const network_t* network,  //
     softmax(output[cur], N * N);
     memcpy(prediction.prob, output[cur], sizeof(prediction.prob));
     // log("consumption: %dms", get_time(tim));
-    predict_sum_time += get_time(tim);
-    predict_cnt++;
     // if (predict_cnt % 1000 == 0) {
     //     double avg = (double)predict_sum_time / predict_cnt;
     //     if (avg < 10)
@@ -135,8 +130,8 @@ int load_network(network_t* network, const char* filename)
 
 point_t nn_move(game_t game, const void* assets)
 {
-    if (!game.count) return (point_t){N / 2, N / 2};
-    const network_t* network = assets;
+    if (!game.count) return (point_t){(int8_t)N / 2, (int8_t)N / 2};
+    const network_t* network = (network_t*)assets;
     board_t board;
     memcpy(board, game.board, sizeof(board_t));
     prediction_t prediction = predict(network, board, game.steps[game.count - 1], game.cur_id);

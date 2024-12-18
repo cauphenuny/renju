@@ -43,6 +43,6 @@ void print_threat_tree(threat_tree_node_t* root);
 // vector_t vcf(board_t board, int id);
 vector_t vct(bool only_four, board_t board, int id, double time_ms);
 
-void print_vct(vector_t point_array);
+void print_points(vector_t point_array, int log_level, const char* split);
 
 #endif

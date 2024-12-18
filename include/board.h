@@ -53,7 +53,7 @@ bool is_draw(const board_t board);
 bool have_space(const board_t board, int id);
 bool is_equal(const board_t b1, const board_t b2);
 
-#define EQUAL_XY(p1, p2)  ((p1).x == (p2).x && (p1).y == (p2).y)
+#define point_equal(p1, p2) ((p1).x == (p2).x && (p1).y == (p2).y)
 #define READABLE_POS(pos) (pos.y + 'A'), (pos.x + 1)
 
 #if BOARD_SIZE <= 16

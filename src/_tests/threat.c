@@ -122,7 +122,7 @@ void test_threat_tree() {
         print(board);
         double start_time = record_time();
         vector_t seq = vct(false, board, id, 5000);
-        print_vct(seq);
+        print_points(seq, PROMPT_LOG, "->");
         log("time: %.3lfms", get_time(start_time));
         int get_vct = seq.size != 0;
         vector_free(seq);
@@ -145,3 +145,8 @@ void test_threat_tree() {
     // trivial_move(game, true);
     // clang-format on
 }
+
+/*
+restore_game(2000,14,(point_t[]){{7,7},{4,8},{6,6},{8,8},{7,5},{7,9},{7,6},{7,8},{5,6},{8,6},{7,4},{7,3},{6,5},{4,7}});
+wrong vct: D7 -> E6 -> G4 -> F5
+*/

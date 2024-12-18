@@ -7,11 +7,12 @@
 
 enum {
     MANUAL,
-    MCTS,     // default MCTS
-    MCTS_ADV, // MCTS with trivial evaluation
-    MCTS_NN,  // MCTS with neural network
+    MCTS,      // default MCTS
+    MCTS_ADV,  // MCTS with advanced features
+    MCTS_NN,   // MCTS with neural network
     MINIMAX,
-    MINIMAX_ADV, 
+    MINIMAX_VCT,
+    MINIMAX_FULL,
     NEURAL_NETWORK,  // pure neural network
     PLAYER_CNT,
 };

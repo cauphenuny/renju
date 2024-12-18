@@ -76,7 +76,7 @@ dataset_t new_dataset(int capacity)
     dataset_t dataset = {0};
     dataset.capacity = capacity;
     dataset.sizeof_sample = sizeof(sample_t);
-    dataset.samples = (sample_t*)malloc(sizeof(sample_t) * capacity);
+    dataset.samples = malloc(sizeof(sample_t) * capacity);
     return dataset;
 }
 
@@ -253,7 +253,7 @@ int load_dataset(dataset_t* dataset, const char* file_name)
     fread(&dataset->capacity, sizeof(dataset->capacity), 1, file);
     fread(&dataset->size, sizeof(dataset->size), 1, file);
     fread(&dataset->sizeof_sample, sizeof(dataset->sizeof_sample), 1, file);
-    dataset->samples = (sample_t*)malloc(sizeof(sample_t) * dataset->capacity);
+    dataset->samples = malloc(sizeof(sample_t) * dataset->capacity);
     dataset->size = fread(dataset->samples, sizeof(sample_t), dataset->size, file);
     fclose(file);
     log("imported %d samples from %s", dataset->size, file_name);

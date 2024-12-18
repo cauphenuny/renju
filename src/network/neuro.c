@@ -3,15 +3,11 @@
 
 #include "neuro.h"
 
-#include "board.h"
-
 #include <math.h>
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#define N BOARD_SIZE
 
 void softmax(float x[], int size)
 {
@@ -92,6 +88,7 @@ double entropy(const float x[], int size, bool normalize)
     free(arr);
     return ans;
 }
+#define log log_l
 
 void conv2d_impl(const float* restrict input, int input_channel, int input_x, int input_y,
                  float* restrict output, int output_channel, int* output_x, int* output_y,

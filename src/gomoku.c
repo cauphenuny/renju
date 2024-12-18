@@ -107,10 +107,11 @@ static void signal_handler(int signum)
 struct {
     int p1, p2;
     int time_limit;
+    const char* name;
 } preset_modes[PRESET_SIZE] = {
-    {MANUAL, MINIMAX_ADV, GAME_TIME_LIMIT},
-    {MINIMAX_ADV, MANUAL, GAME_TIME_LIMIT},
-    {MANUAL, MANUAL, -1},
+    {MANUAL, MINIMAX_VCT, GAME_TIME_LIMIT, "player first"},
+    {MINIMAX_VCT, MANUAL, GAME_TIME_LIMIT, "AI first"},
+    {MANUAL, MANUAL, -1, "pvp, no AI"},
 };
 
 int main(int argc, char* argv[])
@@ -161,23 +162,17 @@ int main(int argc, char* argv[])
 #ifndef NO_INTERACTIVE
     log_i("available modes: ");
     for (int i = 0; i < PRESET_SIZE; i++) {
-        if (preset_modes[i].time_limit > 0)
-            log_i("%d: %s vs %s\t%dms", i + 1, preset_players[preset_modes[i].p1].name,
-                  preset_players[preset_modes[i].p2].name, preset_modes[i].time_limit);
-        else
-            log_i("%d: %s vs %s", i + 1, preset_players[preset_modes[i].p1].name,
-                  preset_players[preset_modes[i].p2].name);
+        log_i("%d: %s", i + 1, preset_modes[i].name);
     }
     log_i("0: custom");
     log_i("input mode:");
 
-#ifndef DEBUG
     int mode = -1;
     do {
         prompt_scanf("%d", &mode);
     } while (mode < 0 || mode > PRESET_SIZE);
     if (!mode) {
-        log_i("available players:");
+        log_i("available agents:");
         for (int i = 0; i < PLAYER_CNT; i++) log_i("%d: %s", i, preset_players[i].name);
         log_i("input player1 player2 (%%d %%d):");
         do {
@@ -191,10 +186,7 @@ int main(int argc, char* argv[])
         time_limit = preset_modes[mode - 1].time_limit;
     }
 #else
-    player1 = MCTS, player2 = MCTS, time_limit = -1;
-#endif
-#else
-    player1 = MINIMAX, player2 = MINIMAX, time_limit = 5000;
+    player1 = MINIMAX_FULL, player2 = MINIMAX_FULL, time_limit = 5000;
 #endif
 
     int id = 1;

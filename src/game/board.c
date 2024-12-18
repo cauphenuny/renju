@@ -264,7 +264,7 @@ int check(const board_t board, point_t pos) {
 /// @param board current board
 /// @param pos position to check
 /// @param id current id
-/// @param enable_log enable logs when detects a forbidden pos
+/// @param max_depth max depth, -1 if no limit
 /// @return 0 for accept, pat4 if forbidden
 bool enable_forbid_log;
 int is_forbidden(board_t board, point_t pos, int id, int max_depth) {
@@ -276,7 +276,7 @@ int is_forbidden(board_t board, point_t pos, int id, int max_depth) {
 
     pattern_t pats[4] = {PAT_ETY, PAT_ETY, PAT_ETY, PAT_ETY};
     pattern4_t pat4;
-    segment_t seg[4] = {0};
+    segment_t seg[4] = {{0}, {0}, {0}, {0}};
 
     // print_emph(board, pos);
     // pause();

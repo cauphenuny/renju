@@ -1,3 +1,5 @@
+#ifndef EVAL_H
+#define EVAL_H
 #include "board.h"
 #include "pattern.h"
 
@@ -24,3 +26,5 @@ vector_t scan_four_threats(board_t board, int id);
 vector_t find_threats_by_threshold(board_t board, int id, pattern_t threshold);
 
 long long add_with_eval(board_t board, long long current_eval, point_t pos, int id);
+
+#endif

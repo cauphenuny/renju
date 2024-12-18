@@ -56,7 +56,7 @@ point_t trivial_move(game_t game, bool use_vct) {
         if (vct_sequence.size) {
             pos = vector_get(point_t, vct_sequence, 0);
             log("found VCT in %.2lfms", get_time(start_time));
-            print_vct(vct_sequence);
+            print_points(vct_sequence, PROMPT_NOTE, "->");
             // if (vcf_sequence.size > 2) {
             //     prompt_pause();
             // }

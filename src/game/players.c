@@ -16,17 +16,24 @@ mcts_param_t mcts_params_default = {
     .min_time = 200,
     .min_count = 3000,
     .wrap_rad = 2,
-#ifdef NO_FORBID
-    .check_depth = 0,  // TODO: change to 1
-#else
     .check_depth = 1,
-#endif
     .network = NULL,
     .eval_type = NONE,
 };
 static mcts_param_t mcts_params_nn, mcts_params_adv;
 
-const bool true_var = 1, false_var = 0;
+const static minimax_param_t minimax_params_normal = {
+    .max_depth = 6,
+    .use_vct = false,
+};
+const static minimax_param_t minimax_params_adv = {
+    .max_depth = 6,
+    .use_vct = true,
+};
+const static minimax_param_t minimax_params_ultimate = {
+    .max_depth = 12,
+    .use_vct = true,
+};
 
 player_t preset_players[MAX_PLAYERS] = {
     [MANUAL] = {.name = "human",
@@ -35,29 +42,31 @@ player_t preset_players[MAX_PLAYERS] = {
                 .attribute = {.no_time_limit = true}},
     [MCTS] =
         {
-            .name = "AI (MCTS)",
+            .name = "MCTS",
             .move = mcts,
             .assets = &mcts_params_default,
         },
-    [MCTS_ADV] = {.name = "AI (MCTS, VCT)",
+    [MCTS_ADV] = {.name = "MCTS, VCT",
                   .move = mcts,
                   .assets = &mcts_params_adv,
                   .attribute = {.enable_vct = true}},
-    [MCTS_NN] = {.name = "AI (MCTS, NN)",
-                 .move = mcts_nn,
-                 .assets = &mcts_params_nn,
-                 .attribute = {}},
+    [MCTS_NN] = {.name = "MCTS, NN", .move = mcts_nn, .assets = &mcts_params_nn, .attribute = {}},
     [MINIMAX] =
         {
-            .name = "AI (minimax)",
+            .name = "minimax",
             .move = minimax,
-            .assets = &false_var,
+            .assets = &minimax_params_normal,
+            .attribute = {.enable_vct = minimax_params_normal.use_vct},
         },
-    [MINIMAX_ADV] = {.name = "AI (minimax, VCT)",
+    [MINIMAX_VCT] = {.name = "minimax, VCT",
                      .move = minimax,
-                     .assets = &true_var,
-                     .attribute = {.enable_vct = true}},
-    [NEURAL_NETWORK] = {.name = "AI (NN)", .move = nn_move, .assets = NULL}};
+                     .assets = &minimax_params_adv,
+                     .attribute = {.enable_vct = minimax_params_adv.use_vct}},
+    [MINIMAX_FULL] = {.name = "minimax, VCT, more depth",
+                      .move = minimax,
+                      .assets = &minimax_params_ultimate,
+                      .attribute = {.enable_vct = minimax_params_ultimate.use_vct}},
+    [NEURAL_NETWORK] = {.name = "neural network", .move = nn_move, .assets = NULL}};
 
 point_t move(game_t game, player_t player) { return player.move(game, player.assets); }
 

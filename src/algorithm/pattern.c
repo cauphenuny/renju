@@ -210,8 +210,12 @@ void pattern_init() {
         }
     }
     // prompt_pause();
-    dp(&forbid, true);
     dp(&no_forbid, false);
+    #ifdef NO_FORBID
+    memcpy(&forbid, &no_forbid, sizeof(memo_t));
+    #else
+    dp(&forbid, true);
+    #endif
     pattern_initialized = 1;
 }
 

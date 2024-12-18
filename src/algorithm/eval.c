@@ -65,7 +65,7 @@ void scan_threats(board_t board, int id, threat_storage_t storage) {
                         if (real_pat != pat) continue;  // to solve the problem of - o - o o - o - -
                         bool save = true;
                         for_each(threat_t, *storage[pat], stored_threat) {
-                            if (stored_threat.id == id && EQUAL_XY(stored_threat.pos, pos) &&
+                            if (stored_threat.id == id && point_equal(stored_threat.pos, pos) &&
                                 stored_threat.dir.x == dir_x && stored_threat.dir.y == dir_y) {
                                 save = false;
                                 break;
@@ -135,12 +135,14 @@ long long eval_pos(board_t board, point_t pos) {
     int id = board[pos.x][pos.y];
     long long score_board[PAT_TYPE_SIZE] = {
         [PAT_ETY] = 0,   [PAT_44] = 0,     [PAT_ATL] = 0,      [PAT_TL] = 0,   [PAT_D1] = 5,
-        [PAT_A1] = 10,   [PAT_D2] = 10,    [PAT_A2] = 100,     [PAT_D3] = 100, [PAT_A3] = 1000,
+        [PAT_A1] = 10,   [PAT_D2] = 10,    [PAT_A2] = 150,     [PAT_D3] = 100, [PAT_A3] = 1000,
         [PAT_D4] = 1000, [PAT_A4] = 10000, [PAT_WIN] = 100000,
     };
     long long relativity[PAT_TYPE_SIZE][PAT_TYPE_SIZE] = {
-        [PAT_A3] = {[PAT_A3] = score_board[PAT_A4] / 2, [PAT_D4] = score_board[PAT_A4] / 2},
-        [PAT_D4] = {[PAT_A3] = score_board[PAT_A4] / 2, [PAT_D4] = score_board[PAT_A4] / 2},
+        [PAT_A3] = {[PAT_A3] = score_board[PAT_A4] / 2, [PAT_D4] = score_board[PAT_A4]},
+        [PAT_D4] = {[PAT_A3] = score_board[PAT_A4], [PAT_D4] = score_board[PAT_A4] / 2},
+        [PAT_A2] = {[PAT_A2] = score_board[PAT_A3] / 5, [PAT_D3] = score_board[PAT_A3] / 5},
+        [PAT_D3] = {[PAT_A2] = score_board[PAT_A3] / 5, [PAT_D3] = score_board[PAT_A3] / 5},
     };
     long long result = 0;
     int cnt[PAT_TYPE_SIZE] = {0};
