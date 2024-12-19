@@ -13,7 +13,6 @@
 prediction_t predict(const network_t* network,  //
                      const board_t board, point_t last_move, int cur_id)
 {
-    double tim = record_time();
     // log("weight mean: %f", mean(network->shared.conv1.weight, 2 * 32 * 3 * 3));
     // log("bias mean: %f", mean(network->shared.conv1.bias, 32));
     prediction_t prediction = {0};

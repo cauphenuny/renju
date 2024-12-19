@@ -1,6 +1,3 @@
-// author: Cauphenuny
-// date: 2024/07/24
-
 #include "mcts.h"
 
 #include "board.h"
@@ -114,7 +111,7 @@ static void get_win_pos(state_t* st) {
         pattern = to_pattern(val, id == 1);
         if (pattern == PAT_D4 || pattern == PAT_A4) {
             int col[2];
-            get_upgrade_columns(val, id == 1, col, 2);
+            get_attack_columns(val, id == 1, col, 2);
             for (int j = 0; j < 2 && cnt < WINPOS_SIZE; j++) {
                 if (col[j] != -1) {
                     tmp = (point_t){pos.x + dx * (col[j] - mid), pos.y + dy * (col[j] - mid)};

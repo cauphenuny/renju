@@ -6,6 +6,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+/// @brief flatten the board to a 1D array
+/// @param pieces array to store the pieces (EMPTY_PIECE / SELF_PIECE / OPPO_PIECE)
+/// @param id2x array to store the x coordinate of the piece
+/// @param id2y array to store the y coordinate of the piece
 void flatten(board_t board, int perspective, int dir_x, int dir_y, int pieces[], int id2x[],
              int id2y[], int capacity, int* ret_tot) {
     board_t visited = {0};
@@ -36,6 +40,8 @@ void flatten(board_t board, int perspective, int dir_x, int dir_y, int pieces[],
     *ret_tot = tot;
 }
 
+/// @brief scan threats on the board
+/// @param storage array of vector<threat_t>*, bind pattern type to storage
 void scan_threats(board_t board, int id, threat_storage_t storage) {
     int pieces[BOARD_AREA * 2], tot, id2x[BOARD_AREA * 2], id2y[BOARD_AREA * 2];
     vector_t forbidden_pos = vector_new(point_t, NULL);
@@ -53,7 +59,7 @@ void scan_threats(board_t board, int id, threat_storage_t storage) {
             // log("pat: %s", pattern_typename[pat]);
             if (storage[pat]) {
                 int columns[5];
-                get_upgrade_columns(value, id == 1, columns, 5);
+                get_attack_columns(value, id == 1, columns, 5);
                 for (int j = 0; j < 5; j++) {
                     if (columns[j] != -1) {
                         int cur_idx = idx - columns[j];
@@ -102,6 +108,8 @@ void scan_threats(board_t board, int id, threat_storage_t storage) {
     vector_free(forbidden_pos);
 }
 
+/// @brief scan 4-threats of {id} (e.g. . x o o # . o . ) on {board}
+/// @return vector<threat_t>
 vector_t scan_four_threats(board_t board, int id) {
     vector_t result = vector_new(threat_t, NULL);
     threat_storage_t storage = {
@@ -112,6 +120,8 @@ vector_t scan_four_threats(board_t board, int id) {
     return result;
 }
 
+/// @brief scan 5-threats of {id} (e.g. . x o o # o o . ) on {board}
+/// @return vector<threat_t>
 vector_t scan_five_threats(board_t board, int id) {
     vector_t result = vector_new(threat_t, NULL);
     threat_storage_t storage = {
@@ -121,6 +131,7 @@ vector_t scan_five_threats(board_t board, int id) {
     return result;
 }
 
+/// @brief scan threats by given pattern {threshold}, e.g. PAT_A3: . . o o . # . .
 vector_t scan_threats_by_threshold(board_t board, int id, pattern_t threshold) {
     vector_t result = vector_new(threat_t, NULL);
     threat_storage_t storage = {0};
@@ -131,20 +142,22 @@ vector_t scan_threats_by_threshold(board_t board, int id, pattern_t threshold) {
     return result;
 }
 
-long long eval_pos(board_t board, point_t pos) {
+/// @brief evaluate {pos} on {board}
+/// @return the evaluation of {pos}, multiplid by -1 if {id} is 2 (the second player)
+int eval_pos(board_t board, point_t pos) {
     int id = board[pos.x][pos.y];
-    long long score_board[PAT_TYPE_SIZE] = {
+    int score_board[PAT_TYPE_SIZE] = {
         [PAT_EMPTY] = 0, [PAT_44] = 0,     [PAT_ATL] = 0,      [PAT_TL] = 0,   [PAT_D1] = 5,
         [PAT_A1] = 10,   [PAT_D2] = 10,    [PAT_A2] = 150,     [PAT_D3] = 100, [PAT_A3] = 1000,
         [PAT_D4] = 1000, [PAT_A4] = 10000, [PAT_WIN] = 100000,
     };
-    long long relativity[PAT_TYPE_SIZE][PAT_TYPE_SIZE] = {
+    int relativity[PAT_TYPE_SIZE][PAT_TYPE_SIZE] = {
         [PAT_A3] = {[PAT_A3] = score_board[PAT_A4] / 2, [PAT_D4] = score_board[PAT_A4]},
         [PAT_D4] = {[PAT_A3] = score_board[PAT_A4], [PAT_D4] = score_board[PAT_A4] / 2},
         [PAT_A2] = {[PAT_A2] = score_board[PAT_A3] / 5, [PAT_D3] = score_board[PAT_A3] / 5},
         [PAT_D3] = {[PAT_A2] = score_board[PAT_A3] / 5, [PAT_D3] = score_board[PAT_A3] / 5},
     };
-    long long result = 0;
+    int result = 0;
     int cnt[PAT_TYPE_SIZE] = {0};
     for_all_dir(d, dx, dy) {
         pattern_t pat = to_pattern(encode_segment(get_segment(board, pos, dx, dy)), id == 1);
@@ -164,7 +177,10 @@ long long eval_pos(board_t board, point_t pos) {
     return result * (id == 1 ? 1 : -1);
 }
 
-long long add_with_eval(board_t board, long long current_eval, point_t pos, int id) {
+/// @brief add a piece at {pos} on {board} and evaluate new board
+/// @param current_eval current evaluation
+/// @return new evaluation
+int add_with_eval(board_t board, int current_eval, point_t pos, int id) {
     for_all_dir(d, dx, dy) {
         for (int offset = -SEGMENT_LEN / 2; offset <= SEGMENT_LEN / 2; offset++) {
             int x = pos.x + dx * offset, y = pos.y + dy * offset;
@@ -189,10 +205,9 @@ long long add_with_eval(board_t board, long long current_eval, point_t pos, int 
     return current_eval;
 }
 
-long long eval(board_t board, int* score_board) {
-    // clang-foramt off
-    (void)score_board;
-    long long result = 0;
+/// @brief evaluate the board
+int eval(board_t board) {
+    int result = 0;
     for (int i = 0; i < BOARD_SIZE; i++) {
         for (int j = 0; j < BOARD_SIZE; j++) {
             if (board[i][j]) {

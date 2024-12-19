@@ -1,5 +1,3 @@
-// author: Cauphenuny
-// date: 2024/11/28
 #include <stdio.h>
 #include <stdlib.h>
 

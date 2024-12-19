@@ -5,6 +5,7 @@
 #include "pattern.h"
 #include "vector.h"
 
+/// @note: need to call free_threat_info
 typedef struct {
     pattern_t type;
     vector_t consists;

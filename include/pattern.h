@@ -49,9 +49,9 @@ void print_segment(segment_t s, bool consider_forbid);
 bool segment_valid(segment_t s);
 segment_t get_segment(board_t board, point_t pos, int dx, int dy);
 enum {
-    UPGRADE,
+    ATTACK,
     CONSIST,
-    DEFEND,
+    DEFENSE,
 };
 
 vector_t find_relative_points(int type, board_t board, point_t pos, int dx, int dy);
@@ -60,7 +60,7 @@ pattern_t to_pattern(int segment_value, bool consider_forbid);
 pattern_t to_upgraded_pattern(int segment_value, bool consider_forbid);
 pattern4_t to_pattern4(int x, int y, int u, int v, bool consider_forbid);
 void pattern_init(void);
-void get_upgrade_columns(int segment_value, bool consider_forbid, int* cols, int limit);
+void get_attack_columns(int segment_value, bool consider_forbid, int* cols, int limit);
 point_t column_to_point(point_t pos, int dx, int dy, int col);
 
 pattern4_t pattern4_type_comp(comp_board_t board, point_t pos, int depth);

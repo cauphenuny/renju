@@ -1,6 +1,3 @@
-// author: Cauphenuny
-// date: 2024/07/27
-
 #include "board.h"
 
 #include "pattern.h"
@@ -288,7 +285,7 @@ int is_forbidden(board_t board, point_t pos, int id, int max_depth) {
         pats[i] = to_pattern(value, true);
         if (pats[i] >= PAT_A3 && pats[i] <= PAT_A4) {
             int cols[2];
-            get_upgrade_columns(value, id == 1, cols, 2);
+            get_attack_columns(value, id == 1, cols, 2);
             for (int j = 0; j < 2; j++) {
                 if (cols[j] != -1) {
                     const point_t np =

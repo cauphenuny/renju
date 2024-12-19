@@ -1,5 +1,3 @@
-// author: Cauphenuny
-// date: 2024/07/27
 #include "dataset.h"
 #include "game.h"
 #include "init.h"
@@ -118,7 +116,7 @@ int main(int argc, char* argv[])
 {
     signal(SIGINT, signal_handler);
 
-    log("gomoku v%s", VERSION);
+    log("renju v%s", VERSION);
     init();
 
 #ifdef DEFAULT_MODEL
@@ -172,7 +170,7 @@ int main(int argc, char* argv[])
         prompt_scanf("%d", &mode);
     } while (mode < 0 || mode > PRESET_SIZE);
     if (!mode) {
-        log_i("available agents:");
+        log_i("player presets:");
         for (int i = 0; i < PLAYER_CNT; i++) log_i("%d: %s", i, preset_players[i].name);
         log_i("input player1 player2 (%%d %%d):");
         do {

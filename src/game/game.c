@@ -1,14 +1,8 @@
-// author: Cauphenuny
-// date: 2024/09/22
-
 #include "game.h"
-
-#include "util.h"
 
 #include <stdio.h>
 #include <string.h>
 
-/// @brief create a new game, player{first_id} moves first, time limit {time_limit}ms
 game_t new_game(int time_limit)
 {
     game_t game = {0};
@@ -20,7 +14,6 @@ game_t new_game(int time_limit)
     return game;
 }
 
-/// @brief add a step to {game} at {pos}
 void add_step(game_t* game, point_t pos)
 {
     put(game->board, game->cur_id, pos);
@@ -29,7 +22,6 @@ void add_step(game_t* game, point_t pos)
 }
 
 /// @brief generate a game with the first {count} steps of {game}
-/// @return generated game
 game_t backward(game_t game, int count)
 {
     game_t subgame = new_game(game.time_limit);
@@ -52,11 +44,6 @@ void print_game(game_t game)
     game.board[pos.x][pos.y] -= 2;
 }
 
-/// @brief create a game of given parameters
-/// @param time_limit time limit
-/// @param first_id first player
-/// @param count count of existed pieces
-/// @param moves positions of each piece
 game_t restore_game(int time_limit, int count, point_t moves[])
 {
     game_t game = new_game(time_limit);

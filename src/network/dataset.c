@@ -1,6 +1,3 @@
-// author: Cauphenuny
-// date: 2024/11/26
-
 #include "dataset.h"
 
 #include "board.h"

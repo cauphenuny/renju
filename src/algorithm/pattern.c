@@ -25,13 +25,18 @@ const char* pattern4_typename[] = {[PAT4_OTHERS] = "others",
 
 #define HALF (WIN_LENGTH - 1)
 
+/// @example
+/// . x . o o . o . . -> PAT_A3
+/// . . . . . # . . . : attack_col
+/// . . . # # . # . . : consist_col
+/// . . # . . # . # . : defend_col
 typedef struct {
-    int upgrade_col[SEGMENT_MASK][COL_STORAGE_SIZE];
-    int upgrade_col_cnt[SEGMENT_MASK];
+    int attack_col[SEGMENT_MASK][COL_STORAGE_SIZE];
+    int attack_col_cnt[SEGMENT_MASK];
     int consist_col[SEGMENT_MASK][COL_STORAGE_SIZE];
     int consist_col_cnt[SEGMENT_MASK];
-    int defend_col[SEGMENT_MASK][COL_STORAGE_SIZE];
-    int defend_col_cnt[SEGMENT_MASK];
+    int defense_col[SEGMENT_MASK][COL_STORAGE_SIZE];
+    int defense_col_cnt[SEGMENT_MASK];
     pattern_t pattern[SEGMENT_MASK];
     pattern_t parent_pattern[SEGMENT_MASK];
     pattern4_t pattern4[PAT_TYPE_SIZE][PAT_TYPE_SIZE][PAT_TYPE_SIZE][PAT_TYPE_SIZE];
@@ -44,6 +49,8 @@ static int update(int prev, int pos, piece_t new_piece) {
     return prev + new_piece * (1 << (pos * 2));
 }
 
+/// @brief dp to generate patterns from terminal pattern e.g. PAT_WIN
+/// @param consider_forbid whether to consider forbidden when processing pat4
 static void dp(memo_t* memo, bool consider_forbid) {
     /// in a reverse order,
     /// to calculate states that can be transferred to current state {idx} before visiting {idx}
@@ -66,15 +73,10 @@ static void dp(memo_t* memo, bool consider_forbid) {
         }
 
         pattern_t parent_pattern = PAT_EMPTY;  /// best parent pattern
-        memo->upgrade_col_cnt[idx] = 0;
-        memset(memo->upgrade_col[idx], -1, sizeof(memo->upgrade_col[idx]));
-        // fprintf(stderr, "cur: "), print_segment(line);
-        // prompt_pause();
+        memo->attack_col_cnt[idx] = 0;
+        memset(memo->attack_col[idx], -1, sizeof(memo->attack_col[idx]));
 
-        // log("left = %d, right = %d", left, right);
-        // prompt_pause();
-
-        if (left >= SEGMENT_LEN) continue;
+        if (left >= SEGMENT_LEN) continue;  // empty segment, no win probability
 
         int win_pos[2] = {0}, pos_cnt = 0;
 
@@ -85,13 +87,13 @@ static void dp(memo_t* memo, bool consider_forbid) {
                 if (pos_cnt < 2) win_pos[pos_cnt++] = col;
             }
             if (memo->pattern[new_idx] > parent_pattern) {
-                parent_pattern = memo->pattern[new_idx], memo->upgrade_col_cnt[idx] = 0;
-                memset(memo->upgrade_col[idx], -1, sizeof(memo->upgrade_col[idx]));
+                parent_pattern = memo->pattern[new_idx], memo->attack_col_cnt[idx] = 0;
+                memset(memo->attack_col[idx], -1, sizeof(memo->attack_col[idx]));
             }
             if (memo->pattern[new_idx] == parent_pattern) {
-                if (memo->upgrade_col_cnt[idx] < COL_STORAGE_SIZE)
-                    memo->upgrade_col[idx][memo->upgrade_col_cnt[idx]] = col,
-                    memo->upgrade_col_cnt[idx]++;
+                if (memo->attack_col_cnt[idx] < COL_STORAGE_SIZE)
+                    memo->attack_col[idx][memo->attack_col_cnt[idx]] = col,
+                    memo->attack_col_cnt[idx]++;
                 // log("write col %d", col);
             }
         }
@@ -105,13 +107,13 @@ static void dp(memo_t* memo, bool consider_forbid) {
                     memo->pattern[idx] = PAT_44;
                 break;
             case PAT_WIN:
-                if (memo->upgrade_col_cnt[idx] == 1)
+                if (memo->attack_col_cnt[idx] == 1)
                     memo->pattern[idx] = PAT_D4;
                 else {
                     if (!consider_forbid || win_pos[1] - win_pos[0] >= WIN_LENGTH) {
                         memo->pattern[idx] = PAT_A4;
                     } else {
-                        memo->pattern[idx] = PAT_44;
+                        memo->pattern[idx] = PAT_44;  // o o o . o o . o o
                     }
                 }
                 break;
@@ -131,7 +133,7 @@ static void dp(memo_t* memo, bool consider_forbid) {
             if (line.pieces[col] == EMPTY_PIECE) {
                 int new_idx = update(idx, col, OPPO_PIECE);
                 if (memo->pattern[idx] != memo->pattern[new_idx]) {
-                    memo->defend_col[idx][memo->defend_col_cnt[idx]++] = col;
+                    memo->defense_col[idx][memo->defense_col_cnt[idx]++] = col;
                 }
             }
         }
@@ -262,16 +264,16 @@ void print_segment(segment_t s, bool consider_forbid) {
     //        from_col[idx][0], from_col[idx][1], from_col[idx][2]);
     printf("]: level = %s, ", pattern_typename[memo->pattern[idx]]);
     printf("upd: [");
-    for (int i = 0; i < memo->upgrade_col_cnt[idx]; i++) {
-        printf("%d%s", memo->upgrade_col[idx][i], i == memo->upgrade_col_cnt[idx] - 1 ? "" : ", ");
+    for (int i = 0; i < memo->attack_col_cnt[idx]; i++) {
+        printf("%d%s", memo->attack_col[idx][i], i == memo->attack_col_cnt[idx] - 1 ? "" : ", ");
     }
     printf("], con: [");
     for (int i = 0; i < memo->consist_col_cnt[idx]; i++) {
         printf("%d%s", memo->consist_col[idx][i], i == memo->consist_col_cnt[idx] - 1 ? "" : ", ");
     }
     printf("], def: [");
-    for (int i = 0; i < memo->defend_col_cnt[idx]; i++) {
-        printf("%d%s", memo->defend_col[idx][i], i == memo->defend_col_cnt[idx] - 1 ? "" : ", ");
+    for (int i = 0; i < memo->defense_col_cnt[idx]; i++) {
+        printf("%d%s", memo->defense_col[idx][i], i == memo->defense_col_cnt[idx] - 1 ? "" : ", ");
     }
     printf("]\n");
 }
@@ -323,22 +325,27 @@ pattern4_t to_pattern4(int x, int y, int u, int v, bool consider_forbid) {
 /// @param segment_value the int value of segment
 /// @param cols array that stores columns
 /// @param limit array size
-void get_upgrade_columns(int segment_value, bool consider_forbid, int* cols, int limit) {
+void get_attack_columns(int segment_value, bool consider_forbid, int* cols, int limit) {
     assert(pattern_initialized);
     memset(cols, -1, limit * sizeof(int));
     memo_t* memo = consider_forbid ? &forbid : &no_forbid;
     for (int i = 0, cur = 0; i < COL_STORAGE_SIZE && cur < limit; i++) {
-        int col = memo->upgrade_col[segment_value][i];
+        int col = memo->attack_col[segment_value][i];
         if (col != -1) {
             cols[cur++] = col;
         }
     }
 };
 
+/// @brief convert column to point
+/// @param pos the original position
+/// @param col the column, note: the original position is column HALF
 point_t column_to_point(point_t pos, int dx, int dy, int col) {
     return (point_t){pos.x + dx * (col - HALF), pos.y + dy * (col - HALF)};
 }
 
+/// @brief find (ATTACK|CONSIST|DEFENSE) points of {pos} in {dx, dy} direction
+/// @return vector<point_t>
 vector_t find_relative_points(int type, board_t board, point_t pos, int dx, int dy) {
     int id = board[pos.x][pos.y];
     vector_t vec = vector_new(point_t, NULL);
@@ -347,14 +354,14 @@ vector_t find_relative_points(int type, board_t board, point_t pos, int dx, int 
     int seg_value = encode_segment(get_segment(board, pos, dx, dy));
     int *col, size;
     switch (type) {
-        case UPGRADE:
-            col = memo->upgrade_col[seg_value], size = memo->upgrade_col_cnt[seg_value];
+        case ATTACK:
+            col = memo->attack_col[seg_value], size = memo->attack_col_cnt[seg_value];
             break;
         case CONSIST:
             col = memo->consist_col[seg_value], size = memo->consist_col_cnt[seg_value];
             break;
-        case DEFEND:
-            col = memo->defend_col[seg_value], size = memo->defend_col_cnt[seg_value];
+        case DEFENSE:
+            col = memo->defense_col[seg_value], size = memo->defense_col_cnt[seg_value];
             break;
         default: return vec;
     }
@@ -395,7 +402,7 @@ pattern4_t pattern4_type_comp(comp_board_t board, point_t pos, int depth) {
         idx[i] = to_pattern(segment_value, consider_forbid);
         if (depth > 1 && idx[i] >= PAT_A3 && idx[i] <= PAT_A4) {
             int col[2];
-            get_upgrade_columns(segment_value, consider_forbid, col, 2);
+            get_attack_columns(segment_value, consider_forbid, col, 2);
             for (int j = 0; j < 2; j++) {
                 if (col[j] != -1) {
                     const point_t np =

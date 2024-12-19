@@ -1,6 +1,3 @@
-// author: Cauphenuny
-// date: 2024/10/19
-
 #include "board.h"
 #include "eval.h"
 #include "game.h"
@@ -14,10 +11,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-long long vct_depth_sum, vct_depth_max, game_cnt;
+int vct_depth_sum, vct_depth_max, game_cnt;
 
 /// @brief start a game with player {p1} and {p2}, {first_player} moves first
-/// @param time_limit game time limit
+/// @param time_limit time limit of every step
 game_result_t start_game(player_t p1, player_t p2, int first_player, int time_limit,
                          network_t* network) {
     game_cnt++;
@@ -38,12 +35,12 @@ game_result_t start_game(player_t p1, player_t p2, int first_player, int time_li
         result.game = game, result.winner = winner_id;                                            \
         return result;                                                                            \
     } while (0)
-    log("start game: %s vs %s, %dms, first player: %d", p1.name, p2.name, time_limit, first_player);
+    log("start game: [%s] vs [%s], %dms, first player: %d", p1.name, p2.name, time_limit, first_player);
     game_t game = new_game(time_limit);
     print_game(game);
     while (1) {
         // log_disable();
-        log_i("------ step %s#%d" RESET ", player%d(%s)'s turn ------", colors[player],
+        log_i("------ step %s#%d" RESET ", player%d[%s]'s turn ------", colors[player],
               game.count + 1, player, players[player].name);
         if (!have_space(game.board, game.cur_id)) {
             log("no more space for player%d", player);
@@ -120,7 +117,7 @@ game_result_t start_game(player_t p1, player_t p2, int first_player, int time_li
         print_game(game);
 
         serialize_game(game, "");
-        log("eval: %lld", eval(game.board, NULL));
+        log("eval: %lld", eval(game.board));
 
         if (is_draw(game.board)) WIN(0);
         if (check(game.board, pos)) WIN(player);
@@ -131,7 +128,7 @@ game_result_t start_game(player_t p1, player_t p2, int first_player, int time_li
             if (vct_sequence.size) {
                 print_points(vct_sequence, PROMPT_NOTE, "->");
                 vct_depth_sum += vct_sequence.size;
-                vct_depth_max = max(vct_depth_max, vct_sequence.size);
+                vct_depth_max = max(vct_depth_max, (int)vct_sequence.size);
                 log_w("found VCT sequence, claim p%d will win", player);
                 claim_winner = player;
                 if (vct_sequence.size < 3) prompt_pause();

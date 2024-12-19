@@ -1,6 +1,3 @@
-// author: Cauphenuny
-// date: 2024/07/26
-
 #include "util.h"
 
 #include <stdarg.h>

@@ -1,4 +1,4 @@
-from lib import libgomoku as gomoku
+from lib import librenju as renju
 import ctypes
 import signal
 import sys
@@ -31,7 +31,7 @@ def signal_handler(sig, frame):
     print_stat()
     sys.exit(0)
 
-def run_player(player_path, game: gomoku.game_t):
+def run_player(player_path, game: renju.game_t):
     process = subprocess.Popen(
         [player_path],
         stdin=subprocess.PIPE,
@@ -52,7 +52,7 @@ def run_player(player_path, game: gomoku.game_t):
     return stdout.strip().split('\n')[0]
 
 def start_game(player1, player2, first_id):
-    game = gomoku.game_new(first_id, 1000)
+    game = renju.game_new(first_id, 1000)
     players = [player1, player2]
 
     current_player = first_id
@@ -60,13 +60,13 @@ def start_game(player1, player2, first_id):
         print(f"player{current_player} ({players[current_player - 1]})'s move ")
         move = run_player(players[current_player - 1], game)
         x, y = map(int, move.split())
-        pos = gomoku.point_t(x, y)
-        gomoku.game_add_step(ctypes.pointer(game), pos)
-        gomoku.game_print(game)
-        if (gomoku.is_draw(game.board)):
+        pos = renju.point_t(x, y)
+        renju.game_add_step(ctypes.pointer(game), pos)
+        renju.game_print(game)
+        if (renju.is_draw(game.board)):
             print('draw')
             return 0
-        if (gomoku.check(game.board, gomoku.point_t(x, y))):
+        if (renju.check(game.board, renju.point_t(x, y))):
             print(f'player{current_player} win')
             return current_player
         current_player = 3 - current_player
@@ -89,6 +89,6 @@ def server():
 
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)
-    gomoku.init()
+    renju.init()
     server()
 

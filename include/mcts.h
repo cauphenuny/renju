@@ -21,6 +21,7 @@ typedef struct {
     pfboard_t output_prob;
     bool is_train;
     int eval_type;
+    bool use_vct;
 } mcts_param_t;  // parameters for mcts
 
 point_t mcts(game_t game, const void* assets);

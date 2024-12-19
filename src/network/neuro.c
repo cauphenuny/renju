@@ -1,6 +1,3 @@
-// author: Cauphenuny
-// date: 2024/11/25
-
 #include "neuro.h"
 
 #include <math.h>

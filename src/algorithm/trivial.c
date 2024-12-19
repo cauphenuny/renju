@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+/// @brief generate a available random move from {game.board}
 point_t random_move(game_t game) {
     point_t points[BOARD_AREA];
     int tot = 0;
@@ -21,6 +22,7 @@ point_t random_move(game_t game) {
     return points[rand() % tot];
 }
 
+/// @brief find a trivial move from {game.board}
 point_t trivial_move(game_t game, bool use_vct) {
     if (game.count == 0) {
         return (point_t){BOARD_SIZE / 2, BOARD_SIZE / 2};

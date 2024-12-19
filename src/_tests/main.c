@@ -50,7 +50,7 @@ void test_minimax(void)
         point_t pos = input_manually(game, NULL);
         add_step(&game, pos);
         print_game(game);
-        log("eval: %lld", eval(game.board, NULL));
+        log("eval: %lld", eval(game.board));
         game = backward(game, game.count - 1);
     }
 }

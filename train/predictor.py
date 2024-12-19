@@ -3,7 +3,7 @@
 
 from IPython import display
 from colorama import Fore
-from lib import libgomoku as gomoku
+from lib import librenju as renju
 from d2l import torch as d2l
 from collections import OrderedDict
 import torch
@@ -69,7 +69,7 @@ class Residual(nn.Module):
 
 # %%
 class Predictor(nn.Module):
-    def __init__(self, max_channel=gomoku.MAX_CHANNEL, model_name=None, device=try_mps()):
+    def __init__(self, max_channel=renju.MAX_CHANNEL, model_name=None, device=try_mps()):
         super().__init__()
         self.shared = nn.Sequential(OrderedDict([
             ('conv1', nn.Conv2d(4, 32, kernel_size=5, padding=2)), ('relu1', nn.ReLU()), 
@@ -104,12 +104,12 @@ class Predictor(nn.Module):
         return policy_output, value_output
 
     def save(self, basename):
-        name = f'{basename}.v{gomoku.NETWORK_VERSION}.{self.max_channel}ch.params'
+        name = f'{basename}.v{renju.NETWORK_VERSION}.{self.max_channel}ch.params'
         torch.save(self.state_dict(), name)
         print(f'saved params to {name}')
 
     def load(self, basename):
-        name = f'{basename}.v{gomoku.NETWORK_VERSION}.{self.max_channel}ch.params'
+        name = f'{basename}.v{renju.NETWORK_VERSION}.{self.max_channel}ch.params'
         self.to(try_mps())
         print(f'load params from {name}')
         self.load_state_dict(torch.load(name))
@@ -120,7 +120,7 @@ class Predictor(nn.Module):
             'value.conv', 'value.linear',
             'policy.conv1', 'policy.conv2', 'policy.linear',
         ]
-        net = gomoku.network_t()
+        net = renju.network_t()
         for i, layer in enumerate(layers):
             exec(f"net.{layer}.weight, net.{layer}.bias = to_ctype(self.{layer})")
             print(f'converted {layer}, {i+1}/{len(layers)}')
@@ -133,14 +133,14 @@ class Predictor(nn.Module):
             name = input('input model name: ')
         print(f'exporting model "{name}"')
         ctype_net = self.to_ctype()
-        gomoku.save_network(ctypes.pointer(ctype_net), name)
+        renju.save_network(ctypes.pointer(ctype_net), name)
 
 # %%
 def calculate_entropy(tensor):
     return -torch.sum(torch.exp(tensor) * tensor)
 
 def print_sample(sample):
-    gomoku.print_sample(sample)
+    renju.print_sample(sample)
     X, prob, eval = to_tensor(sample)
 
     print(f'eval: {eval}')
@@ -207,7 +207,7 @@ def train(net, train_iter, test_iter, num_epochs, lr, device):
 
 # %%
 def test_sample(net, ctype_net, sample):
-    gomoku.print_sample(sample)
+    renju.print_sample(sample)
 
     X, prob, eval = to_tensor(sample)
     X = X.reshape(1, 4, 15, 15).to(try_mps())
@@ -218,8 +218,8 @@ def test_sample(net, ctype_net, sample):
 
     print("probability:")
     # print(prob_hat)
-    board_array = gomoku.board_t()
-    prob_array = gomoku.fboard_t()
+    board_array = renju.board_t()
+    prob_array = renju.fboard_t()
     for x in range(15):
         for y in range(15):
             if sample.input.p1_pieces[x][y] != 0:
@@ -229,7 +229,7 @@ def test_sample(net, ctype_net, sample):
             else:
                 board_array[x][y] = 0
             prob_array[x][y] = prob_hat[0][x * 15 + y].item()
-    gomoku.print_prob(board_array, prob_array)
+    renju.print_prob(board_array, prob_array)
     print(f'entropy: {calculate_entropy(log_prob_hat[0]).item():.3f}')
     print(f'eval: {eval_hat[0][0].item():.3f}')
 
@@ -237,13 +237,13 @@ def test_sample(net, ctype_net, sample):
         cur_id = sample.input.current_player
         if cur_id == -1:
             cur_id = 2
-        print('call gomoku.predict...')
-        prediction = gomoku.predict(ctypes.pointer(ctype_net), 
+        print('call renju.predict...')
+        prediction = renju.predict(ctypes.pointer(ctype_net), 
                                     board_array, 
                                     sample.input.last_move, 
                                     1, 
                                     cur_id)
-        gomoku.print_prediction(prediction)
+        renju.print_prediction(prediction)
 
 # %%
 def detail(net, X):
@@ -288,7 +288,7 @@ class CombinedIterator:
 
 # %%
 if __name__ == '__main__':
-    gomoku.init()
+    renju.init()
     if len(sys.argv) != 3:
         train_files = ["data/3000ms.dat", "data/5000ms.dat"]
         test_file = "data/3000ms-raw.dat"
@@ -338,17 +338,17 @@ if __name__ == '__main__':
     # network.to_ctype("model/network_min_tmp.mod")
 
     # ctype_net = network.to_ctype()
-    # gomoku.save_network(ctypes.pointer(ctype_net), 'model/network_min.tmp.mod')
+    # renju.save_network(ctypes.pointer(ctype_net), 'model/network_min.tmp.mod')
 
-    # ctype_net = gomoku.network_network_t()
-    # gomoku.network_load(ctypes.pointer(ctype_net), 'model/network_min.tmp.mod')
+    # ctype_net = renju.network_network_t()
+    # renju.network_load(ctypes.pointer(ctype_net), 'model/network_min.tmp.mod')
 
-    # for i in range(gomoku.dataset_size()):
-    #     sample=gomoku.find_sample(i)
+    # for i in range(renju.dataset_size()):
+    #     sample=renju.find_sample(i)
     #     if sample.winner == 0:
     #         print(i)
     #         continue
-    #     gomoku.print_sample(sample)
+    #     renju.print_sample(sample)
     #     test_sample(network, ctype_net, sample)
     #     input('press enter to continue')
 # %%

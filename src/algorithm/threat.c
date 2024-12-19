@@ -25,6 +25,7 @@ threat_info_t clone_threat_info(threat_info_t* threat_info) {
     return result;
 }
 
+/// @brief get threat info (consists, defenses) of {threat} on {board}
 threat_info_t attach_threat_info(board_t board, threat_t threat) {
     threat_info_t info = {.type = threat.pattern,
                           .consists = {0},
@@ -34,11 +35,12 @@ threat_info_t attach_threat_info(board_t board, threat_t threat) {
                           .id = threat.id};
     board[threat.pos.x][threat.pos.y] = threat.id;
     info.consists = find_relative_points(CONSIST, board, threat.pos, threat.dir.x, threat.dir.y);
-    info.defenses = find_relative_points(DEFEND, board, threat.pos, threat.dir.x, threat.dir.y);
+    info.defenses = find_relative_points(DEFENSE, board, threat.pos, threat.dir.x, threat.dir.y);
     board[threat.pos.x][threat.pos.y] = 0;
     return info;
 }
 
+/// @return vector<threat_info_t, free_threat_info>
 vector_t scan_threats_info(board_t board, int id, bool only_four) {
     vector_t threat_info = vector_new(threat_info_t, free_threat_info);
     vector_t threats = vector_new(threat_t, NULL);
@@ -56,6 +58,8 @@ vector_t scan_threats_info(board_t board, int id, bool only_four) {
     return threat_info;
 }
 
+/// @brief find threats dependent to {pos} on {board}
+/// @return vector<threat_t>
 vector_t find_threats(board_t board, point_t pos, bool only_four) {
     int id = board[pos.x][pos.y];
     vector_t result = vector_new(threat_t, NULL);
@@ -72,7 +76,7 @@ vector_t find_threats(board_t board, point_t pos, bool only_four) {
         }
         if (select) {
             int columns[5];
-            get_upgrade_columns(value, id == 1, columns, 5);
+            get_attack_columns(value, id == 1, columns, 5);
             for (int i = 0; i < 5; i++) {
                 if (columns[i] != -1) {
                     point_t np = column_to_point(pos, dx, dy, columns[i]);
@@ -97,6 +101,7 @@ vector_t find_threats(board_t board, point_t pos, bool only_four) {
     return result;
 }
 
+/// @return vector<threat_info_t, free_threat_info>
 vector_t find_threats_info(board_t board, point_t pos, bool only_four) {
     vector_t result = vector_new(threat_info_t, free_threat_info);
     vector_t threats = find_threats(board, pos, only_four);
@@ -263,17 +268,20 @@ void build_threat_tree(threat_tree_node_t* node) {
     current_depth -= 1;
 }
 
+/// @param sequence vector<threat_info_t, NULL>
 void record_sequence(threat_tree_node_t* node, vector_t* sequence) {
     if (node->parent) record_sequence(node->parent, sequence);
     vector_push_back(*sequence, node->threat);
 }
 
+/// @param sequence vector<point_t>
 void record_point_sequence(threat_tree_node_t* node, vector_t* sequence) {
     if (node->parent) record_point_sequence(node->parent, sequence);
     if (node->depth) vector_push_back(*sequence, node->threat.action);
 }
 
-void print_sequence(vector_t sequence) {
+/// @param sequence vector<threat_info_t>
+void print_threat_sequence(vector_t sequence) {
     for_each(threat_info_t, sequence, threat) {
         print_threat(threat);
         act_round(initial, threat);
@@ -293,6 +301,7 @@ bool have_same_point(vector_t points1, vector_t points2) {
     return false;
 }
 
+/// @brief check if {node2}'s threat can be inserted into {node1}'s threat tree
 bool compatible(threat_tree_node_t* node1, threat_tree_node_t* node2) {
     vector_t seq1 = vector_new(threat_info_t, NULL), seq2 = vector_new(threat_info_t, NULL);
     record_sequence(node1, &seq1);
@@ -318,6 +327,7 @@ bool compatible(threat_tree_node_t* node1, threat_tree_node_t* node2) {
     return result;
 }
 
+/// @brief find win nodes in the threat tree and mark it
 void find_win_nodes(threat_tree_node_t* root) {
     if (!root->son) {
         if (root->threat.type >= PAT_A4) {
@@ -331,6 +341,7 @@ void find_win_nodes(threat_tree_node_t* root) {
     }
 }
 
+/// @brief try to defend the chain from ( {start}, {leaf} ]
 bool try_defend_chain(board_t board, threat_tree_node_t* start, threat_tree_node_t* leaf) {
     if (start == leaf) return false;
     threat_tree_node_t *chain[leaf->depth - start->depth], *node = leaf;
@@ -402,7 +413,8 @@ ret:
     return result;
 }
 
-void combine_chain(threat_tree_node_t* root, threat_tree_node_t* child) {
+/// @brief merge the win chain from {child} to {root}
+void merge_win_chain(threat_tree_node_t* root, threat_tree_node_t* child) {
     root->win_count += child->win_count;
     int depth_diff = child->depth - root->depth;
     if (root->win_depth > child->win_depth + depth_diff) {
@@ -417,6 +429,7 @@ void combine_chain(threat_tree_node_t* root, threat_tree_node_t* child) {
     vector_cat(root->win_nodes, child->win_nodes);
 }
 
+/// @brief validate the win nodes in the threat tree
 void validate_win_nodes(threat_tree_node_t* root) {
     if (!root->son) {
         if (root->win_count) {
@@ -444,7 +457,7 @@ void validate_win_nodes(threat_tree_node_t* root) {
         // vector_free(points);
         // log("type: %s", pattern_typename[child->threat.type]);
         switch (child->threat.type) {
-            case PAT_WIN: combine_chain(root, child); break;
+            case PAT_WIN: merge_win_chain(root, child); break;
             case PAT_A4:
                 if (five_defenses.size) {
                     bool defended = false;
@@ -456,7 +469,7 @@ void validate_win_nodes(threat_tree_node_t* root) {
                     }
                     if (defended) continue;
                 }
-                combine_chain(root, child);
+                merge_win_chain(root, child);
                 break;
             case PAT_D4:
                 if (five_defenses.size) {
@@ -469,13 +482,13 @@ void validate_win_nodes(threat_tree_node_t* root) {
                     }
                     if (defended) continue;
                 }
-                combine_chain(root, child);
+                merge_win_chain(root, child);
                 break;
             case PAT_A3:
                 if (five_defenses.size) continue;
                 if (alive_four_defenses.size) continue;
                 if (dead_four_defenses.size == 0) {
-                    combine_chain(root, child);
+                    merge_win_chain(root, child);
                 } else {
                     // if (child->win_nodes.size) {
                     //     log("size: (5: %d, A4: %d, D4: %d)", five_defenses.size,
@@ -500,7 +513,7 @@ void validate_win_nodes(threat_tree_node_t* root) {
                             if (exists_defend) break;
                         }
                         if (!exists_defend) {
-                            combine_chain(root, win_node);
+                            merge_win_chain(root, win_node);
                         }
                     }
                 }
@@ -549,6 +562,7 @@ void for_each_node(int depth, threat_tree_node_t* root, void (*func)(threat_tree
     }
 }
 
+/// @brief try to add the root threat of one tree to another tree
 void combine_forest(vector_t forest) {
     for (size_t i = 0; i < forest.size; i++) {
         for (size_t j = 0; j < forest.size; j++) {
@@ -561,12 +575,14 @@ void combine_forest(vector_t forest) {
     }
 }
 
+/// @brief get threat threat of a board, merged it to a virtual node (no threat contained)
 threat_tree_node_t* get_threat_tree(board_t board, int id, bool only_four) {
     attack_id = id, defend_id = 3 - id;
     memcpy(initial, board, sizeof(board_t));
     vector_t threats = scan_threats_info(board, id, only_four);
     start_time = record_time();
-    vector_t threat_forest = vector_new(threat_tree_node_t*, NULL);  // give ownership to super_root
+    vector_t threat_forest =
+        vector_new(threat_tree_node_t*, NULL);  // give ownership to the super_root
     threats.free_func = NULL;  // give ownership to threat_forest
     for_each(threat_info_t, threats, threat) {
         threat_tree_node_t* root = malloc(sizeof(threat_tree_node_t));
@@ -595,6 +611,8 @@ threat_tree_node_t* get_threat_tree(board_t board, int id, bool only_four) {
     return super_root;
 }
 
+/// @brief find Victory by Continuous Threats sequence
+/// @return vector<point_t>
 vector_t vct(bool only_four, board_t board, int id, double time_ms) {
     vector_t sequence = vector_new(point_t, NULL);
     double tim = record_time();
@@ -610,6 +628,7 @@ vector_t vct(bool only_four, board_t board, int id, double time_ms) {
         if (root->win_depth != INF) {
             // print_threat_tree(super_root);
             vector_copy(sequence, root->best_sequence);
+            delete_threat_tree(root);
             break;
         }
         delete_threat_tree(root);
