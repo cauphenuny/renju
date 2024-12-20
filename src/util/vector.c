@@ -45,7 +45,7 @@ void vector_realloc_p(vector_t* vector, size_t new_capacity) {
     vector->capacity = new_capacity;
 }
 
-void vector_push_back_p(vector_t* vector, void* element) {
+void vector_push_back_p(vector_t* vector, const void* element) {
     if (vector->size == vector->capacity) {
         vector_realloc_p(vector, vector->capacity * 2);
     }
@@ -54,21 +54,21 @@ void vector_push_back_p(vector_t* vector, void* element) {
     vector->size++;
 }
 
-void* vector_get_p(vector_t* vector, size_t index) {
+void* vector_get_p(const vector_t* vector, size_t index) {
     if (index < vector->size) {
         return (char*)vector->data + index * vector->element_size;
     }
     return NULL;
 }
 
-void vector_cat_p(vector_t* dest, vector_t* src) {
+void vector_cat_p(vector_t* dest, const vector_t* src) {
     vector_realloc_p(dest, dest->size + src->size);
     memcpy((char*)dest->data + dest->size * dest->element_size, src->data,
            src->size * src->element_size);
     dest->size += src->size;
 }
 
-void vector_copy_p(vector_t* dest, vector_t* src) {
+void vector_copy_p(vector_t* dest, const vector_t* src) {
     vector_realloc_p(dest, src->size);
     memcpy(dest->data, src->data, src->size * src->element_size);
     dest->size = src->size;
@@ -104,13 +104,26 @@ void vector_reverse(vector_t vector) {
     }
 }
 
-bool vector_contains_p(vector_t* vector, void* element, size_t element_size) {
+bool vector_contains_p(const vector_t* vector, const void* element, size_t element_size) {
     for (size_t i = 0; i < vector->size; i++) {
         if (memcmp((char*)vector->data + i * vector->element_size, element, element_size) == 0) {
             return true;
         }
     }
     return false;
+}
+
+void vector_serialize(char* dest, const char* delim, vector_t vector,
+                      void (*element_serialize)(char*, const void*)) {
+    dest[0] = '\0';
+    for (size_t i = 0; i < vector.size; i++) {
+        char temp[256];
+        element_serialize(temp, (char*)vector.data + i * vector.element_size);
+        strcat(dest, temp);
+        if (i < vector.size - 1) {
+            strcat(dest, delim);
+        }
+    }
 }
 
 // int main()

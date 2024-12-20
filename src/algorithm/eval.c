@@ -3,6 +3,7 @@
 #include "board.h"
 #include "pattern.h"
 
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -54,7 +55,10 @@ void scan_threats(board_t board, int id, threat_storage_t storage) {
             value = value * PIECE_SIZE + OPPO_PIECE;
         }
         for (int idx = 0; idx < tot; idx++) {
-            value = ((value * PIECE_SIZE) % SEGMENT_MASK) + pieces[idx];
+            value = ((value * PIECE_SIZE) % SEGMENT_SIZE) + pieces[idx];
+            if (idx < HALF) continue;
+            point_t center = {id2x[idx - HALF], id2y[idx - HALF]};
+            if (!in_board(center) || board[center.x][center.y] != id) continue;
             pattern_t pat = to_upgraded_pattern(value, id == 1);
             // log("pat: %s", pattern_typename[pat]);
             if (storage[pat]) {
@@ -68,7 +72,9 @@ void scan_threats(board_t board, int id, threat_storage_t storage) {
                         pattern_t real_pat = to_pattern(
                             encode_segment(get_segment(board, pos, dir_x, dir_y)), id == 1);
                         board[pos.x][pos.y] = 0;
-                        if (real_pat != pat) continue;  // to solve the problem of - o - o o - o - -
+                        if (real_pat != pat) {
+                            continue;
+                        }
                         bool save = true;
                         for_each(threat_t, *storage[pat], stored_threat) {
                             if (stored_threat.id == id && point_equal(stored_threat.pos, pos) &&
@@ -160,7 +166,7 @@ int eval_pos(board_t board, point_t pos) {
     int result = 0;
     int cnt[PAT_TYPE_SIZE] = {0};
     for_all_dir(d, dx, dy) {
-        pattern_t pat = to_pattern(encode_segment(get_segment(board, pos, dx, dy)), id == 1);
+        pattern_t pat = get_pattern(board, pos, dx, dy, id);
         cnt[pat]++;
     }
     for (int i = 0; i < PAT_TYPE_SIZE; i++) {

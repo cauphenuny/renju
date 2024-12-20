@@ -5,9 +5,11 @@
 #include "manual.h"
 #include "minimax.h"
 #include "pattern.h"
+#include "players.h"
 #include "util.h"
 
 #include <assert.h>
+#include <stdlib.h>
 #include <string.h>
 
 #ifndef TEST
@@ -16,49 +18,55 @@
 
 int test_forbid(void);
 
-static int test_pattern(void)
-{
+int test_pattern(void) {
     /*
  2538 [. o . o o o . . .]: level = dead 4
  3562 [. o o x o x x x o]: level = empty
 18792 [x x o x o . . . .]: level = dead 1
  3294 [. o o o o x . . .]: level = dead 4
     */
-    for (int idx = 0; idx < SEGMENT_MASK; idx++) {
-        const segment_t seg = decode_segment(idx);
+    for (int idx = 0; idx < SEGMENT_SIZE; idx++) {
+        const segment_t seg = decode_segment(idx, PIECE_SIZE);
         if (!segment_valid(seg)) continue;
         print_segment(seg, true);
     }
     return 0;
 }
 
-void test_minimax(void)
-{
+void test_minimax(void) {
     // clang-format off
     // game_t game = restore_game(5000,7,(point_t[]){{7,7},{8,6},{7,5},{7,6},{6,6},{5,5},{5,7}});
     game_t game = 
-    restore_game(2000,24,(point_t[]){{7,7},{4,8},{6,6},{8,8},{7,5},{7,9},{7,6},{7,8},{5,6},{8,6},{7,4},{7,3},{6,5},{4,7},{6,3},{5,8},{6,8},{8,7},{6,9},{6,7},{4,6},{3,6},{8,3},{9,2}});
+    // restore_game(15000,29,(point_t[]){{7,7},{7,9},{6,8},{8,6},{8,8},{6,6},{5,6},{7,8},{5,7},{6,7},{5,8},{5,9},{6,9},{6,4},{4,7},{6,5},{6,3},{3,6},{5,3},{8,5},{4,3},{7,3},{3,3},{2,3},{8,11},{7,10},{8,10},{8,12},{4,8}});
+        restore_game(15000,5,(point_t[]){{7,7},{6,6},{7,5},{6,7},{6,5}});
+    //restore_game(15000,28,(point_t[]){{7,7},{7,9},{6,8},{8,6},{8,8},{6,6},{5,6},{7,8},{5,7},{6,7},{5,8},{5,9},{6,9},{6,4},{4,7},{6,5},{6,3},{3,6},{5,3},{8,5},{4,3},{7,3},{3,3},{2,3},{8,11},{7,10},{8,10},{8,12}});
     // clang-format on
-    bool true_value = true;
-    while (1) {
-        {
-            const point_t pos = minimax(game, &true_value);
-            print_emph(game.board, pos);
-            log("got pos %d, %d", pos.x, pos.y);
-            assert(in_board(pos));
-        }
-        point_t pos = input_manually(game, NULL);
-        add_step(&game, pos);
-        print_game(game);
-        log("eval: %lld", eval(game.board));
-        game = backward(game, game.count - 1);
-    }
+    print_game(game);
+    const point_t pos = minimax(game, preset_players[MINIMAX_FULL].assets);
+    print_emph(game.board, pos);
+    log("got pos %d, %d: %c%d", pos.x, pos.y, READABLE_POS(pos));
+    assert(in_board(pos));
+    add_step(&game, pos);
+    print_game(game);
+    log("eval: %d", eval(game.board));
+    game = backward(game, game.count - 1);
 }
 
 void test_upd();
 void test_eval();
 void test_threat();
 void test_threat_tree();
+void test_threat_seq();
+
+void test_leak() {
+    int *p = malloc(sizeof(int));
+    p = 0;
+}
+
+int test_bound() {
+    int p[20];
+    return p[20];
+}
 
 void test_vector() {
     vector_t vec = vector_new(int, NULL);
@@ -81,52 +89,71 @@ void test_vector() {
     printf("%s", (char*)str.data);
 }
 
-int main()
-{
+int main(int argc, char** argv) {
     init();
     int ret = 0;
     log("running test");
 
-    // log("test vector");
-    // test_vector();
+    char s[64] = {0};
+    if (argc < 2) {
+        // log("input test name: ");
+        // prompt_scanf("%s", s);
+        // argv[1] = s;
+        argv[1] = "threat_seq";
+    }
+    bool all = 0;
+    if (strcmp(argv[1], "all") == 0) all = 1;
 
-    // log("test pattern");
-    // test_pattern();
-
-    // log("test forbid");
-    // ret = test_forbid();
-    // if (ret) return ret;
-
-    // log_i("forbid tests passed.");
-
-    // void mcts_test_entrance(void);
-    // mcts_test_entrance();
-
-    // log_i("mcts tests passed.");
-
-    log("test minimax");
-    test_minimax();
-
-    // log_i("minimax tests passed.");
-
-    // log("run zobrist test? [y/n]");
-
-    // const int ch = prompt_pause();
-
-    // if (ch == 'y') {
-    //     start_game(preset_players[MINIMAX], preset_players[MINIMAX], 1, 2000, NULL);
-    //     log("zobrist tests passed.");
-    // }
-
-    // void test_neuro();
-    // log("test neuro");
-    // test_neuro();
-
-    // log("test threat");
-    // test_upd();
-    // test_eval();
-    // test_threat();
-    test_threat_tree();
+    if (strcmp(argv[1], "bound") == 0 || all) {
+        log("test bound");
+        test_bound();
+    }
+    if (strcmp(argv[1], "leak") == 0 || all) {
+        log("test leak");
+        test_leak();
+    }
+    if (strcmp(argv[1], "vector") == 0 || all) {
+        log("test vector");
+        test_vector();
+    }
+    if (strcmp(argv[1], "pattern") == 0 || all) {
+        log("test pattern");
+        test_pattern();
+    }
+    if (strcmp(argv[1], "forbid") == 0 || all) {
+        log("test forbid");
+        ret = test_forbid();
+        if (ret) return ret;
+        log_i("forbid tests passed.");
+    }
+    if (strcmp(argv[1], "minimax") == 0 || all) {
+        log("test minimax");
+        test_minimax();
+        log_i("minimax tests passed.");
+    }
+    if (strcmp(argv[1], "mcts") == 0 || all) {
+        void mcts_test_entrance(void);
+        log("test mcts");
+        mcts_test_entrance();
+        log_i("mcts tests passed.");
+    }
+    if (strcmp(argv[1], "neuro") == 0 || all) {
+        void test_neuro();
+        log("test neuro");
+        test_neuro();
+    }
+    if (strcmp(argv[1], "threat") == 0 || all) {
+        log("test threat");
+        test_threat();
+    }
+    if (strcmp(argv[1], "threat_seq") == 0 || all) {
+        log("test threat_seq");
+        test_threat_seq();
+    }
+    if (strcmp(argv[1], "threat_tree") == 0 || all) {
+        log("test threat_tree");
+        test_threat_tree();
+    }
 
     log_i("all tests passed.");
     return 0;

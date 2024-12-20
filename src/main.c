@@ -107,8 +107,8 @@ struct {
     int time_limit;
     const char* name;
 } preset_modes[PRESET_SIZE] = {
-    {MANUAL, MINIMAX_VCT, GAME_TIME_LIMIT, "player first"},
-    {MINIMAX_VCT, MANUAL, GAME_TIME_LIMIT, "AI first"},
+    {MANUAL, MINIMAX_FULL, GAME_TIME_LIMIT, "player first"},
+    {MINIMAX_FULL, MANUAL, GAME_TIME_LIMIT, "AI first"},
     {MANUAL, MANUAL, -1, "pvp, no AI"},
 };
 
@@ -157,7 +157,9 @@ int main(int argc, char* argv[])
     }
 
     int player1, player2, time_limit;
-#ifndef NO_INTERACTIVE
+#if (DEBUG_LEVEL > 1) || defined(TEST)
+    player1 = MINIMAX_FULL, player2 = MINIMAX_FULL, time_limit = 15000;
+#else
     log_i("available modes: ");
     for (int i = 0; i < PRESET_SIZE; i++) {
         log_i("%d: %s", i + 1, preset_modes[i].name);
@@ -183,8 +185,6 @@ int main(int argc, char* argv[])
         player1 = preset_modes[mode - 1].p1, player2 = preset_modes[mode - 1].p2;
         time_limit = preset_modes[mode - 1].time_limit;
     }
-#else
-    player1 = MINIMAX_FULL, player2 = MINIMAX_FULL, time_limit = 5000;
 #endif
 
     int id = 1;

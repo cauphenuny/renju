@@ -46,6 +46,17 @@ static bool point_vector_contains(vector_t vec, point_t pos) {
     return vector_contains(point_t, vec, pos);
 }
 
+void point_serialize(char* dest, const void* ptr) {
+    const point_t* point = ptr;
+    snprintf(dest, 5, "%c%d", READABLE_POS(*point));
+}
+
+void print_points(vector_t point_array, int log_level, const char* delim) {
+    char buffer[1024];
+    vector_serialize(buffer, delim, point_array, point_serialize);
+    log_add(log_level, "%s", buffer);
+}
+
 static char* piece_color[] = {RESET, GREEN, RED, L_GREEN, L_RED};
 
 void set_color(bool green_first) {
@@ -269,7 +280,7 @@ int is_forbidden(board_t board, point_t pos, int id, int max_depth) {
     if (max_depth == 0) return 0;
     if (id != 1) return 0;
     // print(board);
-    static const int8_t mid = WIN_LENGTH - 1, arrow[4][2] = {{1, 1}, {1, -1}, {1, 0}, {0, 1}};
+    static const int8_t arrow[4][2] = {{1, 1}, {1, -1}, {1, 0}, {0, 1}};
 
     pattern_t pats[4] = {PAT_EMPTY, PAT_EMPTY, PAT_EMPTY, PAT_EMPTY};
     pattern4_t pat4;
@@ -289,7 +300,7 @@ int is_forbidden(board_t board, point_t pos, int id, int max_depth) {
             for (int j = 0; j < 2; j++) {
                 if (cols[j] != -1) {
                     const point_t np =
-                        (point_t){pos.x + dx * (cols[j] - mid), pos.y + dy * (cols[j] - mid)};
+                        (point_t){pos.x + dx * (cols[j] - HALF), pos.y + dy * (cols[j] - HALF)};
                     if (is_forbidden(board, np, id, max_depth > 0 ? max_depth - 1 : -1)) {
                         pats[i] = PAT_EMPTY;  // incorrect, but enough for checking forbid
                         break;

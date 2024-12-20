@@ -98,7 +98,7 @@ static void get_win_pos(state_t* st) {
     point_t tmp;
     // print_state(*st), log("start");
     int8_t dx, dy;
-    const int mid = WIN_LENGTH - 1;  // . . . . X . . . .
+    const int mid = SEGMENT_LEN / 2;  // . . . . . X . . . . .
     for (int i = 0, val, pattern, piece, cnt = 0; i < 4 && cnt < WINPOS_SIZE; i++) {
         dx = DIRS[i][0], dy = DIRS[i][1];
         val = 0;
@@ -450,10 +450,14 @@ static void simulate(node_t* start_node) {
 
 /// @brief get next move by mcts algorithm
 point_t mcts(const game_t game, const void* assets) {
+    if (game.count == 0) {
+        return (point_t){BOARD_SIZE / 2, BOARD_SIZE / 2};
+    }
     start_time = record_time();
     param = *((mcts_param_t*)assets);
 
-    point_t trivial_pos = trivial_move(game, param.eval_type == ADVANCED);
+    point_t trivial_pos =
+        trivial_move(game.board, game.cur_id, game.time_limit / 20.0, param.eval_type == ADVANCED);
     if (in_board(trivial_pos)) {
         if (param.output_prob) param.output_prob[trivial_pos.x][trivial_pos.y] = 1;
         return trivial_pos;
@@ -470,7 +474,7 @@ point_t mcts(const game_t game, const void* assets) {
     srand(time(0));
 
     tot = edge_tot = 0;
-    time_limit = (double)game.time_limit;
+    time_limit = (double)max(game.time_limit - 200, game.time_limit * 0.9);
 
     point_t wrap_begin, wrap_end;
     int radius = param.wrap_rad;
@@ -511,7 +515,7 @@ point_t mcts(const game_t game, const void* assets) {
         game.time_limit, param.check_depth);
     while ((tim = get_time(start_time)) < param.min_time ||
            max_count(root)->state.count < target_count) {
-        if (tim > time_limit - 50 || tot >= node_limit) break;
+        if (tim > time_limit || tot >= node_limit) break;
         // prior_weight = 1 - ((double)tim / time_limit) / 2;
         prior_weight = 1;
         simulate(root), cnt++;

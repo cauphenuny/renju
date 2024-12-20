@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 3.5)
 project (
     renju
-    VERSION 2.8.0
+    VERSION 2.9.0
     LANGUAGES C
 )
 set (CMAKE_VERBOSE_MAKEFILE OFF)
@@ -21,10 +21,10 @@ find_package(OpenMP)
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     message (STATUS "${COLOR_RED}debug${COLOR_RESET}")
     add_compile_options (-Wall -Wextra -Wshadow) 
-    # add_compile_options (-DDEBUG_LEVEL=2 -O0 -g -fno-omit-frame-pointer -fsanitize=undefined,address,leak,null,bounds)
-    # add_link_options (-fno-omit-frame-pointer -fsanitize=undefined,address,leak,null,bounds)
-    add_compile_options (-DDEBUG_LEVEL=2 -O0 -g -fno-omit-frame-pointer -fsanitize=undefined,null,bounds,thread)
-    add_link_options (-fno-omit-frame-pointer -fsanitize=undefined,null,bounds,thread)
+    add_compile_options (-DDEBUG_LEVEL=2 -O0 -g -fno-omit-frame-pointer -fsanitize=undefined,address,leak,null,bounds)
+    add_link_options (-fno-omit-frame-pointer -fsanitize=undefined,address,leak,null,bounds)
+    # add_compile_options (-DDEBUG_LEVEL=2 -O0 -g -fno-omit-frame-pointer -fsanitize=undefined,null,bounds,thread)
+    # add_link_options (-fno-omit-frame-pointer -fsanitize=undefined,null,bounds,thread)
     set (VERSION_STRING "${PROJECT_VERSION} (debug)")
 elseif (CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
     message (STATUS "${COLOR_GREEN}release with debug info${COLOR_RESET}")
@@ -89,7 +89,6 @@ file(GLOB TEST_SRC_LIST "${PROJECT_SOURCE_DIR}/src/_tests/*.c")
 add_executable (test ${TEST_SRC_LIST} ${SRC_LIST})
 target_compile_definitions(test PRIVATE TEST)
 # target_compile_definitions(test PRIVATE NO_COLOR)
-set_target_properties(test PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
 add_executable (botzone src/botzone.c ${SRC_LIST})
 target_compile_definitions(botzone PRIVATE NOCOLOR)

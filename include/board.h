@@ -30,6 +30,9 @@ typedef int8_t cboard_t[BOARD_SIZE][BOARD_SIZE];  // board with type `signed cha
 void board_deserialize(board_t dest, const char* str);
 void board_serialize(const board_t board, char* dest);
 
+void point_serialize(char* dest, const void* ptr);
+void print_points(vector_t point_array, int log_level, const char* delim);
+
 void set_color(bool green_first);
 void print_all(const board_t board, point_t emph_pos, const fboard_t prob);
 void print_emph(const board_t board, point_t emph_pos);
@@ -54,7 +57,7 @@ bool have_space(const board_t board, int id);
 bool is_equal(const board_t b1, const board_t b2);
 
 #define point_equal(p1, p2) ((p1).x == (p2).x && (p1).y == (p2).y)
-#define READABLE_POS(pos) (pos.y + 'A'), (pos.x + 1)
+#define READABLE_POS(pos)   ((pos).y + 'A'), ((pos).x + 1)
 
 #if BOARD_SIZE <= 16
 typedef uint32_t line_t;

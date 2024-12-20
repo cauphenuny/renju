@@ -16,14 +16,16 @@ typedef struct {
 
 vector_t vector_new_p(size_t element_size, free_func_t free_func);
 void vector_free_p(void* ptr);
-void vector_push_back_p(vector_t* vector, void* element);
-void* vector_get_p(vector_t* vector, size_t index);
-void vector_cat_p(vector_t* dest, vector_t* src);
-void vector_copy_p(vector_t* dest, vector_t* src);
+void vector_push_back_p(vector_t* vector, const void* element);
+void* vector_get_p(const vector_t* vector, size_t index);
+void vector_cat_p(vector_t* dest, const vector_t* src);
+void vector_copy_p(vector_t* dest, const vector_t* src);
 vector_t vector_clone(vector_t src);
 void vector_shuffle(vector_t src);
 void vector_reverse(vector_t src);
-bool vector_contains_p(vector_t* vector, void* element, size_t element_size);
+bool vector_contains_p(const vector_t* vector, const void* element, size_t element_size);
+void vector_serialize(char* dest, const char* delim, vector_t vector,
+                      void (*element_serialize)(char*, const void*));
 
 #define vector_new(type, free_func)       vector_new_p(sizeof(type), free_func)
 #define vector_init(type, vec)            vector_init_p(&(vec), sizeof(type))

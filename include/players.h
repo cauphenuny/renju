@@ -20,7 +20,7 @@ enum {
 #define MAX_PLAYERS 20
 
 typedef struct {
-    bool no_time_limit;
+    bool allow_timeout;
     bool enable_vct;
 } player_attribute_t;
 

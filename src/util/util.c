@@ -11,7 +11,7 @@ static const char* prompts[PROMPT_SIZE] = {
     [PROMPT_EMPTY] = "",
     [PROMPT_LOG] = BLUE "[LOG] " RESET,
     [PROMPT_INFO] = GREEN "[INFO] " RESET,
-    [PROMPT_NOTE] = PURPLE "[NOTE]" RESET,
+    [PROMPT_NOTE] = PURPLE "[NOTE] " RESET,
     [PROMPT_WARN] = YELLOW "[WARN] " RESET,
     [PROMPT_ERROR] = RED "[ERROR] " RESET,
 };

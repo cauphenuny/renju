@@ -1,11 +1,12 @@
-#include "threat.h"
-
 #include "board.h"
 #include "eval.h"
 #include "game.h"
+#include "minimax.h"
 #include "pattern.h"
+#include "players.h"
 #include "trivial.h"
 #include "util.h"
+#include "vct.h"
 #include "vector.h"
 
 #include <stdlib.h>
@@ -75,35 +76,61 @@ void test_upd() {
             vector_t tmp = find_relative_points(CONSIST, board, pos, dx, dy);
             print_emph_mutiple(board, tmp);
             vector_cat(array, tmp);
+            vector_free(tmp);
         }
         print_emph_mutiple(board, array);
     }
 }
 
 void test_threat() {
-#include "boards.txt"
-    for (int i = 0; i < 1; i++) {
-        board_t board;
-        point_t pos;
-        pos = parse_board(board, tests[i].str);
-        print_emph(board, pos);
-        vector_t threat_info = scan_threats_info(board, 1, true);
-        for_each(threat_info_t, threat_info, info) {
-            log("=========================================");
-            log("type: %s", pattern_typename[info.type]);
-            log("pos: (%d, %d)", info.action.x, info.action.y);
-            print_emph(board, info.action);
-            log("consists:");
-            print_emph_mutiple(board, info.consists);
-            log("defends:");
-            print_emph_mutiple(board, info.defenses);
-        }
-    }
+    // clang-format off
+    game_t game = restore_game(2000,18,(point_t[]){{7,7},{6,6},{5,7},{4,7},{6,8},{4,6},{5,9},{4,10},{7,8},{7,6},{8,6},{9,5},{8,7},{4,9},{4,8},{5,8},{6,7},{9,7}});
+    print_game(game);
+    // clang-format on
+    vector_t a3 = vector_new(threat_t, NULL);
+    scan_threats(game.board, 1, (threat_storage_t){[PAT_A3] = &a3});
+    for_each(threat_t, a3, a) { print_emph(game.board, a.pos); }
 }
 
 void test_threat_tree() {
+    // clang-format off
+    game_t game = 
+    restore_game(15000,29,(point_t[]){{7,7},{7,8},{6,6},{8,8},{6,8},{8,6},{6,7},{6,5},{8,7},{5,7},{5,9},{4,10},{6,10},{6,9},{5,8},{9,7},{3,8},{4,8},{4,9},{3,10},{5,10},{6,11},{7,6},{8,5},{7,5},{7,4},{2,7},{1,6},{5,6}});
+    /*
+    [G10] (H11) [I10] (J10) [I11] (I12) [E10] (F10) [E9] (E7) 
+    '*/
+    char buffer[1024];
+    board_serialize(game.board, buffer);
+    printf("%s", buffer);
+    print_game(game);
+    vct(false, game.board, 1, 5000);
+    // clang-format on
+
+    // #include "boards.txt"
+    // for (int i = 0; i < 1; i++) {
+    //     board_t board;
+    //     point_t pos;
+    //     pos = parse_board(board, tests[i].str);
+    //     print_emph(board, pos);
+    //     vector_t threat_info = scan_threats_info(board, 1, true);
+    //     for_each(threat_info_t, threat_info, info) {
+    //         log("=========================================");
+    //         log("type: %s", pattern_typename[info.type]);
+    //         log("pos: (%d, %d)", info.action.x, info.action.y);
+    //         print_emph(board, info.action);
+    //         log("consists:");
+    //         print_emph_mutiple(board, info.consists);
+    //         log("defends:");
+    //         print_emph_mutiple(board, info.defenses);
+    //     }
+    // }
+}
+
+void test_threat_seq() {
 #include "board_vct.txt"
-    for (int i = 0; i < VCT_TESTS; i++) {
+    for (int T = 0; T < 10000; T++) {
+        for (int i = 0; i < VCT_TESTS; i++) {
+            // for (int i = 0; i < 1; i++) {
         int id = tests[i].id;
         // prompt_scanf("%d%d", &i, &id);
         board_t board;
@@ -122,28 +149,21 @@ void test_threat_tree() {
         print(board);
         double start_time = record_time();
         vector_t seq = vct(false, board, id, 5000);
-        print_points(seq, PROMPT_LOG, "->");
+        print_points(seq, PROMPT_LOG, " -> ");
         log("time: %.3lfms", get_time(start_time));
         int get_vct = seq.size != 0;
         vector_free(seq);
         if (get_vct != tests[i].have_vct) {
             log_e("test failed, expected %d, got %d", tests[i].have_vct, get_vct);
+            }
+            // point_t p = vct(board, 1, false);
+            // if (in_board(p)) {
+            //     log("result: %c%d", READABLE_POS(p));
+            // } else {
+            //     log("no result");
+            // }
         }
-        // point_t p = vct(board, 1, false);
-        // if (in_board(p)) {
-        //     log("result: %c%d", READABLE_POS(p));
-        // } else {
-        //     log("no result");
-        // }
     }
-
-    // clang-format off
-    // game_t game = restore_game(1000,16,(point_t[]){{7,7},{6,6},{8,6},{6,8},{9,5},{6,7},{6,5},{7,5},{8,4},{8,5},{7,6},{10,6},{5,4},{6,9},{6,10},{8,7}});
-    // char buffer[1024];
-    // board_serialize(game.board, buffer);
-    // printf("%s", buffer);
-    // trivial_move(game, true);
-    // clang-format on
 }
 
 /*

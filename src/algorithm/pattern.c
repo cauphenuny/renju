@@ -23,22 +23,20 @@ const char* pattern4_typename[] = {[PAT4_OTHERS] = "others",
 
 #define COL_STORAGE_SIZE SEGMENT_LEN
 
-#define HALF (WIN_LENGTH - 1)
-
 /// @example
 /// . x . o o . o . . -> PAT_A3
 /// . . . . . # . . . : attack_col
 /// . . . # # . # . . : consist_col
 /// . . # . . # . # . : defend_col
 typedef struct {
-    int attack_col[SEGMENT_MASK][COL_STORAGE_SIZE];
-    int attack_col_cnt[SEGMENT_MASK];
-    int consist_col[SEGMENT_MASK][COL_STORAGE_SIZE];
-    int consist_col_cnt[SEGMENT_MASK];
-    int defense_col[SEGMENT_MASK][COL_STORAGE_SIZE];
-    int defense_col_cnt[SEGMENT_MASK];
-    pattern_t pattern[SEGMENT_MASK];
-    pattern_t parent_pattern[SEGMENT_MASK];
+    int attack_col[SEGMENT_SIZE][COL_STORAGE_SIZE];
+    int attack_col_cnt[SEGMENT_SIZE];
+    int consist_col[SEGMENT_SIZE][COL_STORAGE_SIZE];
+    int consist_col_cnt[SEGMENT_SIZE];
+    int defense_col[SEGMENT_SIZE][COL_STORAGE_SIZE];
+    int defense_col_cnt[SEGMENT_SIZE];
+    pattern_t pattern[SEGMENT_SIZE];
+    pattern_t parent_pattern[SEGMENT_SIZE];
     pattern4_t pattern4[PAT_TYPE_SIZE][PAT_TYPE_SIZE][PAT_TYPE_SIZE][PAT_TYPE_SIZE];
 } memo_t;
 
@@ -54,18 +52,20 @@ static int update(int prev, int pos, piece_t new_piece) {
 static void dp(memo_t* memo, bool consider_forbid) {
     /// in a reverse order,
     /// to calculate states that can be transferred to current state {idx} before visiting {idx}
-    for (int idx = SEGMENT_MASK - 1, left, right; idx >= 0; idx--) {
+    for (int idx_base3 = SEGMENT_REAL_SIZE - 1, left, right; idx_base3 >= 0; idx_base3--) {
         // log("round %d, idx %d", round, idx);
-        const segment_t line = decode_segment(idx);
+        const segment_t segment = decode_segment(idx_base3, 3);
+        int idx = encode_segment(segment);
+        if (!segment_valid(segment)) continue;
         for (left = 0, right = 1; left < SEGMENT_LEN; left = right + 1) {
-            while (left < SEGMENT_LEN && line.pieces[left] == OPPO_PIECE) (left)++;
+            while (left < SEGMENT_LEN && segment.pieces[left] == OPPO_PIECE) (left)++;
             right = left + 1;
-            while (right < SEGMENT_LEN && line.pieces[right] != OPPO_PIECE) (right)++;
+            while (right < SEGMENT_LEN && segment.pieces[right] != OPPO_PIECE) (right)++;
             if (right - left >= WIN_LENGTH) break;
         }
         if (memo->pattern[idx]) {
             for (int col = left; col < right; col++) {
-                if (line.pieces[col] == SELF_PIECE) {
+                if (segment.pieces[col] == SELF_PIECE) {
                     memo->consist_col[idx][memo->consist_col_cnt[idx]++] = col;
                 }
             }
@@ -81,7 +81,7 @@ static void dp(memo_t* memo, bool consider_forbid) {
         int win_pos[2] = {0}, pos_cnt = 0;
 
         for (int col = left; col < right; col++) {
-            if (line.pieces[col] != EMPTY_PIECE) continue;
+            if (segment.pieces[col] != EMPTY_PIECE) continue;
             const int new_idx = update(idx, col, SELF_PIECE);
             if (memo->pattern[new_idx] == PAT_WIN || memo->pattern[new_idx] == PAT_TL) {
                 if (pos_cnt < 2) win_pos[pos_cnt++] = col;
@@ -127,10 +127,10 @@ static void dp(memo_t* memo, bool consider_forbid) {
         }
 
         for (int col = left; col < right; col++) {
-            if (line.pieces[col] == SELF_PIECE) {
+            if (segment.pieces[col] == SELF_PIECE) {
                 memo->consist_col[idx][memo->consist_col_cnt[idx]++] = col;
             }
-            if (line.pieces[col] == EMPTY_PIECE) {
+            if (segment.pieces[col] == EMPTY_PIECE) {
                 int new_idx = update(idx, col, OPPO_PIECE);
                 if (memo->pattern[idx] != memo->pattern[new_idx]) {
                     memo->defense_col[idx][memo->defense_col_cnt[idx]++] = col;
@@ -171,9 +171,9 @@ static void dp(memo_t* memo, bool consider_forbid) {
 /// @brief calculate pattern type and store it
 void pattern_init() {
     /// terminate state: overline > 5
-    for (int idx = 0; idx < SEGMENT_MASK; idx++) {
+    for (int idx = 0; idx < SEGMENT_REAL_SIZE; idx++) {
         for (int cover_start = 0; cover_start < SEGMENT_LEN - WIN_LENGTH; cover_start++) {
-            segment_t line = decode_segment(idx);
+            segment_t line = decode_segment(idx, 3);
             for (int i = 0; i < WIN_LENGTH; i++) {
                 line.pieces[cover_start + i] = SELF_PIECE;
             }
@@ -185,9 +185,9 @@ void pattern_init() {
         }
     }
     /// terminate state: win == 5
-    for (int idx = 0; idx < SEGMENT_MASK; idx++) {
+    for (int idx = 0; idx < SEGMENT_REAL_SIZE; idx++) {
         for (int cover_start = 0; cover_start <= SEGMENT_LEN - WIN_LENGTH; cover_start++) {
-            segment_t line = decode_segment(idx);
+            segment_t line = decode_segment(idx, 3);
             for (int i = 0; i < WIN_LENGTH; i++) {
                 line.pieces[cover_start + i] = SELF_PIECE;
             }
@@ -197,9 +197,9 @@ void pattern_init() {
     }
 
     /// terminate state: win >=5
-    for (int idx = 0; idx < SEGMENT_MASK; idx++) {
+    for (int idx = 0; idx < SEGMENT_REAL_SIZE; idx++) {
         for (int cover_start = 0; cover_start <= SEGMENT_LEN - WIN_LENGTH; cover_start++) {
-            segment_t line = decode_segment(idx);
+            segment_t line = decode_segment(idx, 3);
             for (int i = 0; i < WIN_LENGTH; i++) {
                 line.pieces[cover_start + i] = SELF_PIECE;
             }
@@ -213,11 +213,11 @@ void pattern_init() {
     }
     // prompt_pause();
     dp(&no_forbid, false);
-    #ifdef NO_FORBID
+#ifdef NO_FORBID
     memcpy(&forbid, &no_forbid, sizeof(memo_t));
-    #else
+#else
     dp(&forbid, true);
-    #endif
+#endif
     pattern_initialized = 1;
 }
 
@@ -233,11 +233,11 @@ int encode_segment(segment_t s) {
 }
 
 /// @brief decode the segment from int value
-segment_t decode_segment(int v) {
+segment_t decode_segment(int v, int base) {
     segment_t result;
     for (int i = 0; i < SEGMENT_LEN; i++) {
-        result.pieces[i] = (piece_t)(v % (int)PIECE_SIZE);
-        v /= (int)PIECE_SIZE;
+        result.pieces[i] = (piece_t)(v % base);
+        v /= base;
     }
     return result;
 }
@@ -301,6 +301,20 @@ pattern_t to_pattern(int segment_value, bool consider_forbid) {
         return forbid.pattern[segment_value];
     else
         return no_forbid.pattern[segment_value];
+}
+
+pattern_t get_pattern(board_t board, point_t pos, int dx, int dy, int self_id) {
+    int value = 0;
+    for (int i = -HALF; i <= HALF; i++) {
+        const point_t np = (point_t){pos.x + dx * i, pos.y + dy * i};
+        if (!in_board(np))
+            value = value * PIECE_SIZE + OPPO_PIECE;
+        else if (!board[np.x][np.y])
+            value = value * PIECE_SIZE + EMPTY_PIECE;
+        else
+            value = value * PIECE_SIZE + (board[np.x][np.y] == self_id ? SELF_PIECE : OPPO_PIECE);
+    }
+    return to_pattern(value, self_id == 1);
 }
 
 pattern_t to_upgraded_pattern(int segment_value, bool consider_forbid) {
@@ -381,21 +395,20 @@ int is_forbidden_comp(comp_board_t bd, point_t pos, int id, int depth);
 pattern4_t pattern4_type_comp(comp_board_t board, point_t pos, int depth) {
     int id;
     if (!in_board(pos) || !((id = get(board, pos)))) return PAT4_OTHERS;
-    const int8_t mid = WIN_LENGTH - 1;
     int idx[4];
     int piece;
     bool consider_forbid = depth > 0 && id == 1;
     for (int8_t i = 0, dx, dy; i < 4; i++) {
         dx = DIRS[i][0], dy = DIRS[i][1];
         segment_t seg;
-        for (int8_t j = -WIN_LENGTH + 1; j < WIN_LENGTH; j++) {
+        for (int8_t j = -HALF; j <= HALF; j++) {
             const point_t np = (point_t){pos.x + dx * j, pos.y + dy * j};
             if (!in_board(np))
-                seg.pieces[mid + j] = OPPO_PIECE;
+                seg.pieces[HALF + j] = OPPO_PIECE;
             else if (!((piece = get(board, np)))) {
-                seg.pieces[mid + j] = EMPTY_PIECE;
+                seg.pieces[HALF + j] = EMPTY_PIECE;
             } else
-                seg.pieces[mid + j] = ((piece == id) ? SELF_PIECE : OPPO_PIECE);
+                seg.pieces[HALF + j] = ((piece == id) ? SELF_PIECE : OPPO_PIECE);
         }
         // print_segment(seg);
         int segment_value = encode_segment(seg);
@@ -406,7 +419,7 @@ pattern4_t pattern4_type_comp(comp_board_t board, point_t pos, int depth) {
             for (int j = 0; j < 2; j++) {
                 if (col[j] != -1) {
                     const point_t np =
-                        (point_t){pos.x + dx * (col[j] - mid), pos.y + dy * (col[j] - mid)};
+                        (point_t){pos.x + dx * (col[j] - HALF), pos.y + dy * (col[j] - HALF)};
                     // pattern4_t pat4;
                     // if ((pat4 = is_forbidden_comp(board, np, id, depth - 1))) {
                     if (is_forbidden_comp(board, np, id, depth - 1)) {
