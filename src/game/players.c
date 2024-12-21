@@ -20,15 +20,15 @@ mcts_param_t mcts_params_default = {
 };
 static mcts_param_t mcts_params_nn, mcts_params_adv;
 
-const static minimax_param_t minimax_params_easy = {
-    .parallel = false,
+const static minimax_param_t minimax_params_normal = {
+    .parallel = true,
     .max_depth = 8,
     .optim =
         {
             .begin_vct = true,
         },
 };
-const static minimax_param_t minimax_params_normal = {
+const static minimax_param_t minimax_params_advanced = {
     .parallel = true,
     .max_depth = 12,
     .optim =
@@ -38,7 +38,7 @@ const static minimax_param_t minimax_params_normal = {
         },
 };
 
-const static minimax_param_t minimax_params_hard = {
+const static minimax_param_t minimax_params_ultimate = {
     .parallel = true,
     .max_depth = 12,
     .optim =
@@ -60,26 +60,26 @@ player_t preset_players[MAX_PLAYERS] = {
             .move = mcts,
             .assets = &mcts_params_default,
         },
-    [MCTS_ADV] = {.name = "MCTS, VCT",
+    [MCTS_ADV] = {.name = "MCTS, external VCT",
                   .move = mcts,
                   .assets = &mcts_params_adv,
                   .attribute = {.enable_vct = true}},
     [MCTS_NN] = {.name = "MCTS, NN", .move = mcts_nn, .assets = &mcts_params_nn, .attribute = {}},
     [MINIMAX] =
         {
-            .name = "minimax, easy",
+            .name = "minimax, external VCT",
             .move = minimax,
-            .assets = &minimax_params_easy,
-            .attribute = {.enable_vct = minimax_params_easy.optim.begin_vct},
+            .assets = &minimax_params_normal,
+            .attribute = {.enable_vct = minimax_params_normal.optim.begin_vct},
         },
-    [MINIMAX_VCT] = {.name = "minimax, normal",
+    [MINIMAX_ADV] = {.name = "minimax, look forward, external VCT",
                      .move = minimax,
-                     .assets = &minimax_params_normal,
-                     .attribute = {.enable_vct = minimax_params_normal.optim.begin_vct}},
-    [MINIMAX_FULL] = {.name = "minimax, hard",
-                      .move = minimax,
-                      .assets = &minimax_params_hard,
-                      .attribute = {.enable_vct = minimax_params_hard.optim.begin_vct}},
+                     .assets = &minimax_params_advanced,
+                     .attribute = {.enable_vct = minimax_params_advanced.optim.begin_vct}},
+    [MINIMAX_ULT] = {.name = "minimax, look forward, full VCT",
+                     .move = minimax,
+                     .assets = &minimax_params_ultimate,
+                     .attribute = {.enable_vct = minimax_params_ultimate.optim.begin_vct}},
     [NEURAL_NETWORK] = {.name = "neural network", .move = nn_move, .assets = NULL}};
 
 point_t move(game_t game, player_t player) { return player.move(game, player.assets); }

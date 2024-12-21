@@ -449,7 +449,7 @@ static void simulate(node_t* start_node) {
 }
 
 /// @brief get next move by mcts algorithm
-point_t mcts(const game_t game, const void* assets) {
+point_t mcts(game_t game, const void* assets) {
     if (game.count == 0) {
         return (point_t){BOARD_SIZE / 2, BOARD_SIZE / 2};
     }

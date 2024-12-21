@@ -16,7 +16,7 @@ typedef struct threat_tree_node_t {
     board_t board;
     threat_info_t threat;
     struct threat_tree_node_t *parent, *son, *brother;
-    int depth;
+    int depth, subtree_size;
     int win_count, win_depth;
     vector_t win_nodes;      // threat_tree_node_t*
     vector_t best_sequence;  // point_t
@@ -164,15 +164,16 @@ typedef struct {
 
 const static double TIMEOUT_LIMIT = 100;
 
-static void initialize_node(local_var_t* assets, threat_tree_node_t* root, board_t board) {
-    memset(root, 0, sizeof(threat_tree_node_t));
-    root->parent = root->son = root->brother = NULL;
-    root->depth = 1;
-    root->win_count = 0;
-    root->win_depth = INF;
-    root->win_nodes = vector_new(threat_tree_node_t*, NULL);
-    root->best_sequence = vector_new(point_t, NULL);
-    memcpy(root->board, board, sizeof(board_t));
+static void initialize_node(local_var_t* assets, threat_tree_node_t* node, board_t board) {
+    memset(node, 0, sizeof(threat_tree_node_t));
+    node->parent = node->son = node->brother = NULL;
+    node->depth = 1;
+    node->subtree_size = 1;
+    node->win_count = 0;
+    node->win_depth = INF;
+    node->win_nodes = vector_new(threat_tree_node_t*, NULL);
+    node->best_sequence = vector_new(point_t, NULL);
+    memcpy(node->board, board, sizeof(board_t));
     assets->node_cnt++;
 }
 
@@ -275,6 +276,7 @@ void add_threat(local_var_t* assets, threat_tree_node_t* node, threat_info_t thr
     child->depth = node->depth + 1;
     node->son = child;
     build_threat_tree(assets, child);
+    node->subtree_size += child->subtree_size;
 }
 
 void build_threat_tree(local_var_t* assets, threat_tree_node_t* node) {
@@ -594,18 +596,17 @@ void combine_forest(local_var_t* assets, vector_t forest) {
 }
 
 /// @brief get threat forest of a board, merged it to a virtual node (no threat contained)
-threat_tree_node_t* get_threat_tree(local_var_t* assets, board_t board, int id, bool only_four) {
+threat_tree_node_t* get_threat_tree(local_var_t* assets, board_t board, vector_t threats, int id,
+                                    bool only_four) {
     assets->attack_id = id, assets->defend_id = 3 - id;
     memcpy(assets->initial, board, sizeof(board_t));
-    vector_t threats = scan_threats_info(board, id, only_four);
     vector_t threat_forest =
         vector_new(threat_tree_node_t*, NULL);  // give ownership to the super_root
-    threats.free_func = NULL;                   // give ownership to threat_forest
     for_each(threat_info_t, threats, threat) {
         // print_threat(assets, threat);
         threat_tree_node_t* root = malloc(sizeof(threat_tree_node_t));
         initialize_node(assets, root, board);
-        root->threat = threat;
+        root->threat = clone_threat_info(&threat);
         root->only_four = only_four;
         act_round(root->board, threat);
         build_threat_tree(assets, root);
@@ -615,7 +616,6 @@ threat_tree_node_t* get_threat_tree(local_var_t* assets, board_t board, int id, 
         combine_forest(assets, threat_forest);
         if (get_time(assets->start_time) > assets->step_time_limit) break;
     }
-    vector_free(threats);
     threat_tree_node_t* super_root = malloc(sizeof(threat_tree_node_t));
     initialize_node(assets, super_root, board);
     super_root->depth = 0;  // set it to virtual node (do not contain any threat)
@@ -624,10 +624,13 @@ threat_tree_node_t* get_threat_tree(local_var_t* assets, board_t board, int id, 
         root->brother = super_root->son;
         root->parent = super_root;
         super_root->son = root;
+        super_root->subtree_size += root->subtree_size;
     }
     vector_free(threat_forest);
     return super_root;
 }
+
+int max_vct_depth = 0;
 
 /// @brief find Victory by Continuous Threats sequence
 /// @return vector<point_t>
@@ -635,26 +638,33 @@ vector_t vct(bool only_four, board_t board, int id, double time_ms) {
     vector_t sequence = vector_new(point_t, NULL);
     double tim = record_time();
     local_var_t assets = {0};
-    assets.step_time_limit = min(time_ms * 0.3, TIMEOUT_LIMIT);
-    for (int depth = 2; depth < 10; depth++) {
+    assets.step_time_limit = min(time_ms * 0.2, TIMEOUT_LIMIT);
+    int depth;
+    vector_t threats = scan_threats_info(board, id, only_four);
+    int last_size = 0;
+    for (depth = 2; depth < 10; depth++) {
         if (get_time(tim) > time_ms) break;
         assets.node_cnt = 0;
         assets.DEPTH_LIMIT = depth;
         assets.start_time = record_time();
-        threat_tree_node_t* root = get_threat_tree(&assets, board, id, only_four);
+        threat_tree_node_t* root = get_threat_tree(&assets, board, threats, id, only_four);
         assets.start_time = record_time();
         find_win_nodes(root);
         assets.start_time = record_time();
         validate_win_nodes(&assets, root);
+        // log("depth %d, size: %d", depth, root->subtree_size);
         if (root->win_depth != INF) {
             vector_copy(sequence, root->best_sequence);
             delete_threat_tree(root);
+            max_vct_depth = max(max_vct_depth, depth);
             break;
         } else {
+            int cur_size = root->subtree_size;
             delete_threat_tree(root);
+            if (cur_size == last_size) break;
+            last_size = cur_size;
         }
     }
-    // if (sequence.size)
-    // log("depth: %d, consumption: %d nodes, %.2lfms", depth, get_time(tim));
+    vector_free(threats);
     return sequence;
 }

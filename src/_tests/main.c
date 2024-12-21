@@ -36,13 +36,15 @@ int test_pattern(void) {
 void test_minimax(void) {
     // clang-format off
     // game_t game = restore_game(5000,7,(point_t[]){{7,7},{8,6},{7,5},{7,6},{6,6},{5,5},{5,7}});
-    game_t game = 
+    game_t game2 = 
     // restore_game(15000,29,(point_t[]){{7,7},{7,9},{6,8},{8,6},{8,8},{6,6},{5,6},{7,8},{5,7},{6,7},{5,8},{5,9},{6,9},{6,4},{4,7},{6,5},{6,3},{3,6},{5,3},{8,5},{4,3},{7,3},{3,3},{2,3},{8,11},{7,10},{8,10},{8,12},{4,8}});
         restore_game(15000,5,(point_t[]){{7,7},{6,6},{7,5},{6,7},{6,5}});
+    game_t game = 
+    restore_game(30000,28,(point_t[]){{7,7},{7,8},{6,6},{8,8},{6,8},{8,6},{6,7},{6,5},{8,7},{5,7},{5,9},{4,10},{6,10},{6,9},{5,8},{9,7},{3,8},{4,8},{4,9},{3,10},{5,10},{6,11},{7,6},{8,5},{7,5},{7,4},{2,7},{1,6},{5,6},{9,6},{10,7},{9,8},{9,5}});
     //restore_game(15000,28,(point_t[]){{7,7},{7,9},{6,8},{8,6},{8,8},{6,6},{5,6},{7,8},{5,7},{6,7},{5,8},{5,9},{6,9},{6,4},{4,7},{6,5},{6,3},{3,6},{5,3},{8,5},{4,3},{7,3},{3,3},{2,3},{8,11},{7,10},{8,10},{8,12}});
     // clang-format on
     print_game(game);
-    const point_t pos = minimax(game, preset_players[MINIMAX_FULL].assets);
+    const point_t pos = minimax(game, preset_players[MINIMAX_ULT].assets);
     print_emph(game.board, pos);
     log("got pos %d, %d: %c%d", pos.x, pos.y, READABLE_POS(pos));
     assert(in_board(pos));

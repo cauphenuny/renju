@@ -15,7 +15,7 @@
 #include <string.h>
 #include <unistd.h>
 
-int vct_depth_sum, vct_depth_max, game_cnt;
+int vct_depth_sum, vct_depth_cur, vct_depth_max, game_cnt;
 
 static jmp_buf env;
 static void (*original_handler)(int);
@@ -25,13 +25,11 @@ void signal_handler(int sig) {
         void* array[20];
         size_t size;
 
-        // get trace
         size = backtrace(array, 20);
         fprintf(stderr, "\ntimeout, stack trace:\n");
         backtrace_symbols_fd(array, size, STDERR_FILENO);
 
         while (1);
-        // restore context
         longjmp(env, 1);
     }
 }
@@ -50,23 +48,24 @@ void stop_timer() {
 /// @param time_limit time limit of every step
 game_result_t start_game(player_t p1, player_t p2, int first_player, int time_limit,
                          network_t* network) {
-    game_cnt++;
+    game_cnt++, vct_depth_cur = 0;
     player_t players[] = {{}, p1, p2};
     const char* colors[] = {"", L_GREEN, L_RED};
     set_color(first_player == 1);
     game_result_t result = {0};
     int claim_winner = 0;
     int player = first_player;
-#define WIN(winner_id)                                                                            \
-    do {                                                                                          \
-        if (claim_winner && players[claim_winner].attribute.enable_vct &&                         \
-            winner_id != claim_winner) {                                                          \
-            log_w("claim incorrect!");                                                            \
-            prompt_pause();                                                                       \
-        }                                                                                         \
-        log("VCT sequence avg: %.2lf, max: %d", (double)vct_depth_sum / game_cnt, vct_depth_max); \
-        result.game = game, result.winner = winner_id;                                            \
-        return result;                                                                            \
+#define WIN(winner_id)                                                    \
+    do {                                                                  \
+        if (claim_winner && players[claim_winner].attribute.enable_vct && \
+            winner_id != claim_winner) {                                  \
+            log_w("claim incorrect!");                                    \
+            prompt_pause();                                               \
+        }                                                                 \
+        log("VCT sequence cur: %d, avg: %.2lf, max: %d", vct_depth_cur,   \
+            (double)vct_depth_sum / game_cnt, vct_depth_max);             \
+        result.game = game, result.winner = winner_id;                    \
+        return result;                                                    \
     } while (0)
     game_t game = new_game(time_limit);
     log("[%s] vs [%s], time_limit: %dms", p1.name, p2.name, time_limit);
@@ -82,7 +81,8 @@ game_result_t start_game(player_t p1, player_t p2, int first_player, int time_li
 
         if (setjmp(env) == 0) {
             if (!players[player].attribute.allow_timeout) {
-                start_timer(time_limit / 1000);
+                // set timeout limit to 1000/750 = 1.33 times of origininal limit
+                start_timer(time_limit / 750);
             }
             const double tim = record_time();
             const point_t pos = players[player].move(game, players[player].assets);
@@ -167,6 +167,7 @@ game_result_t start_game(player_t p1, player_t p2, int first_player, int time_li
                 vector_t vct_sequence = vct(false, game.board, game.cur_id, 50);
                 if (vct_sequence.size) {
                     print_points(vct_sequence, PROMPT_NOTE, " -> ");
+                    vct_depth_cur = vct_sequence.size;
                     vct_depth_sum += vct_sequence.size;
                     vct_depth_max = max(vct_depth_max, (int)vct_sequence.size);
                     log_w("found VCT sequence, claim p%d will win", player);

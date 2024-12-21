@@ -134,13 +134,13 @@ static forward_result_t look_forward(board_t board, int cur_id) {
         .points = vector_new(point_t, NULL),
     };
     vector_t self_5 = vector_new(threat_t, NULL);
-    vector_t self_4 = vector_new(threat_t, NULL);
+    vector_t self_a4 = vector_new(threat_t, NULL);
     vector_t self_d4 = vector_new(threat_t, NULL);
     scan_threats(board, cur_id,
-                 (threat_storage_t){[PAT_WIN] = &self_5, [PAT_A4] = &self_4, [PAT_D4] = &self_d4});
+                 (threat_storage_t){[PAT_WIN] = &self_5, [PAT_A4] = &self_a4, [PAT_D4] = &self_d4});
     vector_t oppo_5 = vector_new(threat_t, NULL);
-    vector_t oppo_4 = vector_new(threat_t, NULL);
-    scan_threats(board, 3 - cur_id, (threat_storage_t){[PAT_WIN] = &oppo_5, [PAT_A4] = &oppo_4});
+    vector_t oppo_a4 = vector_new(threat_t, NULL);
+    scan_threats(board, 3 - cur_id, (threat_storage_t){[PAT_WIN] = &oppo_5, [PAT_A4] = &oppo_a4});
     if (self_5.size) {
         ret.value = EVAL_MAX * sgn;
         threat_t attack = vector_get(threat_t, self_5, 0);
@@ -156,26 +156,20 @@ static forward_result_t look_forward(board_t board, int cur_id) {
             vector_push_back(ret.points, defense.pos);
         }
         if (lose) ret.value = -EVAL_MAX * sgn;
-    } else if (self_4.size) {
+    } else if (self_a4.size) {
         ret.value = EVAL_MAX * sgn;
-        for_each(threat_t, self_4, attack) vector_push_back(ret.points, attack.pos);
-    } else if (oppo_4.size) {
-        bool lose = false;
-        for_each(threat_t, oppo_4, defense) {
+        for_each(threat_t, self_a4, attack) vector_push_back(ret.points, attack.pos);
+    } else if (oppo_a4.size) {
+        for_each(threat_t, oppo_a4, defense) {
             if (is_forbidden(board, defense.pos, cur_id, 2)) {
-                lose = true;
                 continue;
             }
             vector_push_back(ret.points, defense.pos);
         }
-        if (lose) {
-            ret.value = -EVAL_MAX * sgn;
-        } else {
-            for_each(threat_t, self_d4, attack) vector_push_back(ret.points, attack.pos);
-        }
+        for_each(threat_t, self_d4, attack) vector_push_back(ret.points, attack.pos);
     }
-    vector_free(self_5), vector_free(self_4), vector_free(self_d4);
-    vector_free(oppo_5), vector_free(oppo_4);
+    vector_free(self_5), vector_free(self_a4), vector_free(self_d4);
+    vector_free(oppo_5), vector_free(oppo_a4);
     return ret;
 }
 
@@ -191,10 +185,14 @@ static result_t minimax_search(state_t state, cboard_t preset_candidate, int dep
     if (param.optim.look_forward) {
         forward_result_t result = look_forward(state.board, cur_id);
         if (result.value) {
-            // print(state.board);
-            // log("id: %d, sgn: %d, value: %d", cur_id, sgn, result.value);
-            // log("eval: %d", eval(state.board));
-            // prompt_pause();
+#if DEBUG_LEVEL >= 1
+            // char buffer[1024];
+            // board_serialize(state.board, buffer);
+            // FILE* f = fopen("forward.log", "a");
+            // fprintf(f, "%sid: %d, sgn: %d, result: %d, eval: %d\n\n", buffer, cur_id, sgn,
+            //         result.value, state.value);
+            // fclose(f);
+#endif
             ret.value = result.value;
             if (result.points.size) {
                 ret.pos = vector_get(point_t, result.points, 0);
@@ -209,8 +207,10 @@ static result_t minimax_search(state_t state, cboard_t preset_candidate, int dep
         available_pos = vector_new(point_t, NULL);
     }
 
-    if (param.optim.search_vct && (depth < 3 || state.value * sgn >= 500)) {
-        vector_t vct_sequence = vct(false, state.board, cur_id, 1);
+    if (param.optim.search_vct && (max_depth - depth > 4)) {
+        double vct_time = 0.5;
+        if (depth < 5) vct_time += (5 - depth) * 1;
+        vector_t vct_sequence = vct(false, state.board, cur_id, vct_time);
         // FILE* f = fopen("vct.csv", "a");
         // fprintf(f, "%d,%lu,\n", state.value * sgn, vct_sequence.size);
         // fclose(f);
@@ -376,6 +376,7 @@ point_t minimax(game_t game, const void* assets) {
         return pos;
     else
         pos = initial_move(game);
+    log("initial pos: %c%d", READABLE_POS(pos));
 
     time_limit = game.time_limit * 0.95;
 

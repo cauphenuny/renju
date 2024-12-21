@@ -99,11 +99,18 @@ void test_threat_tree() {
     /*
     [G10] (H11) [I10] (J10) [I11] (I12) [E10] (F10) [E9] (E7) 
     '*/
-    char buffer[1024];
-    board_serialize(game.board, buffer);
-    printf("%s", buffer);
-    print_game(game);
-    vct(false, game.board, 1, 5000);
+    game_t game2 = 
+    restore_game(15000,33,(point_t[]){{7,7},{7,8},{6,6},{8,8},{6,8},{8,6},{6,7},{6,5},{8,7},{5,7},{5,9},{4,10},{6,10},{6,9},{5,8},{9,7},{3,8},{4,8},{4,9},{3,10},{5,10},{6,11},{7,6},{8,5},{7,5},{7,4},{2,7},{1,6},{5,6},{9,6},{10,7},{9,8},{9,5}});
+    // char buffer[1024];
+    // board_serialize(game.board, buffer);
+    // printf("%s", buffer);
+    print_game(game2);
+    double st = record_time();
+    vector_t vct2 = vct(false, game2.board, game2.cur_id, 5000);
+    double du = get_time(st);
+    print_points(vct2, PROMPT_LOG, " -> ");
+    vector_free(vct2);
+    log("time: %.2lfms", du);
     // clang-format on
 
     // #include "boards.txt"
@@ -128,33 +135,34 @@ void test_threat_tree() {
 
 void test_threat_seq() {
 #include "board_vct.txt"
-    for (int T = 0; T < 10000; T++) {
+    for (int T = 0; T < 10; T++) {
         for (int i = 0; i < VCT_TESTS; i++) {
             // for (int i = 0; i < 1; i++) {
-        int id = tests[i].id;
-        // prompt_scanf("%d%d", &i, &id);
-        board_t board;
-        parse_board(board, tests[i].str);
-        // for (int i = 0; i < BOARD_SIZE; i++) {
-        //     for (int j = 0; j < BOARD_SIZE; j++) {
-        //         if (board[i][j]) board[i][j] = 3 - board[i][j];
-        //     }
-        // }
-        // id = 3 - id;
-        // vector_t forest = get_threat_forest(board, 1, true);
-        // for_each_ptr(threat_tree_node_t*, forest, proot) {
-        //     threat_tree_node_t* root = *proot;
-        //     print_threat_tree(root);
-        // }
-        print(board);
-        double start_time = record_time();
-        vector_t seq = vct(false, board, id, 5000);
-        print_points(seq, PROMPT_LOG, " -> ");
-        log("time: %.3lfms", get_time(start_time));
-        int get_vct = seq.size != 0;
-        vector_free(seq);
-        if (get_vct != tests[i].have_vct) {
-            log_e("test failed, expected %d, got %d", tests[i].have_vct, get_vct);
+            int id = tests[i].id;
+            // prompt_scanf("%d%d", &i, &id);
+            board_t board;
+            parse_board(board, tests[i].str);
+            // for (int i = 0; i < BOARD_SIZE; i++) {
+            //     for (int j = 0; j < BOARD_SIZE; j++) {
+            //         if (board[i][j]) board[i][j] = 3 - board[i][j];
+            //     }
+            // }
+            // id = 3 - id;
+            // vector_t forest = get_threat_forest(board, 1, true);
+            // for_each_ptr(threat_tree_node_t*, forest, proot) {
+            //     threat_tree_node_t* root = *proot;
+            //     print_threat_tree(root);
+            // }
+            print(board);
+            double start_time = record_time();
+            vector_t seq = vct(false, board, id, 5000);
+            print_points(seq, PROMPT_LOG, " -> ");
+            log("time: %.3lfms", get_time(start_time));
+            int get_vct = seq.size != 0;
+            vector_free(seq);
+            if (get_vct != tests[i].have_vct) {
+                log_e("test failed, expected %d, got %d", tests[i].have_vct, get_vct);
+                exit(EXIT_FAILURE);
             }
             // point_t p = vct(board, 1, false);
             // if (in_board(p)) {
