@@ -1,13 +1,12 @@
 #include "neuro.h"
 
-#include <math.h>
 #include <assert.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-void softmax(float x[], int size)
-{
+void softmax(float x[], int size) {
     // log("softmax: %d", size);
     float max_val = -1e9, sum = 0;
     for (int i = 0; i < size; i++) {
@@ -22,40 +21,35 @@ void softmax(float x[], int size)
     }
 }
 
-void sigmoid(float x[], int size)
-{
+void sigmoid(float x[], int size) {
     // log("sigmoid: %d", size);
     for (int i = 0; i < size; i++) {
         x[i] = 1 / (1 + exp(-x[i]));
     }
 }
 
-void silu(float x[], int size)
-{
+void silu(float x[], int size) {
     // log("silu: %d", size);
     for (int i = 0; i < size; i++) {
         x[i] = x[i] / (1 + exp(-x[i]));
     }
 }
 
-void relu(float x[], int size)
-{
+void relu(float x[], int size) {
     // log("relu: %d", size);
     for (int i = 0; i < size; i++) {
         x[i] = x[i] > 0 ? x[i] : 0;
     }
 }
 
-void tanh_(float x[], int size)
-{
+void tanh_(float x[], int size) {
     // log("tanh: %d", size);
     for (int i = 0; i < size; i++) {
         x[i] = tanh(x[i]);
     }
 }
 
-float mean(float x[], int size)
-{
+float mean(float x[], int size) {
     float sum = 0;
     for (int i = 0; i < size; i++) {
         sum += x[i];
@@ -63,8 +57,7 @@ float mean(float x[], int size)
     return sum / size;
 }
 
-double entropy(const float x[], int size, bool normalize)
-{
+double entropy(const float x[], int size, bool normalize) {
     float* arr = (float*)malloc(size * sizeof(float));
     memcpy(arr, x, size * sizeof(float));
     if (normalize) {
@@ -90,8 +83,7 @@ double entropy(const float x[], int size, bool normalize)
 void conv2d_impl(const float* restrict input, int input_channel, int input_x, int input_y,
                  float* restrict output, int output_channel, int* output_x, int* output_y,
                  const float* restrict kernel, const float* restrict bias, int kernel_size,
-                 int padding, void (*activate)(float[], int))
-{
+                 int padding, void (*activate)(float[], int)) {
     const int _output_x = input_x - kernel_size + 2 * padding + 1;
     const int _output_y = input_y - kernel_size + 2 * padding + 1;
     const int output_size = _output_x * _output_y;
@@ -139,8 +131,7 @@ void conv2d_impl(const float* restrict input, int input_channel, int input_x, in
 
 void max_pool_impl(const float* restrict input, int channel, int input_x, int input_y,
                    float* restrict output, int* output_x, int* output_y, int kernel_size,
-                   int stride)
-{
+                   int stride) {
     const int _output_x = (input_x - kernel_size) / stride + 1;
     const int _output_y = (input_y - kernel_size) / stride + 1;
     const int output_size = _output_x * _output_y;
@@ -171,8 +162,7 @@ void max_pool_impl(const float* restrict input, int channel, int input_x, int in
 
 void linear_impl(const float* restrict input, int input_size, float* restrict output,
                  int output_size, const float* restrict weight, const float* restrict bias,
-                 void (*activate)(float[], int))
-{
+                 void (*activate)(float[], int)) {
     // log("linear: %d => %d", input_size, output_size);
 #pragma omp parallel for
     for (int i = 0; i < output_size; i++) {
@@ -189,8 +179,7 @@ void linear_impl(const float* restrict input, int input_size, float* restrict ou
 }
 
 #ifdef TEST
-void test_neuro()
-{
+void test_neuro() {
     float kernel[4 * 2 * 3 * 3];
     for (int i = 0; i < 4 * 2 * 3 * 3; i++) kernel[i] = i;
     float input[18];

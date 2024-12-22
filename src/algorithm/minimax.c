@@ -77,14 +77,24 @@ static double tim, time_limit;
 
 static void init_candidate(board_t board, cboard_t candidate, int cur_id) {
     memset(candidate, 0, sizeof(cboard_t));
+    const int mid = BOARD_SIZE / 2;
+    for (int i = mid - 2; i <= mid + 2; i++) {
+        for (int j = mid - 2; j <= mid + 2; j++) {
+            point_t np = {mid + i, mid + j};
+            if (board[np.x][np.y]) continue;
+            if (is_forbidden(board, np, cur_id, 4)) continue;
+            candidate[np.x][np.y] = 1;
+        }
+    }
     for (int i = 0; i < BOARD_SIZE; i++) {
         for (int j = 0; j < BOARD_SIZE; j++) {
             if (!board[i][j]) continue;
             for (int x = -1; x <= 1; x++) {
                 for (int y = -1; y <= 1; y++) {
-                    point_t np = (point_t){i + x, j + y};
+                    point_t np = {i + x, j + y};
+                    if (candidate[np.x][np.y]) continue;
                     if (!in_board(np) || board[np.x][np.y]) continue;
-                    if (is_forbidden(board, np, cur_id, 3)) continue;
+                    if (is_forbidden(board, np, cur_id, 4)) continue;
                     candidate[np.x][np.y] = 1;
                 }
             }
@@ -94,12 +104,11 @@ static void init_candidate(board_t board, cboard_t candidate, int cur_id) {
     threat_storage_t storage = {0};
     storage[PAT_WIN] = storage[PAT_A4] = storage[PAT_D4] = storage[PAT_A3] = storage[PAT_D3] =
         &threats;
-    scan_threats(board, cur_id, storage);
+    scan_threats(board, cur_id, cur_id, storage);
     storage[PAT_D3] = NULL;
-    scan_threats(board, 3 - cur_id, storage);
+    scan_threats(board, 3 - cur_id, cur_id, storage);
     for_each(threat_t, threats, threat) {
         point_t p = threat.pos;
-        if (is_forbidden(board, p, cur_id, 3)) continue;
         candidate[p.x][p.y] = 1;
     }
     vector_free(threats);
@@ -127,8 +136,9 @@ typedef struct {
 
 static void free_forward_result(forward_result_t* result) { vector_free(result->points); }
 
-static forward_result_t look_forward(board_t board, int cur_id) {
-    const int sgn = cur_id == 1 ? 1 : -1;
+static forward_result_t look_forward(board_t board, int self_id) {
+    const int sgn = self_id == 1 ? 1 : -1;
+    const int oppo_id = 3 - self_id;
     forward_result_t ret = {
         .value = 0,
         .points = vector_new(point_t, NULL),
@@ -136,11 +146,12 @@ static forward_result_t look_forward(board_t board, int cur_id) {
     vector_t self_5 = vector_new(threat_t, NULL);
     vector_t self_a4 = vector_new(threat_t, NULL);
     vector_t self_d4 = vector_new(threat_t, NULL);
-    scan_threats(board, cur_id,
+    scan_threats(board, self_id, self_id,
                  (threat_storage_t){[PAT_WIN] = &self_5, [PAT_A4] = &self_a4, [PAT_D4] = &self_d4});
     vector_t oppo_5 = vector_new(threat_t, NULL);
     vector_t oppo_a4 = vector_new(threat_t, NULL);
-    scan_threats(board, 3 - cur_id, (threat_storage_t){[PAT_WIN] = &oppo_5, [PAT_A4] = &oppo_a4});
+    scan_threats(board, oppo_id, oppo_id,
+                 (threat_storage_t){[PAT_WIN] = &oppo_5, [PAT_A4] = &oppo_a4});
     if (self_5.size) {
         ret.value = EVAL_MAX * sgn;
         threat_t attack = vector_get(threat_t, self_5, 0);
@@ -149,7 +160,7 @@ static forward_result_t look_forward(board_t board, int cur_id) {
         bool lose = false;
         if (oppo_5.size > 1) lose = true;
         for_each(threat_t, oppo_5, defense) {
-            if (is_forbidden(board, defense.pos, cur_id, 2)) {
+            if (is_forbidden(board, defense.pos, self_id, 2)) {
                 lose = true;
                 continue;
             }
@@ -161,7 +172,7 @@ static forward_result_t look_forward(board_t board, int cur_id) {
         for_each(threat_t, self_a4, attack) vector_push_back(ret.points, attack.pos);
     } else if (oppo_a4.size) {
         for_each(threat_t, oppo_a4, defense) {
-            if (is_forbidden(board, defense.pos, cur_id, 2)) {
+            if (is_forbidden(board, defense.pos, self_id, 2)) {
                 continue;
             }
             vector_push_back(ret.points, defense.pos);
@@ -175,7 +186,8 @@ static forward_result_t look_forward(board_t board, int cur_id) {
 
 static result_t minimax_search(state_t state, cboard_t preset_candidate, int depth, int alpha,
                                int beta) {
-    const int sgn = state.sgn, cur_id = sgn == 1 ? 1 : 2;
+    const int sgn = state.sgn, self_id = sgn == 1 ? 1 : 2;
+    const int oppo_id = 3 - self_id;
 
     if (get_time(tim) > time_limit) return (result_t){false, 0, {-1, -1}, 0};
     if (depth > max_depth || state.result) return (result_t){true, state.value, state.pos, 1};
@@ -183,7 +195,7 @@ static result_t minimax_search(state_t state, cboard_t preset_candidate, int dep
     result_t ret = {true, -EVAL_INF * sgn, {-1, -1}, 1};
     vector_t available_pos = {0};
     if (param.optim.look_forward) {
-        forward_result_t result = look_forward(state.board, cur_id);
+        forward_result_t result = look_forward(state.board, self_id);
         if (result.value) {
 #if DEBUG_LEVEL >= 1
             // char buffer[1024];
@@ -208,9 +220,9 @@ static result_t minimax_search(state_t state, cboard_t preset_candidate, int dep
     }
 
     if (param.optim.search_vct && (max_depth - depth > 4)) {
-        double vct_time = 0.5;
-        if (depth < 5) vct_time += (5 - depth) * 1;
-        vector_t vct_sequence = vct(false, state.board, cur_id, vct_time);
+        double vct_time = depth < 2 ? 3 : 0.3;
+        bool only_four = depth < 2 ? false : true;
+        vector_t vct_sequence = vct(only_four, state.board, self_id, vct_time);
         // FILE* f = fopen("vct.csv", "a");
         // fprintf(f, "%d,%lu,\n", state.value * sgn, vct_sequence.size);
         // fclose(f);
@@ -239,15 +251,15 @@ static result_t minimax_search(state_t state, cboard_t preset_candidate, int dep
             vector_t threats = vector_new(threat_t, NULL);
             threat_storage_t storage = {0};
             storage[PAT_WIN] = storage[PAT_A4] = storage[PAT_D4] = storage[PAT_A3] = &threats;
-            scan_threats(state.board, cur_id, storage);
-            scan_threats(state.board, 3 - cur_id, storage);
+            scan_threats(state.board, self_id, self_id, storage);
+            scan_threats(state.board, 3 - self_id, self_id, storage);
             const int pat_to_level[PAT_TYPE_SIZE] = {
                 [PAT_WIN] = 7, [PAT_A4] = 6, [PAT_D4] = 4, [PAT_A3] = 4, [PAT_D3] = 1, [PAT_A2] = 1,
             };
             for_each(threat_t, threats, threat) {
                 for_each_ptr(point_eval_t, eval_vector, eval) {
                     if (point_equal(eval->pos, threat.pos)) {
-                        int level = pat_to_level[threat.pattern] + (cur_id == threat.id ? 0 : -1);
+                        int level = pat_to_level[threat.pattern] + (self_id == threat.id ? 0 : -1);
                         eval->level += (1 << level);
                         break;
                     }
@@ -337,6 +349,7 @@ result_t minimax_parallel_search(state_t init_state, cboard_t init_candidates) {
 }
 
 point_t initial_move(game_t game) {
+    const int self_id = game.cur_id, oppo_id = 3 - self_id;
     point_t pos;
     vector_t better_move = vector_new(threat_t, NULL);
     vector_t normal_move = vector_new(threat_t, NULL);
@@ -346,8 +359,8 @@ point_t initial_move(game_t game) {
         [PAT_D4] = &normal_move,  [PAT_A3] = &normal_move,                     //
         [PAT_D3] = &trash,        [PAT_A2] = &trash,       [PAT_D2] = &trash,  //
     };
-    scan_threats(game.board, game.cur_id, storage);
-    scan_threats(game.board, 3 - game.cur_id, storage);
+    scan_threats(game.board, self_id, self_id, storage);
+    scan_threats(game.board, oppo_id, self_id, storage);
     if (better_move.size) {
         int index = rand() % better_move.size;
         pos = vector_get(threat_t, better_move, index).pos;

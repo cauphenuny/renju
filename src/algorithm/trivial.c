@@ -23,12 +23,13 @@ point_t random_move(game_t game) {
 }
 
 /// @brief find a trivial move from {game.board}
-point_t trivial_move(board_t board, int cur_id, double time_limit, bool use_vct) {
+point_t trivial_move(board_t board, int self_id, double time_limit, bool use_vct) {
+    const int oppo_id = 3 - self_id;
     vector_t self_5 = vector_new(threat_t, NULL);
     vector_t self_4 = vector_new(threat_t, NULL);
-    scan_threats(board, cur_id, (threat_storage_t){[PAT_WIN] = &self_5, [PAT_A4] = &self_4});
+    scan_threats(board, self_id, self_id, (threat_storage_t){[PAT_WIN] = &self_5, [PAT_A4] = &self_4});
     vector_t oppo_5 = vector_new(threat_t, NULL);
-    scan_threats(board, 3 - cur_id, (threat_storage_t){[PAT_WIN] = &oppo_5});
+    scan_threats(board, oppo_id, oppo_id, (threat_storage_t){[PAT_WIN] = &oppo_5});
     point_t pos = {-1, -1};
     if (self_5.size) {
         threat_t attack = vector_get(threat_t, self_5, 0);
@@ -36,7 +37,7 @@ point_t trivial_move(board_t board, int cur_id, double time_limit, bool use_vct)
     }
     if (!in_board(pos) && oppo_5.size) {
         for_each(threat_t, oppo_5, defend) {
-            if (!is_forbidden(board, defend.pos, cur_id, 3)) {
+            if (!is_forbidden(board, defend.pos, self_id, 3)) {
                 pos = defend.pos;
             }
         }
@@ -50,7 +51,7 @@ point_t trivial_move(board_t board, int cur_id, double time_limit, bool use_vct)
 
     if (use_vct) {
         double start_time = record_time();
-        vector_t vct_sequence = vct(false, board, cur_id, time_limit);
+        vector_t vct_sequence = vct(false, board, self_id, time_limit);
         if (vct_sequence.size) {
             pos = vector_get(point_t, vct_sequence, 0);
             log("found VCT in %.2lfms", get_time(start_time));

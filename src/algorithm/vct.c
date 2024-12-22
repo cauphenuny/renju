@@ -62,7 +62,7 @@ vector_t scan_threats_info(board_t board, int id, bool only_four) {
     if (!only_four) {
         storage[PAT_A3] = &threats;
     }
-    scan_threats(board, id, storage);
+    scan_threats(board, id, id, storage);
     for_each(threat_t, threats, threat) {
         threat_info_t info = attach_threat_info(board, threat);
         vector_push_back(threat_info, info);
@@ -391,7 +391,7 @@ bool try_defend_chain(local_var_t* assets, board_t board, threat_tree_node_t* st
         [PAT_A4] = &alive_four_defenses,
         [PAT_D4] = &dead_four_defenses,
     };
-    scan_threats(board, assets->defend_id, storage);
+    scan_threats(board, assets->defend_id, assets->defend_id, storage);
     // log("size: (5: %d, A4: %d, D4: %d)", five_defenses.size, alive_four_defenses.size,
     // dead_four_defenses.size);
     // for_each(threat_t, dead_four_defenses, d4) { print_threat(attach_threat_info(board, d4)); }
@@ -472,7 +472,7 @@ void validate_win_nodes(local_var_t* assets, threat_tree_node_t* root) {
         [PAT_A4] = &alive_four_defenses,
         [PAT_D4] = &dead_four_defenses,
     };
-    scan_threats(root->board, assets->defend_id, storage);
+    scan_threats(root->board, assets->defend_id, assets->defend_id, storage);
     for (threat_tree_node_t* child = root->son; child; child = child->brother) {
         //        print(root->board);
         //        vector_t points = vector_new(point_t, NULL);
@@ -638,7 +638,7 @@ vector_t vct(bool only_four, board_t board, int id, double time_ms) {
     vector_t sequence = vector_new(point_t, NULL);
     double tim = record_time();
     local_var_t assets = {0};
-    assets.step_time_limit = min(time_ms * 0.2, TIMEOUT_LIMIT);
+    assets.step_time_limit = min(time_ms * 0.5, TIMEOUT_LIMIT);
     int depth;
     vector_t threats = scan_threats_info(board, id, only_four);
     int last_size = 0;
@@ -648,7 +648,6 @@ vector_t vct(bool only_four, board_t board, int id, double time_ms) {
         assets.DEPTH_LIMIT = depth;
         assets.start_time = record_time();
         threat_tree_node_t* root = get_threat_tree(&assets, board, threats, id, only_four);
-        assets.start_time = record_time();
         find_win_nodes(root);
         assets.start_time = record_time();
         validate_win_nodes(&assets, root);

@@ -43,7 +43,9 @@ void flatten(board_t board, int perspective, int dir_x, int dir_y, int pieces[],
 
 /// @brief scan threats on the board
 /// @param storage array of vector<threat_t>*, bind pattern type to storage
-void scan_threats(board_t board, int id, threat_storage_t storage) {
+/// @param id the player to whom the threats belong
+/// @param filter_id the player to check whether the pos is a valid position to put piece
+void scan_threats(board_t board, int id, int filter_id, threat_storage_t storage) {
     int pieces[BOARD_AREA * 2], tot, id2x[BOARD_AREA * 2], id2y[BOARD_AREA * 2];
     vector_t forbidden_pos = vector_new(point_t, NULL);
     for_all_dir(d, dir_x, dir_y) {
@@ -69,8 +71,7 @@ void scan_threats(board_t board, int id, threat_storage_t storage) {
                         int cur_idx = idx - columns[j];
                         point_t pos = {id2x[cur_idx], id2y[cur_idx]};
                         board[pos.x][pos.y] = id;
-                        pattern_t real_pat = to_pattern(
-                            encode_segment(get_segment(board, pos, dir_x, dir_y)), id == 1);
+                        pattern_t real_pat = get_pattern(board, pos, dir_x, dir_y, id);
                         board[pos.x][pos.y] = 0;
                         if (real_pat != pat) {
                             continue;
@@ -89,7 +90,7 @@ void scan_threats(board_t board, int id, threat_storage_t storage) {
                                 break;
                             }
                         }
-                        if (save && is_forbidden(board, pos, id, 3)) {
+                        if (save && is_forbidden(board, pos, filter_id, 3)) {
                             save = false;
                             vector_push_back(forbidden_pos, pos);
                         }
@@ -122,7 +123,7 @@ vector_t scan_four_threats(board_t board, int id) {
         [PAT_A4] = &result,
         [PAT_D4] = &result,
     };
-    scan_threats(board, id, storage);
+    scan_threats(board, id, id, storage);
     return result;
 }
 
@@ -133,7 +134,7 @@ vector_t scan_five_threats(board_t board, int id) {
     threat_storage_t storage = {
         [PAT_WIN] = &result,
     };
-    scan_threats(board, id, storage);
+    scan_threats(board, id,  id, storage);
     return result;
 }
 
@@ -144,7 +145,7 @@ vector_t scan_threats_by_threshold(board_t board, int id, pattern_t threshold) {
     for (int i = (int)threshold; i < (int)PAT_TYPE_SIZE; i++) {
         storage[i] = &result;
     }
-    scan_threats(board, id, storage);
+    scan_threats(board, id, id, storage);
     return result;
 }
 

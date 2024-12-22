@@ -9,8 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-int parse(char s[])
-{
+int parse(char s[]) {
     if (strcmp(s, "back") == 0 || strcmp(s, "withdraw") == 0) {
         return GAMECTRL_WITHDRAW;
     }
@@ -34,8 +33,7 @@ int parse(char s[])
     return tmp * (s[0] == '-' ? -1 : 1);
 }
 
-point_t input_manually(game_t game, const void* assets)
-{
+point_t input_manually(game_t game, const void* assets) {
     (void)game, (void)assets;
 
 #if DEBUG_LEVEL >= 2

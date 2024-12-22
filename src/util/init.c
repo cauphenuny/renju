@@ -6,8 +6,7 @@
 #include <time.h>
 
 /// @brief initialize
-void init()
-{
+void init() {
     srand(time(NULL));
     zobrist_init();
     pattern_init();

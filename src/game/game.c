@@ -3,8 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 
-game_t new_game(int time_limit)
-{
+game_t new_game(int time_limit) {
     game_t game = {0};
     game.cur_id = 1;
     if (time_limit > 0)
@@ -14,16 +13,14 @@ game_t new_game(int time_limit)
     return game;
 }
 
-void add_step(game_t* game, point_t pos)
-{
+void add_step(game_t* game, point_t pos) {
     put(game->board, game->cur_id, pos);
     game->steps[game->count++] = pos;
     game->cur_id = 3 - game->cur_id;
 }
 
 /// @brief generate a game with the first {count} steps of {game}
-game_t backward(game_t game, int count)
-{
+game_t backward(game_t game, int count) {
     game_t subgame = new_game(game.time_limit);
     for (int i = 0; i < count; i++) {
         add_step(&subgame, game.steps[i]);
@@ -32,8 +29,7 @@ game_t backward(game_t game, int count)
 }
 
 /// @brief print the current board of {game}
-void print_game(game_t game)
-{
+void print_game(game_t game) {
     if (game.count == 0) {
         print(game.board);
         return;
@@ -44,8 +40,7 @@ void print_game(game_t game)
     game.board[pos.x][pos.y] -= 2;
 }
 
-game_t restore_game(int time_limit, int count, point_t moves[])
-{
+game_t restore_game(int time_limit, int count, point_t moves[]) {
     game_t game = new_game(time_limit);
     for (int i = 0; i < count; i++) {
         add_step(&game, moves[i]);
@@ -55,8 +50,7 @@ game_t restore_game(int time_limit, int count, point_t moves[])
 
 /// @brief export the state of {game} to {file}
 /// @param file file to export, empty if uses stdout
-void serialize_game(game_t game, const char* file)
-{
+void serialize_game(game_t game, const char* file) {
     FILE* fp;
     if (strlen(file)) {
         fp = fopen(file, "w");

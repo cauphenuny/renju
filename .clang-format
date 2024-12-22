@@ -19,7 +19,6 @@ BreakBeforeBraces: Attach
 IndentWidth: 4
 TabWidth: 4
 IncludeBlocks: Regroup
-IndentPPDirectives: AfterHash
 UseTab: Never
 SortIncludes: true
 PointerAlignment: Left

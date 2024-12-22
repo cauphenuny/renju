@@ -17,7 +17,7 @@ typedef vector_t* threat_storage_t[PAT_TYPE_SIZE];  // vector<threat_t>
 int eval(board_t board);
 
 /// @param storage array of vector<threat_t>*, bind pattern type to storage
-void scan_threats(board_t board, int id, threat_storage_t storage);
+void scan_threats(board_t board, int id, int filter_id, threat_storage_t storage);
 /// @param return vector<threat_t>
 vector_t scan_five_threats(board_t board, int id);
 /// @param return vector<threat_t>

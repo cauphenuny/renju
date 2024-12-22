@@ -19,8 +19,7 @@ int statistics[3][3];
 // [1][0/1/2]: p1 win count (all / 1st / 2nd)
 // [2][0/1/2]: p2 win count (all / 1st / 2nd)
 
-static void print_statistics(void)
-{
+static void print_statistics(void) {
     const int sum = statistics[0][1] + statistics[0][2];
     if (sum) {
         const double total_base = 100.0 / sum;
@@ -46,9 +45,7 @@ static char* model_file;
 static network_t network;
 static dataset_t dataset;
 
-static void save_data()
-{
-    return;
+static void save_data() {
     log("save game data? [y/n]");
     int c;
     do c = prompt_pause();
@@ -80,8 +77,7 @@ static void save_data()
     }
 }
 
-static void signal_handler(int signum)
-{
+static void signal_handler(int signum) {
     switch (signum) {
         case SIGINT:
             log_s("\n");
@@ -112,8 +108,7 @@ struct {
     {MANUAL, MANUAL, -1, "pvp, no AI"},
 };
 
-int main(int argc, char* argv[])
-{
+int main(int argc, char* argv[]) {
     signal(SIGINT, signal_handler);
 
     log("renju v%s", VERSION);
@@ -153,12 +148,12 @@ int main(int argc, char* argv[])
     }
 
     if (model_file == NULL) {
-        log_e("network not found. usage: %s {.mod file}", argv[0]);
+        log_e("network not found. usage: %s [.mod file]", argv[0]);
     }
 
     int player1, player2, time_limit;
 #if (DEBUG_LEVEL > 1) || defined(TEST)
-    player1 = MINIMAX_VCT, player2 = MINIMAX_VCT, time_limit = 15000;
+    player1 = MINIMAX_ADV, player2 = MINIMAX_ADV, time_limit = 15000;
 #else
     log_i("available modes: ");
     for (int i = 0; i < PRESET_SIZE; i++) {

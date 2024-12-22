@@ -11,8 +11,7 @@
 #define N BOARD_SIZE
 
 prediction_t predict(const network_t* network,  //
-                     const board_t board, point_t last_move, int cur_id)
-{
+                     const board_t board, point_t last_move, int cur_id) {
     // log("weight mean: %f", mean(network->shared.conv1.weight, 2 * 32 * 3 * 3));
     // log("bias mean: %f", mean(network->shared.conv1.bias, 32));
     prediction_t prediction = {0};
@@ -76,16 +75,14 @@ prediction_t predict(const network_t* network,  //
     return prediction;
 }
 
-void print_prediction(const prediction_t prediction)
-{
+void print_prediction(const prediction_t prediction) {
     log("eval: %.3lf, entropy: %.3f, prob:", prediction.eval,
         entropy((float*)prediction.prob, N * N, false));
     board_t board = {0};
     print_prob(board, prediction.prob);
 }
 
-int save_network(const network_t* network, const char* file_basename)
-{
+int save_network(const network_t* network, const char* file_basename) {
     char file_fullname[256];
     snprintf(file_fullname, 256, "%s.v%d.%dch.mod", file_basename, NETWORK_VERSION, MAX_CHANNEL);
     FILE* file = fopen(file_fullname, "wb");
@@ -102,8 +99,7 @@ int save_network(const network_t* network, const char* file_basename)
     return 0;
 }
 
-int load_network(network_t* network, const char* filename)
-{
+int load_network(network_t* network, const char* filename) {
     FILE* file = fopen(filename, "rb");
     if (!file) {
         log_e("no such file: %s", filename);
@@ -127,8 +123,7 @@ int load_network(network_t* network, const char* filename)
     return 0;
 }
 
-point_t nn_move(game_t game, const void* assets)
-{
+point_t nn_move(game_t game, const void* assets) {
     if (!game.count) return (point_t){(int8_t)N / 2, (int8_t)N / 2};
     const network_t* network = (network_t*)assets;
     board_t board;

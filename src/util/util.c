@@ -17,8 +17,7 @@ static const char* prompts[PROMPT_SIZE] = {
 };
 
 /// @brief flush stored logs
-void log_flush()
-{
+void log_flush() {
     printf("%s", log_buffer);
     log_buffer[0] = '\0', cur_len = 0;
     fflush(stdout);
@@ -34,12 +33,14 @@ bool log_disabled() { return _log_isdisabled; }
 
 void log_lock() { _log_islocked = 1; }
 
-void log_unlock() { _log_islocked = 0; if (cur_len) log_flush(); }
+void log_unlock() {
+    _log_islocked = 0;
+    if (cur_len) log_flush();
+}
 
 bool log_locked() { return _log_islocked; }
 
-int log_write(int log_level, const char* fmt, ...)
-{
+int log_write(int log_level, const char* fmt, ...) {
     if (_log_isdisabled == 1) return 1;
 
     if (cur_len < LOG_BUFFER_SIZE)
@@ -53,9 +54,6 @@ int log_write(int log_level, const char* fmt, ...)
     if (!_log_islocked) {
         log_flush();
         return 1;
-    } else {
-        if (cur_len < LOG_BUFFER_SIZE)
-            cur_len += snprintf(log_buffer + cur_len, LOG_BUFFER_SIZE - cur_len, " | ");
     }
     return cur_len;
 }
@@ -74,8 +72,7 @@ double get_time(double start_time) { return (get_raw_time() - start_time); }
 
 /// @brief pause until inputting a char, ignores inputs before
 /// @return char, as int type for EOF
-int pause()
-{
+int pause() {
     const double tim = record_time();
     const int ch = getchar();
     if (ch == EOF) exit(1);
@@ -84,8 +81,7 @@ int pause()
 }
 
 /// @brief get basename of a filename with path
-const char* base_name(const char* fullname)
-{
+const char* base_name(const char* fullname) {
     const char* pos = fullname;
     char ch;
 #if defined(_WIN32) || defined(_WIN64)
@@ -102,8 +98,7 @@ const char* base_name(const char* fullname)
     return pos;
 }
 
-bool file_exists(const char* filename)
-{
+bool file_exists(const char* filename) {
     FILE* file = fopen(filename, "r");
     if (file) {
         fclose(file);

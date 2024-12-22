@@ -7,15 +7,21 @@
 #include "vct.h"
 
 #include <assert.h>
-#include <execinfo.h>
-#include <setjmp.h>
-#include <signal.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
-int vct_depth_sum, vct_depth_cur, vct_depth_max, game_cnt;
+#if DEBUG_LEVEL > 0 && (defined(__unix__) || defined(__unix) || (defined(__APPLE__) && defined(__MACH__)))
+#define BACKTRACE 1
+#else
+#define BACKTRACE 0
+#endif
+
+#if BACKTRACE
+#include <execinfo.h>
+#include <signal.h>
+#include <setjmp.h>
+#include <unistd.h>
 
 static jmp_buf env;
 static void (*original_handler)(int);
@@ -43,18 +49,24 @@ void stop_timer() {
     alarm(0);
     signal(SIGALRM, original_handler);
 }
+#endif
+
+int vct_depth_sum, vct_depth_cur, vct_depth_max, game_cnt;
 
 /// @brief start a game with player {p1} and {p2}, {first_player} moves first
 /// @param time_limit time limit of every step
 game_result_t start_game(player_t p1, player_t p2, int first_player, int time_limit,
                          network_t* network) {
-    game_cnt++, vct_depth_cur = 0;
-    player_t players[] = {{}, p1, p2};
+
     const char* colors[] = {"", L_GREEN, L_RED};
     set_color(first_player == 1);
+
+    game_cnt++, vct_depth_cur = 0;
+    player_t players[] = {{}, p1, p2};
     game_result_t result = {0};
     int claim_winner = 0;
     int player = first_player;
+
 #define WIN(winner_id)                                                    \
     do {                                                                  \
         if (claim_winner && players[claim_winner].attribute.enable_vct && \
@@ -67,6 +79,7 @@ game_result_t start_game(player_t p1, player_t p2, int first_player, int time_li
         result.game = game, result.winner = winner_id;                    \
         return result;                                                    \
     } while (0)
+
     game_t game = new_game(time_limit);
     log("[%s] vs [%s], time_limit: %dms", p1.name, p2.name, time_limit);
     while (1) {
@@ -79,17 +92,21 @@ game_result_t start_game(player_t p1, player_t p2, int first_player, int time_li
         }
         bind_output_prob(result.prob[game.count]);
 
+#if BACKTRACE
         if (setjmp(env) == 0) {
             if (!players[player].attribute.allow_timeout) {
                 // set timeout limit to 1000/750 = 1.33 times of origininal limit
                 start_timer(time_limit / 750);
             }
+#endif
             const double tim = record_time();
             const point_t pos = players[player].move(game, players[player].assets);
             const double duration = get_time(tim);
+#if BACKTRACE
             if (!players[player].attribute.allow_timeout) {
                 stop_timer();
             }
+#endif
 
             switch (pos.x) {
                 case GAMECTRL_WITHDRAW:
@@ -152,10 +169,8 @@ game_result_t start_game(player_t p1, player_t p2, int first_player, int time_li
                 }
             }
 #endif
-
             add_step(&game, pos);
             print_game(game);
-
             serialize_game(game, "");
             log("eval: %d", eval(game.board));
 
@@ -176,9 +191,11 @@ game_result_t start_game(player_t p1, player_t p2, int first_player, int time_li
                 }
                 vector_free(vct_sequence);
             }
+#if BACKTRACE
         } else {
             fprintf(stderr, "player move function execution exceeded time limit.\n");
             exit(EXIT_FAILURE);
         }
+#endif
     }
 }

@@ -30,7 +30,7 @@ typedef struct {
     point_t begin, end;
     point_t pos;
     point_t win_pos[WINPOS_SIZE];
-    int8_t sgn;
+    int8_t id;
     int8_t score;
 } state_t;
 
@@ -91,7 +91,7 @@ static void get_win_pos(state_t* st) {
     memset(st->win_pos, -1, sizeof(st->win_pos));
     if (!in_board(pos)) return;
     const line_t* board = st->board;
-    const int id = st->sgn, oppo = 3 - st->sgn;
+    const int id = st->id, oppo = 3 - st->id;
     if (!id) {
         return;
     }
@@ -132,7 +132,7 @@ static state_t empty_state(point_t begin, point_t end, int next_id) {
     state_t st = {0};
     st.begin = begin;
     st.end = end;
-    st.sgn = next_id;
+    st.id = next_id;
     st.prior_P = 1;
     st.capacity = ((int)end.x - begin.x) * ((int)end.y - begin.y);
     st.pos = (point_t){-1, -1};
@@ -144,7 +144,7 @@ static state_t empty_state(point_t begin, point_t end, int next_id) {
 /// @param new_pat4 pre-calculated pattern
 /// @return updated state
 static state_t update_state(state_t state, point_t pos, pattern4_t new_pat4) {
-    add(state.board, pos, state.sgn);
+    add(state.board, pos, state.id);
     memcpy(state.visited, state.board, sizeof(state.board));
     state.pos = pos;
     if (in_area(pos, state.begin, state.end)) {
@@ -155,13 +155,13 @@ static state_t update_state(state_t state, point_t pos, pattern4_t new_pat4) {
     state.visited_cnt = state.piece_cnt;
     assert(!state.score);
     if (new_pat4 == PAT4_WIN) {
-        state.score = (state.sgn == 1) ? 1 : -1;  // current player win
+        state.score = (state.id == 1) ? 1 : -1;  // current player win
         // log("win situation %d: ", state.score);
         // print_compressed_board(state.board, pos);
         // prompt_pause();
     }
     get_win_pos(&state);
-    state.sgn = 3 - state.sgn;  // change player
+    state.id = 3 - state.id;  // change player
     state.prior_P = 1, state.evaluated = false;
     return state;
 }
@@ -196,7 +196,7 @@ static int append_child(node_t* node, node_t* child) {
 #undef log
 /// @brief get the evaluation of a node by ucb formula
 static double ucb_eval(const node_t* node) {
-    const int flag = (node->parent->state.sgn == 1) ? 1 : -1;
+    const int flag = (node->parent->state.id == 1) ? 1 : -1;
     // const int win_cnt = flag * node->state.result;
     // const double post_Q = (double)win_cnt / node->state.count;
     const double post_Q = flag * node->state.post_Q;
@@ -268,7 +268,7 @@ static void evaluate_children(node_t* node) {
     double time = record_time();
     board_t board;
     decode(node->state.board, board);
-    prediction_t prediction = predict(param.network, board, node->state.pos, node->state.sgn);
+    prediction_t prediction = predict(param.network, board, node->state.pos, node->state.id);
     // log("evaluated:");
     // print_prob(board, prediction.prob);
     for (edge_t* e = node->child_edge; e; e = e->next) {
@@ -295,8 +295,8 @@ static void trivial_evaluate_children(node_t* node) {
     };
     board_t board;
     decode(node->state.board, board);
-    scan_threats(board, node->state.sgn, storage);
-    scan_threats(board, 3 - node->state.sgn, storage);
+    scan_threats(board, node->state.id, node->state.id, storage);
+    scan_threats(board, 3 - node->state.id, node->state.id, storage);
     float prob[BOARD_AREA] = {0};
     float weight[5] = {3, 1.5, 1, 0.5, 0.3};
     for (int i = 0; i < 5; i++) {
@@ -349,7 +349,7 @@ static node_t* find_child(node_t* node, point_t pos) {
     }
     return put_piece(
         node, pos,
-        virtual_pat4type_comp(node->state.board, pos, node->state.sgn, current_check_depth));
+        virtual_pat4type_comp(node->state.board, pos, node->state.id, current_check_depth));
 }
 
 /// @brief traverse the tree to find a leaf node
@@ -359,7 +359,7 @@ static node_t* traverse(node_t* node) {
     }
     if (current_check_depth > param.check_depth) current_check_depth--;
     state_t state = node->state;
-    const int id = state.sgn;
+    const int id = state.id;
     const node_t* parent = node->parent;
     for (int i = 0; i < 2; i++) {
         const point_t win_pos = parent->state.win_pos[i];
@@ -537,7 +537,7 @@ point_t mcts(game_t game, const void* assets) {
     }
     log("node_entropy: %.3lf, min count: %d, max count: %d", node_entropy(root),
         min_count(root)->state.count, max_count(root)->state.count);
-    log("probability result:");
+    // log("probability result:");
     fboard_t prob = {0};
     for (const edge_t* e = root->child_edge; e; e = e->next) {
         const node_t* child = e->to;
@@ -547,7 +547,7 @@ point_t mcts(game_t game, const void* assets) {
     if (param.output_prob != NULL) {
         memcpy(param.output_prob, prob, sizeof(prob));
     }
-    print_prob(game.board, prob);
+    // print_prob(game.board, prob);
     if (((mcts_param_t*)assets)->output_prob) {
         memcpy(((mcts_param_t*)assets)->output_prob, prob, sizeof(prob));
     }

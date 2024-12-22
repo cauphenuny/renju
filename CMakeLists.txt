@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 3.5)
 project (
     renju
-    VERSION 2.9.1
+    VERSION 2.10.2
     LANGUAGES C
 )
 set (CMAKE_VERBOSE_MAKEFILE OFF)
@@ -91,7 +91,7 @@ target_compile_definitions(test PRIVATE TEST)
 # target_compile_definitions(test PRIVATE NO_COLOR)
 
 add_executable (botzone src/botzone.c ${SRC_LIST})
-target_compile_definitions(botzone PRIVATE NOCOLOR)
+target_compile_definitions(botzone PRIVATE NO_COLOR)
 target_link_libraries (botzone m)
 set_target_properties(botzone PROPERTIES EXCLUDE_FROM_ALL TRUE)
 

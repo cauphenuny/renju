@@ -1,0 +1,41 @@
+#controls {
+    margin-bottom: 10px;
+}
+
+#board {
+    width: 450px;
+    height: 450px;
+    position: relative;
+    background-image:
+        linear-gradient(to right, black 1px, transparent 1px),
+        linear-gradient(to bottom, black 1px, transparent 1px);
+    background-size: 30px 30px, 30px 30px;
+    background-position: 15px 15px;
+}
+
+.piece {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    position: absolute;
+    transform: translate(-50%, -50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.order {
+    color: red;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.black {
+    background-color: black;
+    border: 1px solid black;
+}
+
+.white {
+    background-color: white;
+    border: 1px solid black;
+}

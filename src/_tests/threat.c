@@ -28,7 +28,7 @@ void test_eval() {
 
         double tim = record_time();
         for (int t = 0; t < 1; t++) {
-            scan_threats(board, 1, storage);
+            scan_threats(board, 1, 1, storage);
         }
         tim = get_time(tim);
         log("time: %.3lfms", tim * 1.0);
@@ -88,7 +88,7 @@ void test_threat() {
     print_game(game);
     // clang-format on
     vector_t a3 = vector_new(threat_t, NULL);
-    scan_threats(game.board, 1, (threat_storage_t){[PAT_A3] = &a3});
+    scan_threats(game.board, 1, 1, (threat_storage_t){[PAT_A3] = &a3});
     for_each(threat_t, a3, a) { print_emph(game.board, a.pos); }
 }
 
