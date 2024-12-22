@@ -153,7 +153,7 @@ int main(int argc, char* argv[]) {
 
     int player1, player2, time_limit;
 #if (DEBUG_LEVEL > 1) || defined(TEST)
-    player1 = MINIMAX_ADV, player2 = MINIMAX_ADV, time_limit = 15000;
+    player1 = MCTS_ADV, player2 = MINIMAX_ULT, time_limit = 10000;
 #else
     log_i("available modes: ");
     for (int i = 0; i < PRESET_SIZE; i++) {

@@ -335,6 +335,14 @@ pattern4_t to_pattern4(int x, int y, int u, int v, bool consider_forbid) {
     }
 }
 
+pattern4_t get_pattern4(board_t board, point_t pos, int self_id) {
+    pattern_t idx[4];
+    for_all_dir(d, dx, dy) {
+        idx[d] = get_pattern(board, pos, dx, dy, self_id);
+    }
+    return to_pattern4(idx[0], idx[1], idx[2], idx[3], self_id == 1);
+}
+
 /// @brief get columns on which put a piece can upgrade pattern
 /// @param segment_value the int value of segment
 /// @param cols array that stores columns

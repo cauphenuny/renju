@@ -69,6 +69,7 @@ vector_t find_relative_points(int type, board_t board, point_t pos, int dx, int 
 
 pattern_t to_pattern(int segment_value, bool consider_forbid);
 pattern_t get_pattern(board_t board, point_t pos, int dx, int dy, int self_id);
+pattern4_t get_pattern4(board_t board, point_t pos, int self_id);
 pattern_t to_upgraded_pattern(int segment_value, bool consider_forbid);
 pattern4_t to_pattern4(int x, int y, int u, int v, bool consider_forbid);
 void pattern_init(void);

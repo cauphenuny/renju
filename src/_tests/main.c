@@ -14,7 +14,7 @@
 #include <string.h>
 
 #ifndef TEST
-#    error "define TEST to run unit tests!"
+#error "define TEST to run unit tests!"
 #endif
 
 int test_forbid(void);
@@ -34,35 +34,43 @@ int test_pattern(void) {
     return 0;
 }
 
+void test_one_step(game_t* game) {
+    print_game((*game));
+    char buffer[1024];
+    board_serialize((*game).board, buffer);
+    printf("%s", buffer);
+    point_t pos = minimax((*game), preset_players[MINIMAX_ADV].assets);
+    print_emph((*game).board, pos);
+    log("got pos %d, %d: %c%d", pos.x, pos.y, READABLE_POS(pos));
+    assert(in_board(pos));
+    add_step(game, pos);
+    print_game((*game));
+    serialize_game((*game), "");
+    vector_t vct_seq = vct(false, (*game).board, (*game).cur_id, 50);
+    log("vct: %d", vct_seq.size);
+    vector_free(vct_seq);
+    pos = input_manually((*game), NULL);
+    add_step(game, pos);
+    serialize_game((*game), "");
+}
+
 void test_minimax(void) {
     // clang-format off
     // game_t game = restore_game(5000,7,(point_t[]){{7,7},{8,6},{7,5},{7,6},{6,6},{5,5},{5,7}});
     game_t game[4];
     game[0] = 
-restore_game(15000,5,(point_t[]){{7,7},{6,6},{7,5},{6,7},{6,5}});
+restore_game(10000,21,(point_t[]){{7,7},{6,7},{8,6},{7,8},{8,9},{8,5},{9,9},{5,8},{7,6},{6,8},{8,8},{6,6},{6,5},{6,9},{6,10},{4,8},{3,8},{8,7},{5,10},{3,9},{5,7}});
     game[1] = 
-restore_game(30000,28,(point_t[]){{7,7},{7,8},{6,6},{8,8},{6,8},{8,6},{6,7},{6,5},{8,7},{5,7},{5,9},{4,10},{6,10},{6,9},{5,8},{9,7},{3,8},{4,8},{4,9},{3,10},{5,10},{6,11},{7,6},{8,5},{7,5},{7,4},{2,7},{1,6},{5,6},{9,6},{10,7},{9,8},{9,5}});
+restore_game(15000,5,(point_t[]){{7,7},{6,6},{7,5},{6,7},{6,5}});
     game[2] = 
-restore_game(5000,16,(point_t[]){{7,7},{8,9},{8,8},{6,6},{7,9},{9,7},{6,8},{8,6},{5,7},{4,6},{5,8},{5,6},{7,6},{6,7},{8,10},{9,11}});
+restore_game(30000,28,(point_t[]){{7,7},{7,8},{6,6},{8,8},{6,8},{8,6},{6,7},{6,5},{8,7},{5,7},{5,9},{4,10},{6,10},{6,9},{5,8},{9,7},{3,8},{4,8},{4,9},{3,10},{5,10},{6,11},{7,6},{8,5},{7,5},{7,4},{2,7},{1,6},{5,6},{9,6},{10,7},{9,8},{9,5}});
     game[3] = 
 restore_game(10000,27,(point_t[]){{7,7},{6,7},{8,6},{7,8},{8,9},{8,5},{9,9},{5,8},{7,6},{6,8},{8,8},{6,6},{6,5},{4,8},{3,8},{6,9},{6,10},{8,7},{5,10},{3,9},{5,7},{4,9},{7,9},{9,6},{10,5},{2,9},{5,9}});
     //restore_game(15000,28,(point_t[]){{7,7},{7,9},{6,8},{8,6},{8,8},{6,6},{5,6},{7,8},{5,7},{6,7},{5,8},{5,9},{6,9},{6,4},{4,7},{6,5},{6,3},{3,6},{5,3},{8,5},{4,3},{7,3},{3,3},{2,3},{8,11},{7,10},{8,10},{8,12}});
     // clang-format on
-    for (int i = 0; i < sizeof(game) / sizeof(game_t); i++) {
-    print_game(game[i]);
-    char buffer[1024];
-    board_serialize(game[i].board, buffer);
-    printf("%s", buffer);
-    const point_t pos = minimax(game[i], preset_players[MINIMAX_ADV].assets);
-    print_emph(game[i].board, pos);
-    log("got pos %d, %d: %c%d", pos.x, pos.y, READABLE_POS(pos));
-    assert(in_board(pos));
-    add_step(&game[i], pos);
-    print_game(game[i]);
-    log("eval: %d", eval(game[i].board));
-    vector_t vct_seq = vct(false, game[i].board, game[i].cur_id, 50);
-    log("vct: %d", vct_seq.size);
-    prompt_pause();
+    for (size_t i = 0; i < sizeof(game) / sizeof(game_t); i++) {
+        test_one_step(&game[i]);
+        test_one_step(&game[i]);
     }
 }
 
@@ -71,16 +79,6 @@ void test_eval();
 void test_threat();
 void test_threat_tree();
 void test_threat_seq();
-
-void test_leak() {
-    int *p = malloc(sizeof(int));
-    p = 0;
-}
-
-int test_bound() {
-    int p[20];
-    return p[20];
-}
 
 void test_vector() {
     vector_t vec = vector_new(int, NULL);
@@ -117,14 +115,6 @@ int main(int argc, char** argv) {
     bool all = 0;
     if (strcmp(argv[1], "all") == 0) all = 1;
 
-    if (strcmp(argv[1], "bound") == 0) {
-        log("test bound");
-        test_bound();
-    }
-    if (strcmp(argv[1], "leak") == 0) {
-        log("test leak");
-        test_leak();
-    }
     if (strcmp(argv[1], "vector") == 0 || all) {
         log("test vector");
         test_vector();

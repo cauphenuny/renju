@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 3.5)
 project (
     renju
-    VERSION 2.10.3
+    VERSION 2.10.4
     LANGUAGES C
 )
 set (CMAKE_VERBOSE_MAKEFILE OFF)
@@ -93,7 +93,6 @@ target_compile_definitions(test PRIVATE TEST)
 add_executable (botzone src/botzone.c ${SRC_LIST})
 target_compile_definitions(botzone PRIVATE NO_COLOR)
 target_link_libraries (botzone m)
-set_target_properties(botzone PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
 if(OpenMP_FOUND)
     target_link_libraries(main OpenMP::OpenMP_C)
