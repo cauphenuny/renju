@@ -25,7 +25,7 @@ def get_computer_move(board):
         stderr=subprocess.PIPE,
         text=True
     )
-    input_str = " ".join(f"{n}" for n in board)
+    input_str = f"{board[0]}\n" + "\n".join(f"{board[i]} {board[i+1]}" for i in range(1, len(board), 2)) + "\n"
     print(f'{input_str = }')
     stdout, stderr = process.communicate(input=input_str)
     print(f"{stdout = }")

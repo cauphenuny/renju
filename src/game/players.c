@@ -15,38 +15,29 @@ mcts_param_t mcts_params_default = {
     .wrap_rad = 2,
     .check_depth = 1,
     .network = NULL,
-    .eval_type = NONE,
-    .use_vct = true, 
+    .eval_type = EVAL_NONE,
+    .use_vct = true,
 };
 static mcts_param_t mcts_params_nn, mcts_params_adv;
 
 const static minimax_param_t minimax_params_normal = {
     .parallel = true,
     .max_depth = 8,
-    .optim =
-        {
-            .begin_vct = true,
-        },
+    .strategy = {.adjacent = 1},
+    .optim = {.begin_vct = true},
 };
 const static minimax_param_t minimax_params_advanced = {
     .parallel = true,
     .max_depth = 12,
-    .optim =
-        {
-            .begin_vct = true,
-            .look_forward = true,
-        },
+    .strategy = {.adjacent = 1},
+    .optim = {.begin_vct = true, .look_forward = true},
 };
 
 const static minimax_param_t minimax_params_ultimate = {
     .parallel = true,
     .max_depth = 12,
-    .optim =
-        {
-            .begin_vct = true,
-            .look_forward = true,
-            .search_vct = true,
-        },
+    .strategy = {.adjacent = 2},
+    .optim = {.begin_vct = true, .look_forward = true},
 };
 
 player_t preset_players[MAX_PLAYERS] = {
@@ -76,7 +67,7 @@ player_t preset_players[MAX_PLAYERS] = {
                      .move = minimax,
                      .assets = &minimax_params_advanced,
                      .attribute = {.enable_vct = minimax_params_advanced.optim.begin_vct}},
-    [MINIMAX_ULT] = {.name = "minimax, look forward, full VCT",
+    [MINIMAX_ULT] = {.name = "minimax, look forward, external VCT, larger adjacent",
                      .move = minimax,
                      .assets = &minimax_params_ultimate,
                      .attribute = {.enable_vct = minimax_params_ultimate.optim.begin_vct}},
@@ -86,9 +77,9 @@ point_t move(game_t game, player_t player) { return player.move(game, player.ass
 
 void player_init() {
     mcts_params_nn = mcts_params_default;
-    mcts_params_nn.eval_type = NETWORK;
+    mcts_params_nn.eval_type = EVAL_NETWORK;
     mcts_params_adv = mcts_params_default;
-    mcts_params_adv.eval_type = ADVANCED;
+    mcts_params_adv.eval_type = EVAL_HEURISTIC;
 }
 
 void bind_network(network_t* network, bool is_train) {

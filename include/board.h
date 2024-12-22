@@ -42,9 +42,9 @@ void print(const board_t board);
 
 void wrap_area(const board_t board, point_t* begin, point_t* end, int8_t margin);
 
-#define in_board(pos) (pos.x >= 0 && pos.x < BOARD_SIZE && pos.y >= 0 && pos.y < BOARD_SIZE)
+#define in_board(pos) ((pos).x >= 0 && (pos).x < BOARD_SIZE && (pos).y >= 0 && (pos).y < BOARD_SIZE)
 #define in_area(pos, begin, end) \
-    (pos.x >= begin.x && pos.x < end.x && pos.y >= begin.y && pos.y < end.y)
+    ((pos).x >= (begin).x && (pos).x < (end).x && (pos).y >= (begin).y && (pos).y < (end).y)
 bool available(const board_t board, point_t pos);
 extern bool enable_forbid_log;
 int is_forbidden(board_t board, point_t pos, int id, int max_depth);

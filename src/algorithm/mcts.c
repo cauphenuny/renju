@@ -407,8 +407,8 @@ static node_t* traverse(node_t* node) {
     if (node->child_cnt) {
         if (!node->state.evaluated) {
             switch (param.eval_type) {
-                case NETWORK: evaluate_children(node); break;
-                case ADVANCED: trivial_evaluate_children(node); break;
+                case EVAL_NETWORK: evaluate_children(node); break;
+                case EVAL_HEURISTIC: trivial_evaluate_children(node); break;
                 default: break;
             }
         }
@@ -457,7 +457,7 @@ point_t mcts(game_t game, const void* assets) {
     param = *((mcts_param_t*)assets);
 
     point_t trivial_pos =
-        trivial_move(game.board, game.cur_id, game.time_limit / 20.0, param.eval_type == ADVANCED);
+        trivial_move(game.board, game.cur_id, game.time_limit / 20.0, param.eval_type != EVAL_NONE);
     if (in_board(trivial_pos)) {
         if (param.output_prob) param.output_prob[trivial_pos.x][trivial_pos.y] = 1;
         return trivial_pos;

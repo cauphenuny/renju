@@ -126,21 +126,19 @@ int load_network(network_t* network, const char* filename) {
 point_t nn_move(game_t game, const void* assets) {
     if (!game.count) return (point_t){(int8_t)N / 2, (int8_t)N / 2};
     const network_t* network = (network_t*)assets;
-    board_t board;
-    memcpy(board, game.board, sizeof(board_t));
-    prediction_t prediction = predict(network, board, game.steps[game.count - 1], game.cur_id);
+    if (!network) return (point_t){-1, -1};
+    prediction_t prediction = predict(network, game.board, game.steps[game.count - 1], game.cur_id);
     point_t pos = {0, 0};
     bool forbid = game.cur_id == 1;
     for (int8_t i = 0; i < N; i++) {
         for (int8_t j = 0; j < N; j++) {
             point_t cur = (point_t){i, j};
             if (game.board[i][j]) continue;
-            if (forbid && is_forbidden(game.board, cur, game.cur_id, -1)) continue;
+            if (forbid && is_forbidden(game.board, cur, game.cur_id, 4)) continue;
             if (prediction.prob[i][j] > prediction.prob[pos.x][pos.y]) {
                 pos = cur;
             }
         }
     }
-    board[pos.x][pos.y] = game.cur_id;
     return pos;
 }

@@ -148,7 +148,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (model_file == NULL) {
-        log_e("network not found. usage: %s [.mod file]", argv[0]);
+        log_w("network not found. usage: %s [.mod file]", argv[0]);
     }
 
     int player1, player2, time_limit;

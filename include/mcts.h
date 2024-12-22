@@ -6,9 +6,9 @@
 #include "network.h"
 
 enum {
-    NONE,
-    ADVANCED,
-    NETWORK,
+    EVAL_NONE,
+    EVAL_HEURISTIC,
+    EVAL_NETWORK,
 };
 
 typedef struct {

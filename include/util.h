@@ -80,7 +80,7 @@ enum log_prompts {
 };
 
 #define LOG_BUFFER_SIZE 512
-void log_flush(void);
+void log_flush(bool endl);
 void log_enable();
 void log_disable();
 void log_lock();

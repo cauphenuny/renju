@@ -17,8 +17,9 @@ static const char* prompts[PROMPT_SIZE] = {
 };
 
 /// @brief flush stored logs
-void log_flush() {
+void log_flush(bool endl) {
     printf("%s", log_buffer);
+    if (endl) printf("\n");
     log_buffer[0] = '\0', cur_len = 0;
     fflush(stdout);
 }
@@ -35,7 +36,7 @@ void log_lock() { _log_islocked = 1; }
 
 void log_unlock() {
     _log_islocked = 0;
-    if (cur_len) log_flush();
+    if (cur_len) log_flush(false);
 }
 
 bool log_locked() { return _log_islocked; }
@@ -52,8 +53,16 @@ int log_write(int log_level, const char* fmt, ...) {
         cur_len += vsnprintf(log_buffer + cur_len, LOG_BUFFER_SIZE - cur_len, fmt, args);
     va_end(args);
     if (!_log_islocked) {
-        log_flush();
+        log_flush(false);
         return 1;
+    } else {
+        for (int i = cur_len - 1; i >= 0; i--) {
+            if (log_buffer[i] == '\n') {
+                log_buffer[i] = ' ';
+            } else {
+                break;
+            }
+        }
     }
     return cur_len;
 }

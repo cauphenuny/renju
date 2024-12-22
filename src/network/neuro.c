@@ -177,17 +177,3 @@ void linear_impl(const float* restrict input, int input_size, float* restrict ou
     if (activate) activate(output, output_size);
     // log("after activation mean: %f", mean(output, output_size));
 }
-
-#ifdef TEST
-void test_neuro() {
-    float kernel[4 * 2 * 3 * 3];
-    for (int i = 0; i < 4 * 2 * 3 * 3; i++) kernel[i] = i;
-    float input[18];
-    for (int i = 0; i < 18; i++) input[i] = i;
-    float output[4 * 3 * 3];
-    conv2d_impl(input, 2, 3, 3, output, 4, NULL, NULL, kernel, NULL, 3, 1, NULL);
-    // for (int i = 0; i < 4 * 3 * 3; i++) {
-    //     fprintf(stderr, "%.2f ", output[i]);
-    // }
-}
-#endif

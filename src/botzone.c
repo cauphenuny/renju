@@ -7,7 +7,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define BOTZONE_TIME_LIMIT 500
+#define BOTZONE_TIME_LIMIT 1000
+#define BOTZONE_PLAYER     MINIMAX_ULT
 
 void read_pos(point_t* p) {
     int x, y;
@@ -27,32 +28,31 @@ int main() {
     int n;
     scanf("%d", &n);
     point_t p;
-    int id = 1;
+    int id = 1, is_first = 1;
     for (int i = 0; i < 2 * n - 1; i++) {
         read_pos(&p);
         if (in_board(p)) {
-            if (id == 1 && is_forbidden(game.board, p, 1, -1)) {
+            if (is_first && is_forbidden(game.board, p, 1, -1)) {
                 printf("-1 0\n");
                 printf("forbidden\n");
                 return 0;
             }
             add_step(&game, p);
             if (check(game.board, p)) {
-                if (id == 1) {
-                    printf("-1 1\n");
-                } else {
-                    printf("-1 -1\n");
-                }
+                printf("-1 %d\n", id);
                 printf("win\n");
                 return 0;
             }
-            id = 3 - id;
+            is_first = !is_first;
         }
+        id = 3 - id;
     }
-    const player_t player = preset_players[MINIMAX_ADV];
+    const player_t player = preset_players[BOTZONE_PLAYER];
     p = player.move(game, player.assets);
     print_pos(p);
-    log_flush();
+    log_flush(true);
+    log_unlock();
+    // print(game.board);
 
     // while (1) {
     //     p = player.move(game, player.assets);

@@ -81,7 +81,8 @@ function sendSequence() {
             return res.json();
         })
         .then(({ x, y, debug }) => {
-            console.log("x: ", x, "y: ", y);
+            console.log("x:", x, "y:", y);
+            console.log("debug:", debug);
             waitingForComputer = false;
             if (x >= 0 && y >= 0 && x < 15 && y < 15) {
                 board[x][y] = isComputerFirst ? 'X' : 'O';
