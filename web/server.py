@@ -8,13 +8,13 @@ import os
 if len(sys.argv) == 2:
     bot = sys.argv[1]
     if not os.path.isfile(bot):
-        print(f"error: {bot} does not exist.")
+        print(f"Error: {bot} does not exist.")
         sys.exit(1)
     if not os.access(bot, os.X_OK):
-        print(f"error: {bot} is not executable.")
+        print(f"Error: {bot} is not executable.")
         sys.exit(1)
 else:
-    print(f"usage: {sys.argv[0]} [bot file]")
+    print(f"Usage: {sys.argv[0]} [bot file]")
     sys.exit(1)
 
 def get_computer_move(board):
@@ -30,15 +30,18 @@ def get_computer_move(board):
     stdout, stderr = process.communicate(input=input_str)
     print(f"{stdout = }")
     if stderr:
-        print(f"error running {bot}: {stderr}")
+        print(f"Error running {bot}: {stderr}")
     try:
         lines = stdout.strip().split('\n')
         x, y = map(int, lines[0].split())
-        debug = "\n".join(lines[1:])
+        if len(lines) >= 2:
+            debug = lines[1]
+        else:
+            debug = ""
         print(f"{x = }, {y = }, {debug = }")
         return {"x": x, "y": y, "debug": debug}
     except ValueError as e:
-        print(f"error parsing output: {e}")
+        print(f"Error parsing output: {e}")
         return {"x": None, "y": None, "debug": str(e)}
     
 
@@ -56,8 +59,8 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
-        print(f"received GET request for {self.path}")
-        print("headers:")
+        print(f"Received GET request for {self.path}")
+        print("Headers:")
         for header, value in self.headers.items():
             print(f"{header}: {value}")
         super().do_GET()
@@ -72,29 +75,34 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
         
         content_length = int(self.headers.get('Content-Length', 0))
         post_data = self.rfile.read(content_length).decode('utf-8')
-        print(f"received POST request for {self.path}")
-        print("headers:")
+        print(f"Received POST request for {self.path}")
+        print("Headers:")
         for header, value in self.headers.items():
             print(f"{header}: {value}")
-        print("body:")
+        print("Body:")
         print(post_data)
         try:
             board = json.loads(post_data)
-            print(f"parsed board: {board}")
+            print(f"Parsed board: {board}")
         except json.JSONDecodeError as e:
-            print(f"error parsing JSON: {e}")
+            print(f"Error parsing JSON: {e}")
             board = []
         move = get_computer_move(board)
-        print(f"computer move: {move}")
+        print(f"Computer move: {move}")
         response = json.dumps(move)
         print(f"{response = }")
         self.wfile.write(response.encode('utf-8'))
 
-PORT = 40000
+with open('config.json') as config_file:
+    config = json.load(config_file)
+    port = config['port']
+    print(f'Using port: {port}')
+
+PORT = port
 with socketserver.TCPServer(("", PORT), RequestHandler) as httpd:
-    print(f"serving at port {PORT}")
+    print(f"Serving...")
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
-        print("shutting down server.")
+        print("Shutting down server.")
         httpd.server_close()

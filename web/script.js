@@ -28,6 +28,11 @@ function initBoard() {
     }
 }
 
+function setMessage(content) {
+    const msg = document.getElementById("msg");
+    msg.innerHTML = content;
+}
+
 function clearMessage() {
     const msg = document.getElementById("msg");
     msg.innerHTML = "";
@@ -42,6 +47,7 @@ function placePiece(r, c) {
     turn++;
     drawPiece(r, c, isComputerFirst ? 'white' : 'black', turn);
     waitingForComputer = true;
+    setMessage("waiting");
     sendSequence();
 }
 
@@ -65,42 +71,49 @@ function sendSequence() {
     const seq = [Math.floor(turn / 2) + 1, ...moves.map(move => move.slice(0, 2)).flat()];
     console.log("seq: ", seq)
     const url = new URL(window.location.href);
-    url.port = '40000';
-    url.pathname = '/';
-    console.log("url: ", url)
-    fetch(url.toString(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(seq)
-    })
-        .then(res => {
-            console.log("res: ", res);
-            if (!res.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return res.json();
+    fetch('config.json')
+        .then(response => response.json())
+        .then(config => {
+            const port = config.port;
+            console.log(`Using port: ${port}`);
+            url.port = port;
+            url.pathname = '/';
+            console.log("url: ", url)
+            fetch(url.toString(), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(seq)
+            })
+                .then(res => {
+                    console.log("res: ", res);
+                    if (!res.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return res.json();
+                })
+                .then(({ x, y, debug }) => {
+                    console.log("x:", x, "y:", y);
+                    console.log("debug:", debug);
+                    waitingForComputer = false;
+                    if (x >= 0 && y >= 0 && x < 15 && y < 15) {
+                        board[x][y] = isComputerFirst ? 'X' : 'O';
+                        moves.push([x, y, turn + 1]);
+                        turn++;
+                        drawPiece(x, y, isComputerFirst ? 'black' : 'white', turn);
+                        clearMessage();
+                    } else {
+                        setMessage(debug);
+                        if (y == 0 || y == 2) undoMove(false);
+                        if (y) gameTerminated = true;
+                    }
+                })
+                .catch(err => {
+                    setMessage(err);
+                    console.error(err);
+                    waitingForComputer = false;
+                });
         })
-        .then(({ x, y, debug }) => {
-            console.log("x:", x, "y:", y);
-            console.log("debug:", debug);
-            waitingForComputer = false;
-            if (x >= 0 && y >= 0 && x < 15 && y < 15) {
-                board[x][y] = isComputerFirst ? 'X' : 'O';
-                moves.push([x, y, turn + 1]);
-                turn++;
-                drawPiece(x, y, isComputerFirst ? 'black' : 'white', turn);
-            } else {
-                let msg = document.getElementById("msg");
-                msg.innerHTML = debug;
-                if (y == 0 || y == 1) undoMove(false);
-                else turn++, undoMove(false);
-                if (y) gameTerminated = true;
-            }
-        })
-        .catch(err => {
-            console.error(err);
-            waitingForComputer = false;
-        });
+        .catch(error => console.error('Error loading config:', error));
 }
 
 function resetGame() {
