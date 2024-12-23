@@ -29,7 +29,7 @@ const static minimax_param_t minimax_params_normal = {
 const static minimax_param_t minimax_params_advanced = {
     .parallel = true,
     .max_depth = 12,
-    .strategy = {.adjacent = 1},
+    .strategy = {.adjacent = 2},
     .optim = {.begin_vct = true, .look_forward = true},
 };
 
@@ -37,7 +37,7 @@ const static minimax_param_t minimax_params_ultimate = {
     .parallel = true,
     .max_depth = 12,
     .strategy = {.adjacent = 2},
-    .optim = {.begin_vct = true, .look_forward = true},
+    .optim = {.begin_vct = true, .look_forward = true, .leaf_vct_depth = 6},
 };
 
 player_t preset_players[MAX_PLAYERS] = {
@@ -59,7 +59,7 @@ player_t preset_players[MAX_PLAYERS] = {
                      .move = minimax,
                      .assets = &minimax_params_advanced,
                      .attribute = {.enable_vct = minimax_params_advanced.optim.begin_vct}},
-    [MINIMAX_ULT] = {.name = "minimax, look forward, external VCT, larger adjacent",
+    [MINIMAX_ULT] = {.name = "minimax, look forward, full VCT",
                      .move = minimax,
                      .assets = &minimax_params_ultimate,
                      .attribute = {.enable_vct = minimax_params_ultimate.optim.begin_vct}},

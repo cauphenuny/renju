@@ -97,14 +97,15 @@ static void signal_handler(int signum) {
 // //clang-format on
 // }
 
+#define AI_PLAYER MINIMAX_ADV
 #define PRESET_SIZE 3
 struct {
     int p1, p2;
     int time_limit;
     const char* name;
 } preset_modes[PRESET_SIZE] = {
-    {MANUAL, MINIMAX_ULT, GAME_TIME_LIMIT, "player first"},
-    {MINIMAX_ULT, MANUAL, GAME_TIME_LIMIT, "AI first"},
+    {MANUAL, AI_PLAYER, GAME_TIME_LIMIT, "player first"},
+    {AI_PLAYER, MANUAL, GAME_TIME_LIMIT, "AI first"},
     {MANUAL, MANUAL, -1, "pvp, no AI"},
 };
 
@@ -157,7 +158,10 @@ int main(int argc, char* argv[]) {
 #else
     log_i("available modes: ");
     for (int i = 0; i < PRESET_SIZE; i++) {
-        log_i("%d: %s", i + 1, preset_modes[i].name);
+        if (preset_modes[i].time_limit > 0)
+            log_i("%d: %s\t%dms", i + 1, preset_modes[i].name, preset_modes[i].time_limit);
+        else
+            log_i("%d: %s", i + 1, preset_modes[i].name);
     }
     log_i("0: custom");
     log_i("input mode:");

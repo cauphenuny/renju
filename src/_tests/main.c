@@ -1,5 +1,4 @@
 #include "board.h"
-#include "eval.h"
 #include "game.h"
 #include "init.h"
 #include "manual.h"

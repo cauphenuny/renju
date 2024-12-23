@@ -256,7 +256,7 @@ bool segment_valid(segment_t s) {
 void print_segment(segment_t s, bool consider_forbid) {
     memo_t* memo = consider_forbid ? &forbid : &no_forbid;
     const char ch[4] = {'-', 'o', 'x', '?'};
-    printf("%5d [%c", encode_segment(s), ch[s.pieces[0]]);
+    printf("%7d [%c", encode_segment(s), ch[s.pieces[0]]);
     for (int i = 1; i < SEGMENT_LEN; i++) {
         printf(" %c", ch[s.pieces[i]]);
     }
@@ -336,10 +336,16 @@ pattern4_t to_pattern4(int x, int y, int u, int v, bool consider_forbid) {
     }
 }
 
-pattern4_t get_pattern4(board_t board, point_t pos, int self_id) {
+pattern4_t get_pattern4(board_t board, point_t pos, int self_id, bool put_piece) {
+    if (put_piece) {
+        board[pos.x][pos.y] = self_id;
+    }
     pattern_t idx[4];
     for_all_dir(d, dx, dy) {
         idx[d] = get_pattern(board, pos, dx, dy, self_id);
+    }
+    if (put_piece) {
+        board[pos.x][pos.y] = 0;
     }
     return to_pattern4(idx[0], idx[1], idx[2], idx[3], self_id == 1);
 }

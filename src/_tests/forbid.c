@@ -31,8 +31,11 @@ point_t parse_board(board_t dest, const char* str)
     return pos;
 }
 
+extern bool enable_forbid_log;
+
 int test_forbid(void)
 {
+    enable_forbid_log = true;
 #include "boards.txt"
     board_t board;
     point_t pos;

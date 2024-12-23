@@ -51,7 +51,8 @@ int is_forbidden(board_t board, point_t pos, int id, int max_depth);
 
 void put(board_t board, int id, point_t pos);
 
-int check(const board_t board, point_t pos);
+int check(board_t board, point_t pos);
+int put_and_check(board_t board, point_t pos, int id);
 bool is_draw(const board_t board);
 bool have_space(const board_t board, int id);
 bool is_equal(const board_t b1, const board_t b2);

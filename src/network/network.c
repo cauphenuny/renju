@@ -134,7 +134,7 @@ point_t nn_move(game_t game, const void* assets) {
         for (int8_t j = 0; j < N; j++) {
             point_t cur = (point_t){i, j};
             if (game.board[i][j]) continue;
-            if (forbid && is_forbidden(game.board, cur, game.cur_id, 4)) continue;
+            if (forbid && is_forbidden(game.board, cur, game.cur_id, -1)) continue;
             if (prediction.prob[i][j] > prediction.prob[pos.x][pos.y]) {
                 pos = cur;
             }

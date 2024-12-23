@@ -244,28 +244,17 @@ bool have_space(const board_t board, int id) {
 /// @param board current board
 /// @param pos position to check
 /// @return 1 for player 1 win, -1 for player 2 win, 0 for no winner
-int check(const board_t board, point_t pos) {
-    const int id = board[pos.x][pos.y];
-    if (!id) return 0;
-    int cnt = 0;
-    for_all_dir(d, dx, dy) {
-        point_t np = {pos.x, pos.y};
-        for (cnt = 0; in_board(np); np.x += dx, np.y += dy) {
-            if (board[np.x][np.y] == id)
-                cnt++;
-            else
-                break;
-        }
-        np = (point_t){pos.x - dx, pos.y - dy};
-        for (; in_board(np); np.x -= dx, np.y -= dy) {
-            if (board[np.x][np.y] == id)
-                cnt++;
-            else
-                break;
-        }
-        if (cnt >= WIN_LENGTH) return id == 1 ? 1 : -1;
-    }
-    return 0;
+int check(board_t board, point_t pos) {
+    int id = board[pos.x][pos.y];
+    pattern4_t pat4 = get_pattern4(board, pos, id, false);
+    return pat4 == PAT4_WIN ? (id == 1 ? 1 : -1) : 0;
+}
+
+int put_and_check(board_t board, point_t pos, int id) {
+    board[pos.x][pos.y] = id;
+    int result = check(board, pos);
+    board[pos.x][pos.y] = 0;
+    return result;
 }
 
 /// @brief check if {pos} is forbidden for player{id}
@@ -280,30 +269,33 @@ int is_forbidden(board_t board, point_t pos, int id, int max_depth) {
     if (max_depth == 0) return 0;
     if (id != 1) return 0;
     // print(board);
-    static const int8_t arrow[4][2] = {{1, 1}, {1, -1}, {1, 0}, {0, 1}};
-
     pattern_t pats[4] = {PAT_EMPTY, PAT_EMPTY, PAT_EMPTY, PAT_EMPTY};
     pattern4_t pat4;
     segment_t seg[4];
+    int value[4];
 
     // print_emph(board, pos);
     // pause();
     board[pos.x][pos.y] = id;
-    for (int8_t i = 0, dx, dy; i < 4; i++) {
-        dx = arrow[i][0], dy = arrow[i][1];
+    for_all_dir(i, dx, dy) {
         seg[i] = get_segment(board, pos, dx, dy);
-        int value = encode_segment(seg[i]);
-        pats[i] = to_pattern(value, true);
-        if (pats[i] == PAT_A3) {
-            int cols[2];
-            get_attack_columns(value, id == 1, cols, 2);
-            for (int j = 0; j < 2; j++) {
-                if (cols[j] != -1) {
-                    const point_t np =
-                        (point_t){pos.x + dx * (cols[j] - HALF), pos.y + dy * (cols[j] - HALF)};
-                    if (is_forbidden(board, np, id, max_depth > 0 ? max_depth - 1 : -1)) {
-                        pats[i] = PAT_EMPTY;  // incorrect, but enough for checking forbid
-                        break;
+        value[i] = encode_segment(seg[i]);
+        pats[i] = to_pattern(value[i], true);
+    }
+    pat4 = to_pattern4(pats[0], pats[1], pats[2], pats[3], true);
+    if (pat4 == PAT4_A33) {
+        for_all_dir(i, dx, dy) {
+            if (pats[i] == PAT_A3) {
+                int cols[2];
+                get_attack_columns(value[i], true, cols, 2);
+                for (int j = 0; j < 2; j++) {
+                    if (cols[j] != -1) {
+                        const point_t np =
+                            (point_t){pos.x + dx * (cols[j] - HALF), pos.y + dy * (cols[j] - HALF)};
+                        if (is_forbidden(board, np, id, max_depth > 0 ? max_depth - 1 : -1)) {
+                            pats[i] = PAT_EMPTY;  // incorrect, but enough for checking forbid
+                            break;
+                        }
                     }
                 }
             }

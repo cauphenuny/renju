@@ -638,7 +638,7 @@ vector_t vct(bool only_four, board_t board, int id, double time_ms) {
     vector_t sequence = vector_new(point_t, NULL);
     double tim = record_time();
     local_var_t assets = {0};
-    assets.step_time_limit = min(time_ms * 0.5, TIMEOUT_LIMIT);
+    assets.step_time_limit = min(time_ms * 0.4, TIMEOUT_LIMIT);
     int depth;
     vector_t threats = scan_threats_info(board, id, only_four);
     int last_size = 0;

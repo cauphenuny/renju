@@ -1,5 +1,4 @@
 #include "board.h"
-#include "eval.h"
 #include "game.h"
 #include "pattern.h"
 #include "players.h"
@@ -82,8 +81,8 @@ game_result_t start_game(player_t p1, player_t p2, int first_player, int time_li
 
     game_t game = new_game(time_limit);
     log("[%s] vs [%s], time_limit: %dms", p1.name, p2.name, time_limit);
+    print_game(game);
     while (1) {
-        print_game(game);
         log_i("------ step %s#%d" RESET ", player%d[%s]'s turn ------", colors[player],
               game.count + 1, player, players[player].name);
         if (!have_space(game.board, game.cur_id)) {
@@ -160,7 +159,6 @@ game_result_t start_game(player_t p1, player_t p2, int first_player, int time_li
 #ifndef NO_FORBID
             if (game.cur_id == 1) {
                 const int forbid = is_forbidden(game.board, pos, game.cur_id, -1);
-                // int forbid = false;
                 if (forbid) {
                     log_e("forbidden position! (%s)", pattern4_typename[forbid]);
                     prompt_pause();
@@ -171,15 +169,15 @@ game_result_t start_game(player_t p1, player_t p2, int first_player, int time_li
 #endif
             add_step(&game, pos);
             print_game(game);
-            serialize_game(game, "");
-            log("eval: %d", eval(game.board));
+            // serialize_game(game, "");
+            // log("eval: %d", eval(game.board));
 
             if (is_draw(game.board)) WIN(0);
             if (check(game.board, pos)) WIN(player);
             player = 3 - player;
 
             if (!claim_winner) {
-                vector_t vct_sequence = vct(false, game.board, game.cur_id, 50);
+                vector_t vct_sequence = vct(false, game.board, game.cur_id, 200);
                 if (vct_sequence.size) {
                     print_points(vct_sequence, PROMPT_NOTE, " -> ");
                     vct_depth_cur = vct_sequence.size;

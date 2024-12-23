@@ -22,8 +22,7 @@ int main() {
     const double tim = record_time();
     log_lock();
     init();
-
-    game_t game = new_game(BOTZONE_TIME_LIMIT - get_time(tim));
+    game_t game = new_game(BOTZONE_TIME_LIMIT - (int)get_time(tim));
 
     int n;
     scanf("%d", &n);
@@ -47,11 +46,12 @@ int main() {
         }
         id = 3 - id;
     }
-    const player_t player = preset_players[BOTZONE_PLAYER];
-    p = player.move(game, player.assets);
+
+    p = move(game, preset_players[BOTZONE_PLAYER]);
     print_pos(p);
     log_flush(true);
-    log_unlock();
+
+    // log_unlock();
     // print(game.board);
 
     // while (1) {
