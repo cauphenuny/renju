@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 3.5)
 project (
     renju
-    VERSION 2.10.4
+    VERSION 2.10.5
     LANGUAGES C
 )
 set (CMAKE_VERBOSE_MAKEFILE OFF)

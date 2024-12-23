@@ -294,7 +294,7 @@ int is_forbidden(board_t board, point_t pos, int id, int max_depth) {
         seg[i] = get_segment(board, pos, dx, dy);
         int value = encode_segment(seg[i]);
         pats[i] = to_pattern(value, true);
-        if (pats[i] >= PAT_A3 && pats[i] <= PAT_A4) {
+        if (pats[i] == PAT_A3) {
             int cols[2];
             get_attack_columns(value, id == 1, cols, 2);
             for (int j = 0; j < 2; j++) {

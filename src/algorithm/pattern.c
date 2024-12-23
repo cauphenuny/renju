@@ -101,10 +101,11 @@ static void dp(memo_t* memo, bool consider_forbid) {
         memo->parent_pattern[idx] = parent_pattern;
         switch (parent_pattern) {
             case PAT_TL:
-                if (right - left < 8)
-                    memo->pattern[idx] = PAT_ATL;
-                else
-                    memo->pattern[idx] = PAT_44;
+                memo->pattern[idx] = PAT_ATL;
+                // if (right - left < 8)
+                //     memo->pattern[idx] = PAT_ATL;
+                // else
+                //     memo->pattern[idx] = PAT_44;
                 break;
             case PAT_WIN:
                 if (memo->attack_col_cnt[idx] == 1)
@@ -113,7 +114,7 @@ static void dp(memo_t* memo, bool consider_forbid) {
                     if (!consider_forbid || win_pos[1] - win_pos[0] >= WIN_LENGTH) {
                         memo->pattern[idx] = PAT_A4;
                     } else {
-                        memo->pattern[idx] = PAT_44;  // o o o . o o . o o
+                        memo->pattern[idx] = PAT_44;  // x o o - ? o - o o
                     }
                 }
                 break;
