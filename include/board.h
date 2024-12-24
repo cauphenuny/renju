@@ -30,7 +30,7 @@ typedef int8_t cboard_t[BOARD_SIZE][BOARD_SIZE];  // board with type `signed cha
 void board_deserialize(board_t dest, const char* str);
 void board_serialize(const board_t board, char* dest);
 
-void point_serialize(char* dest, const void* ptr);
+int point_serialize(char* dest, size_t size, const void* ptr);
 void print_points(vector_t point_array, int log_level, const char* delim);
 
 void set_color(bool green_first);

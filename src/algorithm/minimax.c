@@ -72,15 +72,15 @@ typedef struct {
     point_t next_pos;
 } result_t;
 
-void result_serialize(char* dest, const void* ptr) {
+int result_serialize(char* dest, size_t size, const void* ptr) {
     result_t* result = (result_t*)ptr;
-    snprintf(dest, 32, "{%c%d, val: %d}", READABLE_POS(result->pos), result->value);
+    return snprintf(dest, size, "{%c%d, val: %d}", READABLE_POS(result->pos), result->value);
 }
 
 void print_result_vector(vector_t results, const char* delim) {
     char buffer[1024];
-    vector_serialize(buffer, delim, results, result_serialize);
-    log("%s", buffer);
+    vector_serialize(buffer, 1024, delim, results, result_serialize);
+    log_l("%s", buffer);
 }
 
 static double tim, time_limit;
@@ -174,7 +174,7 @@ static forward_result_t look_forward(board_t board, int self_id) {
     vector_t oppo_a4 = vector_new(threat_t, NULL);
     scan_threats(board, oppo_id, oppo_id,
                  (threat_storage_t){[PAT_WIN] = &oppo_5, [PAT_A4] = &oppo_a4});
-    // log("s5: %d, o5: %d, sa4: %d, oa4: %d, sd4: %d", self_5.size, oppo_5.size, self_a4.size,
+    // log_l("s5: %d, o5: %d, sa4: %d, oa4: %d, sd4: %d", self_5.size, oppo_5.size, self_a4.size,
     // oppo_a4.size, self_d4.size);
     if (self_5.size) {
         ret.value = EVAL_MAX * sgn;
@@ -326,7 +326,7 @@ static result_t minimax_search(state_t state, cboard_t preset_candidate, int dep
     // char buffer[1024], buffer2[1024];
     // vector_serialize(buffer, " -> ", points, point_serialize);
     // vector_serialize(buffer2, ", ", available_pos, point_serialize);
-    //  log("%s: available(%d): %s", buffer, type, buffer2);
+    //  log_l("%s: available(%d): %s", buffer, type, buffer2);
     for_each(point_t, available_pos, pos) {
         // vector_push_back(points, pos);
         result_t child = minimax_search(put_piece(state, pos), NULL, depth + 1, alpha, beta);
@@ -389,18 +389,18 @@ result_t minimax_search_entry(state_t init_state, cboard_t init_candidates, bool
     for (size_t i = 0; i < fork_cnt; i++) {
         if (!results[i].valid) return (result_t){false, 0, {0, 0}, 0, {0, 0}};
     }
-    // log("depth: %d, fork: %d, time: %.2lfms", depth, fork_cnt, cur_time);
+    // log_l("depth: %d, fork: %d, time: %.2lfms", depth, fork_cnt, cur_time);
     const int sgn = init_state.sgn;
     result_t best_result = {true, -EVAL_INF * sgn, {-1, -1}, 0, {-1, -1}};
     size_t tree_size = 0;
     for (size_t i = 0; i < fork_cnt; i++) {
-        // log("%c%d: %d", READABLE_POS(id2pos[i]), results[i].value);
+        // log_l("%c%d: %d", READABLE_POS(id2pos[i]), results[i].value);
         tree_size += results[i].tree_size;
         if (results[i].value * sgn > best_result.value * sgn) {
             best_result = results[i];
         }
         if (results[i].value * sgn == -EVAL_MAX) {
-            // log("kill %c%d", READABLE_POS(id2pos[i]));
+            // log_l("kill %c%d", READABLE_POS(id2pos[i]));
             init_candidates[id2pos[i].x][id2pos[i].y] = 0;
         }
     }
@@ -422,26 +422,26 @@ static point_t initial_move(game_t game) {
     scan_threats(game.board, oppo_id, self_id, storage);
     vector_t candidates = vector_new(point_t, NULL);
     if (critical_threats.size) {
-        // log("critical");
+        // log_l("critical");
         for_each(threat_t, critical_threats, threat) { vector_push_back(candidates, threat.pos); }
     }
     if (!candidates.size && normal_threats.size) {
-        // log("normal");
+        // log_l("normal");
         for_each(threat_t, normal_threats, threat) { vector_push_back(candidates, threat.pos); }
     }
     if (!candidates.size) {
         point_t p = move(game, preset_players[NEURAL_NETWORK]);
         if (in_board(p)) {
-            // log("network");
+            // log_l("network");
             vector_push_back(candidates, p);
         } else {
             if (trash_threats.size) {
-                // log("trash");
+                // log_l("trash");
                 for_each(threat_t, trash_threats, threat) {
                     vector_push_back(candidates, threat.pos);
                 }
             } else {
-                // log("random");
+                // log_l("random");
                 p = random_move(game), vector_push_back(candidates, p);
             }
         }
@@ -463,10 +463,10 @@ void print_candidates(board_t board, cboard_t candidates) {
     print_prob(board, tmp);
 }
 
-void print_result(result_t result, double tim) {
-    log("depth %d%s, pos %c%d, %c%d, time %.2lfms, value %d, speed %.2lf", search_param.max_depth,
+void print_result(result_t result, double duration) {
+    log_l("depth %d%s, pos %c%d, %c%d, time %.2lfms, value %d, speed %.2lf", search_param.max_depth,
         search_param.leaf_vct ? " (vct)" : "", READABLE_POS(result.pos),
-        READABLE_POS(result.next_pos), tim, result.value, result.tree_size / tim);
+        READABLE_POS(result.next_pos), duration, result.value, result.tree_size / duration);
 }
 
 point_t minimax(game_t game, const void* assets) {
@@ -482,7 +482,7 @@ point_t minimax(game_t game, const void* assets) {
         return pos;
     } else {
         pos = initial_move(game);
-        log("initial pos: %c%d", READABLE_POS(pos));
+        log_l("initial pos: %c%d", READABLE_POS(pos));
     }
 
     time_limit = game.time_limit * 0.98;
@@ -498,15 +498,15 @@ point_t minimax(game_t game, const void* assets) {
     state.value = eval(state.board);
 
     int calculated_depth = 0;
-    result_t best_result = {0}, ret = {0};
-    // log("searching...");
+    result_t best_result = {0};
+    // log_l("searching...");
     vector_t preset_params = vector_new(search_param_t, NULL);
     for (int i = 2; i < param.max_depth + 2; i += 2) {
-        search_param_t search_param = {i, false};
-        vector_push_back(preset_params, search_param);
+        search_param_t p = {i, false};
+        vector_push_back(preset_params, p);
         if (param.optim.leaf_vct_depth && i >= param.optim.leaf_vct_depth) {
-            search_param.leaf_vct = true;
-            vector_push_back(preset_params, search_param);
+            p.leaf_vct = true;
+            vector_push_back(preset_params, p);
         }
     }
     vector_t choice = vector_new(point_t, NULL);
@@ -525,9 +525,9 @@ point_t minimax(game_t game, const void* assets) {
     vector_free(preset_params);
 
     int size = best_result.tree_size;
-    log("maxdepth: %d, tree size: %.2lfk, speed: %.2lf", calculated_depth, size / 1000.0,
+    log_l("maxdepth: %d, tree size: %.2lfk, speed: %.2lf", calculated_depth, size / 1000.0,
         size / get_time(tim));
     assert(in_board(pos) && available(game.board, pos));
-    log("evaluate: %d", best_result.value);
+    log_l("evaluate: %d", best_result.value);
     return pos;
 }

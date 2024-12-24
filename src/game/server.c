@@ -54,8 +54,7 @@ int vct_depth_sum, vct_depth_cur, vct_depth_max, game_cnt;
 
 /// @brief start a game with player {p1} and {p2}, {first_player} moves first
 /// @param time_limit time limit of every step
-game_result_t start_game(player_t p1, player_t p2, int first_player, int time_limit,
-                         network_t* network) {
+game_result_t start_game(player_t p1, player_t p2, int first_player, int time_limit, network_t* network) {
 
     const char* colors[] = {"", L_GREEN, L_RED};
     set_color(first_player == 1);
@@ -73,20 +72,20 @@ game_result_t start_game(player_t p1, player_t p2, int first_player, int time_li
             log_w("claim incorrect!");                                    \
             prompt_pause();                                               \
         }                                                                 \
-        log("VCT sequence cur: %d, avg: %.2lf, max: %d", vct_depth_cur,   \
-            (double)vct_depth_sum / game_cnt, vct_depth_max);             \
+        log_l("VCT sequence cur: %d, avg: %.2lf, max: %d", vct_depth_cur, \
+              (double)vct_depth_sum / game_cnt, vct_depth_max);           \
         result.game = game, result.winner = winner_id;                    \
         return result;                                                    \
     } while (0)
 
     game_t game = new_game(time_limit);
-    log("[%s] vs [%s], time_limit: %dms", p1.name, p2.name, time_limit);
+    log_l("[%s] vs [%s], time_limit: %dms", p1.name, p2.name, time_limit);
     print_game(game);
     while (1) {
         log_i("------ step %s#%d" RESET ", player%d[%s]'s turn ------", colors[player],
               game.count + 1, player, players[player].name);
         if (!have_space(game.board, game.cur_id)) {
-            log("no more space for player%d", player);
+            log_l("no more space for player%d", player);
             WIN(3 - player);
         }
         bind_output_prob(result.prob[game.count]);
@@ -121,13 +120,13 @@ game_result_t start_game(player_t p1, player_t p2, int first_player, int time_li
                     } else
                         log_e("invalid argument!");
                     continue;
-                case GAMECTRL_GIVEUP: log("player%d gave up.", player); WIN(3 - player);
+                case GAMECTRL_GIVEUP: log_l("player%d gave up.", player); WIN(3 - player);
                 case GAMECTRL_SWITCH_PLAYER:
                     if (pos.y >= 0 && pos.y < PLAYER_CNT) {
                         players[3 - player] = preset_players[pos.y];
-                        log("changed opponent to %s", players[3 - player].name);
+                        log_l("changed opponent to %s", players[3 - player].name);
                     } else {
-                        log("invalid argument!");
+                        log_l("invalid argument!");
                     }
                     continue;
                 case GAMECTRL_EVALUATE:
@@ -140,7 +139,7 @@ game_result_t start_game(player_t p1, player_t p2, int first_player, int time_li
                         if (pos.y) {
                             print_prediction(prediction);
                         } else {
-                            log("eval: %.3lf", prediction.eval);
+                            log_l("eval: %.3lf", prediction.eval);
                         }
                         continue;
                     }
@@ -170,7 +169,7 @@ game_result_t start_game(player_t p1, player_t p2, int first_player, int time_li
             add_step(&game, pos);
             print_game(game);
             // serialize_game(game, "");
-            // log("eval: %d", eval(game.board));
+            // log_l("eval: %d", eval(game.board));
 
             if (is_draw(game.board)) WIN(0);
             if (check(game.board, pos)) WIN(player);

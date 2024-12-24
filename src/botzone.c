@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define BOTZONE_TIME_LIMIT 1000
+#define BOTZONE_TIME_LIMIT 2000
 #define BOTZONE_PLAYER     MINIMAX_ULT
 
 void read_pos(point_t* p) {
@@ -39,7 +39,7 @@ int main() {
             add_step(&game, p);
             if (check(game.board, p)) {
                 printf("-1 %d\n", id);
-                printf("win\n");
+                printf("%s win\n", is_first == 1 ? "black" : "white");
                 return 0;
             }
             is_first = !is_first;

@@ -22,6 +22,11 @@ def to_tensor(sample: renju.sample_t, device = torch.device('cpu')):
 
 # %%
 class GomokuDataset():
+    def refresh(self):
+        self.index = 0
+        self.samples = list(range(0, self.dataset.size))
+        random.shuffle(self.samples)
+
     def __init__(self, file=None, dataset=None, batch_size=128, device=torch.device('cpu')):
         if dataset == None:
             self.dataset = renju.dataset_t()

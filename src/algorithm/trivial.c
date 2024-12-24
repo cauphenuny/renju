@@ -6,6 +6,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 /// @brief generate a available random move from {game.board}
 point_t random_move(game_t game) {
@@ -50,7 +51,7 @@ point_t trivial_move(board_t board, int self_id, double time_limit, bool use_vct
     }
     vector_free(self_5), vector_free(oppo_5), vector_free(self_4);
     if (in_board(pos)) {
-        log("%s %c%d", is_attack ? "attack" : "defend", READABLE_POS(pos));
+        log_l("%s %c%d", is_attack ? "attack" : "defend", READABLE_POS(pos));
         return pos;
     }
 
@@ -59,8 +60,9 @@ point_t trivial_move(board_t board, int self_id, double time_limit, bool use_vct
         vector_t vct_sequence = vct(false, board, self_id, time_limit);
         if (vct_sequence.size) {
             pos = vector_get(point_t, vct_sequence, 0);
-            log("found VCT in %.2lfms", get_time(start_time));
+            log_l("found VCT", get_time(start_time));
             print_points(vct_sequence, PROMPT_NOTE, " -> ");
+            sleep(1);
         }
         vector_free(vct_sequence);
     }

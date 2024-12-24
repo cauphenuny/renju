@@ -79,7 +79,11 @@ enum log_prompts {
     PROMPT_SIZE, 
 };
 
+#ifdef BOTZONE_ONLINE
 #define LOG_BUFFER_SIZE 512
+#else
+#define LOG_BUFFER_SIZE 65536
+#endif
 void log_flush(bool endl);
 void log_enable();
 void log_disable();
@@ -97,7 +101,6 @@ int log_write(int level, const char* fmt, ...);
 #define log_add(level, fmt, ...) log_write(level, "%s: " fmt, __func__, ##__VA_ARGS__)
 #endif
 
-#define log(...)   log_add(PROMPT_LOG,   __VA_ARGS__)
 #define log_l(...) log_add(PROMPT_LOG,   __VA_ARGS__)
 #define log_i(...) log_add(PROMPT_INFO,  __VA_ARGS__)
 #define log_w(...) log_add(PROMPT_WARN,  __VA_ARGS__)

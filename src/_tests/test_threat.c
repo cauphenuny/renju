@@ -31,13 +31,13 @@ void test_eval() {
             scan_threats(board, 1, 1, storage);
         }
         tim = get_time(tim);
-        log("time: %.3lfms", tim * 1.0);
-        log("i = %d", i);
+        log_l("time: %.3lfms", tim * 1.0);
+        log_l("i = %d", i);
         print_emph(board, pos);
         fboard_t mark = {0};
         for_each(threat_t, result_3, threat) {
             point_t point = threat.pos;
-            log("got [%s] %d, %d, dir = {%d, %d}", pattern_typename[threat.pattern], point.x,
+            log_l("got [%s] %d, %d, dir = {%d, %d}", pattern_typename[threat.pattern], point.x,
                 point.y, threat.dir.x, threat.dir.y);
             mark[point.x][point.y] = 0.05;
         }
@@ -46,7 +46,7 @@ void test_eval() {
         print_prob(board, mark);
         for_each(threat_t, result_4, threat) {
             point_t point = threat.pos;
-            log("got [%s] %d, %d, dir = {%d, %d}", pattern_typename[threat.pattern], point.x,
+            log_l("got [%s] %d, %d, dir = {%d, %d}", pattern_typename[threat.pattern], point.x,
                 point.y, threat.dir.x, threat.dir.y);
             mark[point.x][point.y] = 0.2;
         }
@@ -54,7 +54,7 @@ void test_eval() {
         memset(mark, 0, sizeof(mark));
         for_each(threat_t, result_5, threat) {
             point_t point = threat.pos;
-            log("got [%s] %d, %d, dir = {%d, %d}", pattern_typename[threat.pattern], point.x,
+            log_l("got [%s] %d, %d, dir = {%d, %d}", pattern_typename[threat.pattern], point.x,
                 point.y, threat.dir.x, threat.dir.y);
             mark[point.x][point.y] = 0.4;
         }
@@ -110,7 +110,7 @@ void test_threat_tree() {
     double du = get_time(st);
     print_points(vct2, PROMPT_LOG, " -> ");
     vector_free(vct2);
-    log("time: %.2lfms", du);
+    log_l("time: %.2lfms", du);
     // clang-format on
 
     // #include "boards.txt"
@@ -121,13 +121,13 @@ void test_threat_tree() {
     //     print_emph(board, pos);
     //     vector_t threat_info = scan_threats_info(board, 1, true);
     //     for_each(threat_info_t, threat_info, info) {
-    //         log("=========================================");
-    //         log("type: %s", pattern_typename[info.type]);
-    //         log("pos: (%d, %d)", info.action.x, info.action.y);
+    //         log_l("=========================================");
+    //         log_l("type: %s", pattern_typename[info.type]);
+    //         log_l("pos: (%d, %d)", info.action.x, info.action.y);
     //         print_emph(board, info.action);
-    //         log("consists:");
+    //         log_l("consists:");
     //         print_emph_mutiple(board, info.consists);
-    //         log("defends:");
+    //         log_l("defends:");
     //         print_emph_mutiple(board, info.defenses);
     //     }
     // }
@@ -157,7 +157,7 @@ void test_threat_seq() {
             double start_time = record_time();
             vector_t seq = vct(false, board, id, 5000);
             print_points(seq, PROMPT_LOG, " -> ");
-            log("time: %.3lfms", get_time(start_time));
+            log_l("time: %.3lfms", get_time(start_time));
             int get_vct = seq.size != 0;
             vector_free(seq);
             if (get_vct != tests[i].have_vct) {
@@ -166,9 +166,9 @@ void test_threat_seq() {
             }
             // point_t p = vct(board, 1, false);
             // if (in_board(p)) {
-            //     log("result: %c%d", READABLE_POS(p));
+            //     log_l("result: %c%d", READABLE_POS(p));
             // } else {
-            //     log("no result");
+            //     log_l("no result");
             // }
         }
     }

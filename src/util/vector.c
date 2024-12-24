@@ -113,17 +113,18 @@ bool vector_contains_p(const vector_t* vector, const void* element, size_t eleme
     return false;
 }
 
-void vector_serialize(char* dest, const char* delim, vector_t vector,
-                      void (*element_serialize)(char*, const void*)) {
-    dest[0] = '\0';
+int vector_serialize(char* dest, size_t size, const char* delim, vector_t vector,
+                     int (*element_serialize)(char*, size_t, const void*)) {
+    int offset = 0, delim_len = strlen(delim);
     for (size_t i = 0; i < vector.size; i++) {
-        char temp[256];
-        element_serialize(temp, (char*)vector.data + i * vector.element_size);
-        strcat(dest, temp);
+        offset += element_serialize(dest + offset, size - offset,
+                                    (char*)vector.data + i * vector.element_size);
         if (i < vector.size - 1) {
-            strcat(dest, delim);
+            strcat(dest + offset, delim);
+            offset += delim_len;
         }
     }
+    return offset;
 }
 
 // int main()

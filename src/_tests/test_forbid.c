@@ -40,11 +40,11 @@ int test_forbid(void)
     board_t board;
     point_t pos;
     for (int i = 0; i < TESTS; i++) {
-        log("i = %d", i);
+        log_l("i = %d", i);
         pos = parse_board(board, tests[i].str);
         print_emph(board, pos);
         const pattern4_t forbid = is_forbidden(board, pos, 1, -1);
-        log("got %s, expected %s", pattern4_typename[forbid], pattern4_typename[tests[i].id]);
+        log_l("got %s, expected %s", pattern4_typename[forbid], pattern4_typename[tests[i].id]);
         if (forbid != tests[i].id) {
             log_e("failed.");
             return 1;

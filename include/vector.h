@@ -24,8 +24,8 @@ vector_t vector_clone(vector_t src);
 void vector_shuffle(vector_t src);
 void vector_reverse(vector_t src);
 bool vector_contains_p(const vector_t* vector, const void* element, size_t element_size);
-void vector_serialize(char* dest, const char* delim, vector_t vector,
-                      void (*element_serialize)(char*, const void*));
+int vector_serialize(char* dest, size_t size, const char* delim, vector_t vector,
+                     int (*element_serialize)(char*, size_t, const void*));
 
 #define vector_new(type, free_func)       vector_new_p(sizeof(type), free_func)
 #define vector_init(type, vec)            vector_init_p(&(vec), sizeof(type))
@@ -35,6 +35,7 @@ void vector_serialize(char* dest, const char* delim, vector_t vector,
 #define vector_copy(dest, src)            vector_copy_p(&(dest), &(src))
 #define vector_contains(type, vec, value) vector_contains_p(&(vec), &(value), sizeof(type))
 #define vector_free(vec)                  vector_free_p(&(vec))
+#define vector_data(type, vec)            ((type*)(vec).data)
 
 #define for_each(type, vec, element)                                                             \
     for (type* element##_iter = (type*)(vec).data, element;                                      \

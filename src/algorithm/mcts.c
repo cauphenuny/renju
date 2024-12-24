@@ -307,7 +307,7 @@ static void trivial_evaluate_children(node_t* node) {
     }
     for (int i = 0; i < 5; i++) vector_free(threats[i]);
 
-    softmax(prob, BOARD_AREA);
+    softmax_array(prob, BOARD_AREA);
     for (edge_t* e = node->child_edge; e; e = e->next) {
         const point_t pos = e->to->state.pos;
         e->to->state.prior_P = prob[pos.x * BOARD_SIZE + pos.y] * BOARD_AREA;

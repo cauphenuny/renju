@@ -187,7 +187,7 @@ void free_threat_tree(void* ptr) {
 void print_threat(const local_var_t* assets, threat_info_t threat) {
     char indent_str[256] = {0}, defend_str[256] = {0};
     for (int i = 0; i < assets->indent; i++) strcat(indent_str, "  ");
-    vector_serialize(defend_str, ", ", threat.defenses, point_serialize);
+    vector_serialize(defend_str, 256, ", ", threat.defenses, point_serialize);
     point_t pos = threat.action;
     log_l("%s%c%d[%d] %s(%d, %d)%s: %s, defenses: [%s]", indent_str, READABLE_POS(pos), threat.id,
           DARK, threat.dir.x, threat.dir.y, RESET, pattern_typename[threat.type], defend_str);
@@ -213,9 +213,9 @@ void print_threat_tree(local_var_t* assets, threat_tree_node_t* root) {
         assets->indent++;
     } else {
         if (root->win_depth != INF) {
-            log("(virtual node) depth = %d, count = %d", root->win_depth, root->win_count);
+            log_l("(virtual node) depth = %d, count = %d", root->win_depth, root->win_count);
         } else {
-            log("(virtual node)");
+            log_l("(virtual node)");
         }
     }
     for (threat_tree_node_t* child = root->son; child; child = child->brother) {
@@ -373,14 +373,14 @@ bool try_defend_chain(local_var_t* assets, board_t board, threat_tree_node_t* st
         chain[i] = node;
         node = node->parent;
     }
-    // log("defend ");
+    // log_l("defend ");
     // print(board);
-    // log("chain: ");
+    // log_l("chain: ");
     // for (int i = 0; i < length; i++) {
     //     print_threat(assets, chain[i]->threat);
     // }
     if (chain_conflict(board, chain, length)) {
-        // log("conflict!");
+        // log_l("conflict!");
         return true;
     }
     vector_t five_defenses = vector_new(threat_t, NULL);
@@ -392,14 +392,14 @@ bool try_defend_chain(local_var_t* assets, board_t board, threat_tree_node_t* st
         [PAT_D4] = &dead_four_defenses,
     };
     scan_threats(board, assets->defend_id, assets->defend_id, storage);
-    // log("size: (5: %d, A4: %d, D4: %d)", five_defenses.size, alive_four_defenses.size,
+    // log_l("size: (5: %d, A4: %d, D4: %d)", five_defenses.size, alive_four_defenses.size,
     // dead_four_defenses.size);
     // for_each(threat_t, dead_four_defenses, d4) { print_threat(attach_threat_info(board, d4)); }
     bool result = false;
     if (five_defenses.size && chain[0]->threat.type < PAT_WIN) {
         for_each(threat_t, five_defenses, five) {
             if (point_equal(five.pos, chain[0]->threat.action)) continue;
-            // log("five defense on %c%d", READABLE_POS(five.pos));
+            // log_l("five defense on %c%d", READABLE_POS(five.pos));
             result = true;
             goto ret;
         }
@@ -407,7 +407,7 @@ bool try_defend_chain(local_var_t* assets, board_t board, threat_tree_node_t* st
     if (alive_four_defenses.size && chain[0]->threat.type < PAT_D4) {
         for_each(threat_t, alive_four_defenses, alive_four) {
             if (point_equal(alive_four.pos, chain[0]->threat.action)) continue;
-            // log("four defense on %c%d", READABLE_POS(alive_four.pos));
+            // log_l("four defense on %c%d", READABLE_POS(alive_four.pos));
             result = true;
             goto ret;
         }
@@ -418,9 +418,9 @@ bool try_defend_chain(local_var_t* assets, board_t board, threat_tree_node_t* st
             threat_info_t info = attach_threat_info(board, dead_four);
             act_round(board, info);
             assets->indent++;
-            // log("===>");
+            // log_l("===>");
             bool defended = try_defend_chain(assets, board, start, leaf);
-            // log("<===");
+            // log_l("<===");
             assets->indent--;
             revert_round(board, info);
             free_threat_info(&info);
@@ -432,7 +432,7 @@ bool try_defend_chain(local_var_t* assets, board_t board, threat_tree_node_t* st
     }
 ret:
     vector_free(five_defenses), vector_free(alive_four_defenses), vector_free(dead_four_defenses);
-    // log("result: %s", result ? "success" : "failed");
+    // log_l("result: %s", result ? "success" : "failed");
     return result;
 }
 
@@ -479,7 +479,7 @@ void validate_win_nodes(local_var_t* assets, threat_tree_node_t* root) {
         //        record_point_sequence(child, &points);
         //        print_points(points, PROMPT_LOG, " -> ");
         //        vector_free(points);
-        //        log("%c%d, type: %s", READABLE_POS(child->threat.action),
+        //        log_l("%c%d, type: %s", READABLE_POS(child->threat.action),
         //        pattern_typename[child->threat.type]);
         if (!child->win_count) continue;
         switch (child->threat.type) {
@@ -523,7 +523,7 @@ void validate_win_nodes(local_var_t* assets, threat_tree_node_t* root) {
                             threat_info_t info = attach_threat_info(root->board, dead_four);
                             act_round(root->board, info);
                             bool defended = try_defend_chain(assets, root->board, root, win_node);
-                            // log("\n");
+                            // log_l("\n");
                             if (defended) {
                                 exists_defend = true;
                             }
@@ -557,19 +557,19 @@ static int distance(point_t pos1, point_t pos2) {
 
 void merge_tree(local_var_t* assets, threat_tree_node_t* node) {
     if (!assets->merge_node) return;
-    // log("merge: %c%d <-> %c%d", READABLE_POS(node->threat.action),
+    // log_l("merge: %c%d <-> %c%d", READABLE_POS(node->threat.action),
     // READABLE_POS(merge_node->threat.action));
     point_t p1 = node->threat.action, p2 = assets->merge_node->threat.action;
     if (same_line(p1, p2)) {
         int dist = distance(p1, p2);
         bool adjacent = assets->attack_id == 1 ? dist < WIN_LENGTH : dist < SEGMENT_LEN;
-        // log("check compability");
+        // log_l("check compability");
         if (adjacent && compatible(node, assets->merge_node)) {
-            // log("add!");
+            // log_l("add!");
             add_threat(assets, node, assets->merge_node->threat);
         }
     }
-    // log("done.");
+    // log_l("done.");
 }
 
 void for_each_node(local_var_t* assets, int depth, threat_tree_node_t* root,
@@ -651,7 +651,7 @@ vector_t vct(bool only_four, board_t board, int id, double time_ms) {
         find_win_nodes(root);
         assets.start_time = record_time();
         validate_win_nodes(&assets, root);
-        // log("depth %d, size: %d", depth, root->subtree_size);
+        // log_l("depth %d, size: %d", depth, root->subtree_size);
         if (root->win_depth != INF) {
             vector_copy(sequence, root->best_sequence);
             delete_threat_tree(root);

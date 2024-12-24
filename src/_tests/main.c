@@ -40,13 +40,13 @@ void test_one_step(game_t* game) {
     printf("%s", buffer);
     point_t pos = minimax((*game), preset_players[MINIMAX_ADV].assets);
     print_emph((*game).board, pos);
-    log("got pos %d, %d: %c%d", pos.x, pos.y, READABLE_POS(pos));
+    log_l("got pos %d, %d: %c%d", pos.x, pos.y, READABLE_POS(pos));
     assert(in_board(pos));
     add_step(game, pos);
     print_game((*game));
     serialize_game((*game), "");
     vector_t vct_seq = vct(false, (*game).board, (*game).cur_id, 50);
-    log("vct: %d", vct_seq.size);
+    log_l("vct: %d", vct_seq.size);
     vector_free(vct_seq);
     pos = input_manually((*game), NULL);
     add_step(game, pos);
@@ -73,18 +73,24 @@ restore_game(10000,27,(point_t[]){{7,7},{6,7},{8,6},{7,8},{8,9},{8,5},{9,9},{5,8
     }
 }
 
+void test_neuro();
 void test_upd();
 void test_eval();
 void test_threat();
 void test_threat_tree();
 void test_threat_seq();
 
+int int_serialize(char* dest, size_t size, const void* ptr);
+
 void test_vector() {
     vector_t vec = vector_new(int, NULL);
     for (int i = 0; i < 10; i++) {
         vector_push_back(vec, i);
     }
-    for_each(int, vec, x) { log("%d", x); }
+    for_each(int, vec, x) { log_l("%d", x); }
+    char buffer[1024];
+    vector_serialize(buffer, 1024, ", ", vec, int_serialize);
+    log_l("serialize: %s", buffer);
     vector_free(vec);
 
     vector_t str = vector_new(char, NULL);
@@ -103,52 +109,57 @@ void test_vector() {
 int main(int argc, char** argv) {
     init();
     int ret = 0;
-    log("running test");
+    log_l("running test");
 
-    char s[64] = {0};
     if (argc < 2) {
-        log("input test name: ");
-        prompt_scanf("%s", s);
-        argv[1] = s;
+        // char s[64] = {0};
+        // log_l("input test name: ");
+        // prompt_scanf("%s", s);
+        // argv[1] = s;
+        argv[1] = "neuro";
     }
     bool all = 0;
     if (strcmp(argv[1], "all") == 0) all = 1;
 
     if (strcmp(argv[1], "vector") == 0 || all) {
-        log("test vector");
+        log_l("test vector");
         test_vector();
     }
+    if (strcmp(argv[1], "neuro") == 0 || all) {
+        log_l("test neuro");
+        test_neuro();
+    }
     if (strcmp(argv[1], "pattern") == 0 || all) {
-        log("test pattern");
+        log_l("test pattern");
         test_pattern();
     }
     if (strcmp(argv[1], "forbid") == 0 || all) {
-        log("test forbid");
+        log_l("test forbid");
         ret = test_forbid();
         if (ret) return ret;
         log_i("forbid tests passed.");
     }
     if (strcmp(argv[1], "minimax") == 0 || all) {
-        log("test minimax");
+        log_l("test minimax");
         test_minimax();
         log_i("minimax tests passed.");
     }
     if (strcmp(argv[1], "mcts") == 0 || all) {
         void mcts_test_entrance(void);
-        log("test mcts");
+        log_l("test mcts");
         mcts_test_entrance();
         log_i("mcts tests passed.");
     }
     if (strcmp(argv[1], "threat") == 0 || all) {
-        log("test threat");
+        log_l("test threat");
         test_threat();
     }
     if (strcmp(argv[1], "threat_seq") == 0 || all) {
-        log("test threat_seq");
+        log_l("test threat_seq");
         test_threat_seq();
     }
     if (strcmp(argv[1], "threat_tree") == 0 || all) {
-        log("test threat_tree");
+        log_l("test threat_tree");
         test_threat_tree();
     }
 

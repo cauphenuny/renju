@@ -10,7 +10,7 @@
 #include <string.h>
 
 bool same_prefix(char s1[], char s2[], size_t size) {
-    int l1 = strlen(s1), l2 = strlen(s2);
+    size_t l1 = strlen(s1), l2 = strlen(s2);
     if (l1 < size || l2 < size) return false;
     for (size_t i = 0; i < size; i++) {
         if (s1[i] != s2[i]) return false;

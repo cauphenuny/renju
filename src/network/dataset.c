@@ -79,7 +79,7 @@ void free_dataset(dataset_t* dataset) {
         free(dataset->samples);
         dataset->samples = NULL;
     }
-    dataset->capacity = dataset->size = 0;
+    dataset->capacity = dataset->size = dataset->next_pos = 0;
 }
 
 void shuffle_dataset(const dataset_t* dataset) {
@@ -156,13 +156,15 @@ static sample_t reflect_y(const sample_t src) {
 }
 
 static void add_sample(dataset_t* dataset, sample_t sample) {
-    if (dataset->size < dataset->capacity) {
-        dataset->samples[dataset->size++] = sample;
+    dataset->samples[dataset->next_pos++] = sample;
+    dataset->size = max(dataset->size, dataset->next_pos);
+    if (dataset->next_pos >= dataset->capacity) {
+        dataset->next_pos = 0;
     }
 }
 
 void add_testgames(dataset_t* dataset, const game_result_t* results, int count) {
-    for (int i = 0; i < count && dataset->size < dataset->capacity; i++) {
+    for (int i = 0; i < count; i++) {
         if (!results[i].winner) continue;
         int step_cnt = results[i].game.count;
         game_t tmp = new_game(results[i].game.time_limit);
@@ -176,11 +178,11 @@ void add_testgames(dataset_t* dataset, const game_result_t* results, int count) 
             add_sample(dataset, raw_sample);
         }
     }
-    log("added %d games, now %d samples", count, dataset->size);
+    log_l("added %d games, cur pos: %d, size: %d", count, dataset->next_pos, dataset->size);
 }
 
 void add_games(dataset_t* dataset, const game_result_t* results, int count) {
-    for (int i = 0; i < count && dataset->size < dataset->capacity; i++) {
+    for (int i = 0; i < count; i++) {
         if (!results[i].winner) continue;
         int step_cnt = results[i].game.count;
         game_t tmp = new_game(results[i].game.time_limit);
@@ -201,7 +203,7 @@ void add_games(dataset_t* dataset, const game_result_t* results, int count) {
             }
         }
     }
-    log("added %d games, now %d samples", count, dataset->size);
+    log_l("added %d games, cur pos: %d, size: %d", count, dataset->next_pos, dataset->size);
 }
 
 int save_dataset(const dataset_t* dataset, const char* file_name) {
@@ -213,11 +215,12 @@ int save_dataset(const dataset_t* dataset, const char* file_name) {
     shuffle_dataset(dataset);
     fwrite(&dataset->capacity, sizeof(dataset->capacity), 1, file);
     fwrite(&dataset->size, sizeof(dataset->size), 1, file);
+    fwrite(&dataset->next_pos, sizeof(dataset->next_pos), 1, file);
     fwrite(&dataset->sizeof_sample, sizeof(dataset->sizeof_sample), 1, file);
     fwrite(dataset->samples, sizeof(sample_t), dataset->size, file);
     fclose(file);
-    log("sizeof sample_t: %d", sizeof(sample_t));
-    log("exported %d samples to %s", dataset->size, file_name);
+    log_l("sizeof sample_t: %d", sizeof(sample_t));
+    log_l("exported %d samples to %s", dataset->size, file_name);
     return 0;
 }
 
@@ -230,11 +233,16 @@ int load_dataset(dataset_t* dataset, const char* file_name) {
     }
     fread(&dataset->capacity, sizeof(dataset->capacity), 1, file);
     fread(&dataset->size, sizeof(dataset->size), 1, file);
+    fread(&dataset->next_pos, sizeof(dataset->next_pos), 1, file);
     fread(&dataset->sizeof_sample, sizeof(dataset->sizeof_sample), 1, file);
     dataset->samples = malloc(sizeof(sample_t) * dataset->capacity);
     dataset->size = fread(dataset->samples, sizeof(sample_t), dataset->size, file);
     fclose(file);
-    log("imported %d samples from %s", dataset->size, file_name);
+    log_l("imported %d samples from %s", dataset->size, file_name);
+    // for (int i = 0; i < 10; i++) {
+    //     print_sample(random_sample(dataset));
+    //     prompt_pause();
+    // }
     return 0;
 }
 

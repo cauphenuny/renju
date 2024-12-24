@@ -46,13 +46,13 @@ static network_t network;
 static dataset_t dataset;
 
 static void save_data() {
-    log("save game data? [y/n]");
+    log_l("save game data? [y/n]");
     int c;
     do c = prompt_pause();
     while (c != 'y' && c != 'n');
     if (c == 'y') {
         char name[256];
-        log("transform? [y/n]");
+        log_l("transform? [y/n]");
         do c = prompt_pause();
         while (c != 'y' && c != 'n');
         if (c == 'y')
@@ -61,10 +61,10 @@ static void save_data() {
             add_testgames(&dataset, results, tot);
         do {
             if (!sample_file) {
-                log("input file name: ");
+                log_l("input file name: ");
                 prompt_scanf("%s", name);
             } else {
-                log("input file name (empty for %s): ", sample_file);
+                log_l("input file name (empty for %s): ", sample_file);
                 int first = prompt_pause();
                 if (first == '\n' || first == EOF) {
                     strcpy(name, sample_file);
@@ -81,7 +81,7 @@ static void signal_handler(int signum) {
     switch (signum) {
         case SIGINT:
             log_s("\n");
-            log("received signal SIGINT, terminate.");
+            log_l("received signal SIGINT, terminate.");
             print_statistics();
             if (tot) {
                 save_data();
@@ -112,7 +112,7 @@ struct {
 int main(int argc, char* argv[]) {
     signal(SIGINT, signal_handler);
 
-    log("renju v%s", VERSION);
+    log_l("renju v%s", VERSION);
     init();
 
 #ifdef DEFAULT_MODEL
@@ -132,7 +132,7 @@ int main(int argc, char* argv[]) {
             if (strcmp(p, ".dat") == 0 && !sample_file && file_exists(argv[i])) {
                 sample_file = argv[i], load_dataset(&dataset, sample_file);
             } else if (strcmp(p, ".mod") == 0 && !model_file) {
-                if (!load_network(&network, argv[i])) {
+                if (!network_load(&network, argv[i])) {
                     bind_network(&network, false);
                     model_file = argv[i];
                 } else {

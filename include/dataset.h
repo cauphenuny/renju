@@ -29,6 +29,7 @@ void print_sample(sample_t sample);
 
 typedef struct {
     int size;
+    int next_pos;
     int capacity;
     int sizeof_sample;
     sample_t* samples;

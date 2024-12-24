@@ -46,14 +46,14 @@ static bool point_vector_contains(vector_t vec, point_t pos) {
     return vector_contains(point_t, vec, pos);
 }
 
-void point_serialize(char* dest, const void* ptr) {
+int point_serialize(char* dest, size_t size, const void* ptr) {
     const point_t* point = ptr;
-    snprintf(dest, 5, "%c%d", READABLE_POS(*point));
+    return snprintf(dest, size, "%c%d", READABLE_POS(*point));
 }
 
 void print_points(vector_t point_array, int log_level, const char* delim) {
     char buffer[1024];
-    vector_serialize(buffer, delim, point_array, point_serialize);
+    vector_serialize(buffer, 1024, delim, point_array, point_serialize);
     log_add(log_level, "%s", buffer);
 }
 
@@ -306,8 +306,8 @@ int is_forbidden(board_t board, point_t pos, int id, int max_depth) {
 
     if (pat4 <= PAT4_WIN) return 0;
     if (enable_forbid_log) {
-        log("forbidden pos, reason: %s", pattern4_typename[pat4]);
-        log("detailed information:");
+        log_l("forbidden pos, reason: %s", pattern4_typename[pat4]);
+        log_l("detailed information:");
         print_emph(board, pos);
         for (int i = 0; i < 4; i++) {
             print_segment(seg[i], true);

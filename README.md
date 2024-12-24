@@ -23,7 +23,7 @@ Features:
 
 - Minimax algorithm with alpha-beta prunning
 
-- A C implementation of Threat-Space Search algorithm ([Allis, L. & Herik, H. & Huntjens, M.. (1994). Go-Moku and Threat-Space Search. Computational Intelligence. 12. ](https://www.researchgate.net/publication/2252447_Go-Moku_and_Threat-Space_Search))
+- An implementation of Threat-Space Search algorithm ([Allis, L. & Herik, H. & Huntjens, M.. (1994). Go-Moku and Threat-Space Search. Computational Intelligence. 12. ](https://www.researchgate.net/publication/2252447_Go-Moku_and_Threat-Space_Search))
 
 Demo:
 
@@ -35,12 +35,8 @@ Includes a simple web UI compatible with any bot using botzone simplified I/O pr
 
 Usage:
 
-1. Go to the `web/` directory
+1. `git submodule init`
 
-2. Launch `server.py` with a bot file path, e.g. `python server.py ../bin/botzone`
-
-3. Open website by `anywhere` (maybe need to install `anywhere` by `npm install anywhere -g` first)
-
-note: If port conflicts with any other program, try execute `anywhere -p [new port]` for website, or modify `config.json` for server.
+2. see `web/README.md`
 
 ![web-ui-demo](assets/web-ui.png)

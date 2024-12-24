@@ -1,7 +1,9 @@
 # %%
 from lib import librenju as renju
 from torch import nn
-from predictor import Predictor, GomokuDataset, train, try_mps
+from train import GomokuDataset, trainer, try_mps
+from predictor import Predictor
+from trainer import train
 from colorama import Fore
 import ctypes
 import time
@@ -37,11 +39,7 @@ def eval(ctype_net, n=20):
         eval_time *= 2
     return win_rate
 
-def self_play(net, ctype_net=None, n=100, batch_size=32, time_per_step=100, test_iter=None):
-    if ctype_net == None:
-        ctype_net = net.to_ctype()
-    dataset = renju.new_dataset(65536)
-    dataset_ptr = ctypes.pointer(dataset)
+def self_play(ctype_net, dataset, n=50, time_per_step=1000):
     renju.bind_network(ctypes.pointer(ctype_net), True)
     print(f"start self-playing, time_per_step: {time_per_step}ms")
     p1, p2 = renju.preset_players[renju.MCTS_NN], renju.preset_players[renju.MCTS_NN]
@@ -50,48 +48,32 @@ def self_play(net, ctype_net=None, n=100, batch_size=32, time_per_step=100, test
     start_time = time.time()
     for i in range(n):
         result = renju.start_game(p1, p2, first_id, time_per_step, ctypes.pointer(ctype_net))
-        renju.add_games(dataset_ptr, ctypes.pointer(result), 1)
+        renju.add_games(dataset, ctypes.pointer(result), 1)
         first_id = 3 - first_id
         if (i + 1) % (n // 5) == 0:
             end_time = time.time()
             average_time = (end_time - start_time) / (n // 5)
             start_time = end_time
             print(f"finished {i + 1} games, average time: {average_time:.2f} seconds, now {dataset.size} samples")
+            print(f"last game:")
+            renju.print_game(result.game)
     renju.log_enable()
-    renju.shuffle_dataset(dataset_ptr)
-    train_iter = GomokuDataset(dataset=dataset, batch_size=batch_size)
-    metrics = train(net, train_iter, test_iter, 10, 0.003, try_mps())
-    return metrics
+    renju.shuffle_dataset(dataset)
 
 # %%
 if __name__ == "__main__":
     renju.init()
-    test_iter = GomokuDataset(file="data/3000ms-raw.dat", batch_size=256, device=try_mps())
-    net = Predictor(128)
-    net.load("model/current")
-# %%
-    play_games = 400
+    dataset = GomokuDataset(file="data/3000ms.dat", device=try_mps())
+    test_dataset = GomokuDataset(file="data/5000ms.dat", device=try_mps())
+    predictor = Predictor()
+    
+    games = 50
     sum = 0
-    tim = 500
-    # ctype_net = net.to_ctype()
-    ctype_net = renju.network_t()
-    renju.load_network(ctypes.pointer(ctype_net), "model/static.v5.128ch.mod")
-    input('press enter to conitnue')
-    eval(ctype_net)
-    input('press enter to conitnue')
     while True:
-        for i in range(0, 5):
-            self_play(net, ctype_net, n=play_games, time_per_step=tim, test_iter=test_iter)
-            ctype_net = net.to_ctype()
-            eval(ctype_net)
-            sum += play_games
-            net.save(f"model/selfplay/{sum}")
-            renju.save_network(ctypes.pointer(ctype_net), f"model/selfplay/{sum}")
-        # win_rate = eval(ctype_net)
-        tim *= 2
-
-
-# %%
-
-
-# %%
+        if sum % 200 == 0:
+            predictor.save(f"selfplay/{sum}")
+        ctype_net = predictor.to_ctype()
+        self_play(ctype_net, dataset.handle)
+        dataset.refresh()
+        train(predictor, dataset, test_dataset, 10, 0.005)
+        sum += games
