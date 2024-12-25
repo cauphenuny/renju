@@ -1,6 +1,7 @@
 # %%
 #!/usr/bin/env python3
 
+import time
 from IPython import display
 from colorama import Fore
 from lib import librenju as renju
@@ -11,21 +12,9 @@ import torch.nn as nn
 import ctypes
 import sys
 from dataset import GomokuDataset, to_tensor
+from layer import cpu, try_cuda, try_mps
 from predictor import Predictor
 import random
-
-def cpu():
-    return torch.device("cpu")
-
-def try_cuda():
-    if torch.cuda.is_available():
-        return torch.device("cuda")
-    return torch.device("cpu")
-
-def try_mps():
-    if torch.backends.mps.is_available():
-        return torch.device("mps")
-    return try_cuda() 
 
 def evaluate_accuracy(net, device, iter, loss1, loss2):
     if isinstance(net, nn.Module):
@@ -152,7 +141,10 @@ def test_sample(net, ctype_net, sample):
     X = X.reshape(1, 4, 15, 15).to(try_mps())
     net.to(try_mps())
     net.eval()
-    log_prob_hat, eval_hat = net(X)
+    st = time.time()
+    log_prob_hat, log_value_hat = net(X)
+    ed = time.time()
+    print(f"forward time: {(ed - st) * 1000:.2f}ms")
     prob_hat = torch.exp(log_prob_hat)
 
     print("probability:")
@@ -170,7 +162,8 @@ def test_sample(net, ctype_net, sample):
             prob_array[x][y] = prob_hat[0][x * 15 + y].item()
     renju.print_prob(board_array, prob_array)
     print(f'entropy: {calculate_entropy(log_prob_hat[0]).item():.3f}')
-    print(f'eval: {eval_hat[0][0].item():.3f}')
+    value_hat = torch.exp(log_value_hat[0])
+    print(f'eval: {value_hat[1].item() - value_hat[2]:.3f}')
 
     if ctype_net != None:
         cur_id = sample.input.current_player
@@ -251,16 +244,20 @@ if __name__ == '__main__':
 
 # %%
     num_epochs = 10
-    lr = 0.005
+    lr = 0.003
     batch_size = 32
-    metrics = train(network, train_iter(batch_size), test_iter(batch_size), num_epochs, lr, try_mps())
-    animator1 = d2l.Animator(xlabel='epoch', xlim=[1, num_epochs], ylim=[2, 5], 
-                             legend=['train policy loss', 'test policy loss', 'entropy'])
-    animator2 = d2l.Animator(xlabel='epoch', xlim=[1, num_epochs], ylim=[2, 5], 
-                             legend=['train value loss', 'test value loss'])
-    for i, metric in enumerate(metrics):
-        animator1.add(i + 1, (metric[0], metric[2], metric[4]))
-        animator2.add(i + 1, (metric[1], metric[3]))
+    try:
+        metrics = train(network, train_iter(batch_size), test_iter(batch_size), num_epochs, lr, try_mps())
+        animator1 = d2l.Animator(xlabel='epoch', xlim=[1, num_epochs], ylim=[2, 5], 
+                                legend=['train policy loss', 'test policy loss', 'entropy'])
+        animator2 = d2l.Animator(xlabel='epoch', xlim=[1, num_epochs], ylim=[2, 5], 
+                                legend=['train value loss', 'test value loss'])
+        for i, metric in enumerate(metrics):
+            animator1.add(i + 1, (metric[0], metric[2], metric[4]))
+            animator2.add(i + 1, (metric[1], metric[3]))
+    except KeyboardInterrupt:
+        print('interrupted')
+
     network.to(cpu())
 
     # print(f'completed, loss: {metrics[-1][0]:.3f}, {metrics[-1][2]:.3f}, test loss {metrics[-1][1]:.3f}, entropy {metrics[-1][3]:.3f}')
@@ -269,6 +266,8 @@ if __name__ == '__main__':
     if name != "":
         name = f'model/{name}'
         network.save(name)
+        ctype_net = network.to_ctype()
+        renju.network_save(ctypes.pointer(ctype_net), name)
         # network.export_ctype(name)
 
     # network.save("model/network_min.params")

@@ -41,13 +41,9 @@ void forward(const network_t* network, tensor_t* input, tensor_t* policy_output,
              tensor_t* value_output) {
     tensor_t tmp[2] = {{0}, {0}}, shared_output = {0};
     residual_block(&network->shared.res1, input, &tmp[0]);
-    // float* data = tmp[0].data;
-    // log_l("output: (%.8lf, %.8lf, %.8lf, %.8lf)", data[0], data[1], data[2], data[3]);
     residual_block(&network->shared.res2, &tmp[0], &tmp[1]);
     residual_block(&network->shared.res3, &tmp[1], &tmp[0]);
     shared_output = tensor_clone(&tmp[0]);
-    // data = shared_output.data;
-    // log_l("cloned output: (%.8lf, %.8lf, %.8lf, %.8lf)", data[0], data[1], data[2], data[3]);
 
     residual_block(&network->policy.res, &shared_output, &tmp[0]);
     linear_layer(&network->policy.linear, &tmp[0], policy_output);
@@ -78,12 +74,13 @@ prediction_t predict(const network_t* network,  //
 
     forward(network, &input_tensor, &policy_tensor, &value_tensor);
 
+    float *policy = policy_tensor.data, *value = value_tensor.data;
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < N; j++) {
-            prediction.prob[i][j] = policy_tensor.data[i * N + j];
+            prediction.prob[i][j] = policy[i * N + j];
         }
     }
-    prediction.eval = value_tensor.data[0];
+    prediction.eval = value[1] - value[2];
     tensor_free(&input_tensor);
     tensor_free(&policy_tensor);
     tensor_free(&value_tensor);

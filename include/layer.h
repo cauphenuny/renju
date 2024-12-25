@@ -6,7 +6,7 @@
 typedef struct {
     int input_channel, output_channel;
     int kernel_size, padding;
-    activate_func_t activate_func;
+    activate_t activate;
 } conv_params_t;
 
 typedef struct {
@@ -22,7 +22,7 @@ void conv2d_layer(const conv_layer_t* layer, const tensor_t* input, tensor_t* ou
 
 typedef struct {
     int input_size, output_size;
-    activate_func_t activate_func;
+    activate_t activate;
 } linear_params_t;
 
 typedef struct {

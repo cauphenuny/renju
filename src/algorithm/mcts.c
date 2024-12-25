@@ -273,7 +273,7 @@ static void evaluate_children(node_t* node) {
     // print_prob(board, prediction.prob);
     for (edge_t* e = node->child_edge; e; e = e->next) {
         const point_t pos = e->to->state.pos;
-        e->to->state.prior_P = (double)prediction.prob[pos.x][pos.y] + 1;
+        e->to->state.prior_P = (double)prediction.prob[pos.x][pos.y] * BOARD_AREA;
         // for normalization, now E(prob) = 1
     }
     // prompt_pause();
@@ -457,9 +457,10 @@ point_t mcts(game_t game, const void* assets) {
     param = *((mcts_param_t*)assets);
 
     point_t trivial_pos =
-        trivial_move(game.board, game.cur_id, game.time_limit / 20.0, param.eval_type != EVAL_NONE);
+        trivial_move(game.board, game.cur_id, game.time_limit / 20.0, param.use_vct && !param.is_train);
     if (in_board(trivial_pos)) {
         if (param.output_prob) param.output_prob[trivial_pos.x][trivial_pos.y] = 1;
+        print_prob(game.board, param.output_prob);
         return trivial_pos;
     }
 
@@ -496,16 +497,6 @@ point_t mcts(game_t game, const void* assets) {
 #endif
 
     predict_sum_time = predict_cnt = 0;
-
-    if (param.network) {
-        // log("original: ");
-        // prediction_t prediction =
-        //     predict(param.network, game.board, game.steps[game.count - 1], game.cur_id);
-        // print_prob(game.board, prediction.prob);
-    } else {
-        // log("original: ");
-        // trivial_evaluate_children(root);
-    }
 
     int cnt = 0;
     double tim;
@@ -547,14 +538,26 @@ point_t mcts(game_t game, const void* assets) {
     if (param.output_prob != NULL) {
         memcpy(param.output_prob, prob, sizeof(prob));
     }
-    // print_prob(game.board, prob);
-    if (((mcts_param_t*)assets)->output_prob) {
-        memcpy(((mcts_param_t*)assets)->output_prob, prob, sizeof(prob));
-    }
     node_t* move;
 
     if (param.network && param.is_train) {
-        int index = sample_from_dist((float*)prob, BOARD_AREA);
+        float error[BOARD_AREA], dist[BOARD_AREA] = {0};
+        simple_dirichlet_distribution(0.3, error, BOARD_AREA);
+        for (const edge_t* e = root->child_edge; e; e = e->next) {
+            const node_t* child = e->to;
+            dist[child->state.pos.x * BOARD_SIZE + child->state.pos.y] = child->state.count;
+        }
+        dist_log(dist, BOARD_AREA);
+        dist_set_temperature(dist, BOARD_AREA, 1);
+        dist_softmax(dist, BOARD_AREA);
+        log("train mode, add dirichlet error");
+        for (int i = 0; i < BOARD_AREA; i++) dist[i] = 0.75 * dist[i] + 0.25 * error[i];
+        float max_prob = 0;
+        for (int i = 0; i < BOARD_AREA; i++) max_prob = max(max_prob, dist[i]);
+        log("max prob: %.3f", max_prob);
+        print_prob(game.board, (pfboard_t)dist);
+        int index = sample_from_dist(dist, BOARD_AREA);
+        log("selected prob: %f", dist[index]);
         point_t pos = (point_t){index / BOARD_SIZE, index % BOARD_SIZE};
         move = find_child(root, pos);
     } else {

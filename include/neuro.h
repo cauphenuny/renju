@@ -36,16 +36,25 @@ tensor_t tensor_clone(const tensor_t* src);
 void tensor_set(tensor_t* tensor, float value, int first_dim, ...);
 float tensor_get(const tensor_t* tensor, int first_dim, ...);
 void tensor_save(const tensor_t* tensor, FILE* file);
-void tensor_load(const tensor_t* tensor, FILE* file);
+void tensor_load(tensor_t* tensor, FILE* file);
 
 void print_tensor(const tensor_t* tensor);
 
 typedef void (*activate_func_t)(tensor_t*);
 
+typedef enum {
+    ACT_NONE,
+    ACT_SOFTMAX,
+    ACT_RELU,
+    ACT_TANH,
+} activate_t;
+
+activate_func_t to_activate_func(activate_t activate);
 void softmax(tensor_t*);
 void softmax_array(float*, int size);
 void relu(tensor_t*);
 void tanh_(tensor_t*);
+float mean(float x[], int size);
 
 double entropy(const float x[], int size, bool normalize);
 void conv2d_impl(const float* restrict input, int input_channel, int input_x, int input_y,

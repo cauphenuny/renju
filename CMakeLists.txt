@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 3.5)
 project (
     renju
-    VERSION 2.12.0
+    VERSION 2.13.0
     LANGUAGES C
 )
 set (CMAKE_VERBOSE_MAKEFILE OFF)
@@ -73,6 +73,7 @@ file(MAKE_DIRECTORY ${PROJECT_SOURCE_DIR}/train/lib)
 add_custom_command(
     OUTPUT ${PROJECT_SOURCE_DIR}/train/lib/librenju.py
     COMMAND ctypesgen -L${PROJECT_SOURCE_DIR}/lib -lrenju ${PROJECT_SOURCE_DIR}/include/* -o ${PROJECT_SOURCE_DIR}/train/lib/librenju.py
+    DEPENDS librenju
     DEPENDS ${INCLUDE_LIST}
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/train
     COMMENT "Running ctypesgen to generate Python bindings"

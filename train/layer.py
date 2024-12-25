@@ -6,18 +6,33 @@ from export import to_ctype
 from lib import librenju as renju
 import ctypes
 
+NULL = 0
 nullptr = ctypes.POINTER(ctypes.c_void_p)()
 ptr = ctypes.pointer
 
-def to_renju_tensor(tensor):
-    if len(tensor.shape) == 1:
-        renju_tensor = renju.tensor1d_new(tensor.shape[0])
-    elif len(tensor.shape) == 2:
-        renju_tensor = renju.tensor2d_new(*list(tensor.shape))
-    elif len(tensor.shape) == 3:
-        renju_tensor = renju.tensor3d_new(*list(tensor.shape))
-    elif len(tensor.shape) == 4:
-        renju_tensor = renju.tensor4d_new(*list(tensor.shape))
+def cpu():
+    return torch.device("cpu")
+
+def try_cuda():
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    return torch.device("cpu")
+
+def try_mps():
+    if torch.backends.mps.is_available():
+        return torch.device("mps")
+    return try_cuda() 
+
+
+def to_renju_tensor(tensor, start=0):
+    if len(tensor.shape) - start == 1:
+        renju_tensor = renju.tensor1d_new(tensor.shape[start])
+    elif len(tensor.shape) - start == 2:
+        renju_tensor = renju.tensor2d_new(*list(tensor.shape[start:]))
+    elif len(tensor.shape) - start == 3:
+        renju_tensor = renju.tensor3d_new(*list(tensor.shape[start:]))
+    elif len(tensor.shape) - start == 4:
+        renju_tensor = renju.tensor4d_new(*list(tensor.shape[start:]))
     else:
         raise ValueError(f"unsupported tensor shape {tensor.shape}")
     content = to_ctype(tensor)
@@ -36,16 +51,16 @@ class Linear(nn.Module):
         self.linear = nn.Linear(in_features, out_features)
         if activate is None:
             self.activate = None
-            self.c_activate = nullptr
+            self.c_activate = renju.ACT_NONE
         elif activate == "relu":
             self.activate = F.relu
-            self.c_activate = renju.relu
+            self.c_activate = renju.ACT_RELU
         elif activate == "softmax":
             self.activate = nn.LogSoftmax(dim=1)
-            self.c_activate = renju.softmax
+            self.c_activate = renju.ACT_SOFTMAX
         elif activate == "tanh":
             self.activate = F.tanh
-            self.c_activate = renju.tanh_
+            self.c_activate = renju.ACT_TANH
         else:
             raise ValueError(f"unknown activation function {activate}")
         self.weight_ctype = None
@@ -53,8 +68,7 @@ class Linear(nn.Module):
 
     def to_ctype(self):
         linear_layer = renju.linear_layer_t()
-        linear_layer.param = renju.linear_params_t(self.ifc, self.ofc, 
-                                                   ctypes.cast(self.c_activate, renju.activate_func_t))
+        linear_layer.param = renju.linear_params_t(self.ifc, self.ofc, self.c_activate)
         linear_layer.weight, self.weight_ctype = to_renju_tensor(self.linear.weight)
         linear_layer.bias, self.bias_ctype = to_renju_tensor(self.linear.bias)
         return linear_layer
@@ -75,16 +89,16 @@ class Conv2d(nn.Module):
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, padding=padding)
         if activate is None:
             self.activate = None
-            self.c_activate = nullptr
+            self.c_activate = renju.ACT_NONE
         elif activate == "relu":
             self.activate = F.relu
-            self.c_activate = renju.relu
+            self.c_activate = renju.ACT_RELU
         elif activate == "softmax":
             self.activate = F.log_softmax
-            self.c_activate = renju.softmax
+            self.c_activate = renju.ACT_SOFTMAX
         elif activate == "tanh":
             self.activate = F.tanh
-            self.c_activate = renju.tanh_
+            self.c_activate = renju.ACT_TANH
         else:
             raise ValueError(f"unknown activation function {activate}")
         self.weight_ctype = None
@@ -94,7 +108,7 @@ class Conv2d(nn.Module):
         conv_layer = renju.conv_layer_t()
         conv_layer.param = renju.conv_params_t(self.ich, self.och, 
                                                self.ksize, self.pd, 
-                                               ctypes.cast(self.c_activate, renju.activate_func_t))
+                                               self.c_activate)
         conv_layer.weight, self.weight_ctype = to_renju_tensor(self.conv.weight)
         conv_layer.bias, self.bias_ctype = to_renju_tensor(self.conv.bias)
         return conv_layer
@@ -128,6 +142,7 @@ class ResidualBlock(nn.Module):
 
     def forward(self, X):
         Y = self.conv1(X)
+        # print(f"conv1 mean: {numpy.mean(Y.cpu().detach().numpy())}")
         Y = self.conv2(Y)
         if self.conv3:
             Y2 = self.conv3(X)
@@ -136,19 +151,19 @@ class ResidualBlock(nn.Module):
         return F.relu(Y + Y2)
 
 # %%
-def test_residual_block():
+def test_res():
     block = ResidualBlock(3, 4)
     print("residual block initialized")
     print(block.conv1.conv.weight.shape)
     print(block.conv1.conv.bias.shape)
     with torch.no_grad():
-        block.conv1.conv.weight.uniform_(-0.1, 0.1)
-        block.conv1.conv.bias.uniform_(-0.1, 0.1)
-        block.conv2.conv.weight.uniform_(-0.1, 0.1)
-        block.conv2.conv.bias.uniform_(-0.1, 0.1)
+        block.conv1.conv.weight.uniform_(-5, 5)
+        block.conv1.conv.bias.uniform_(-5, 5)
+        block.conv2.conv.weight.uniform_(-5, 5)
+        block.conv2.conv.bias.uniform_(-5, 5)
         if block.conv3:
-            block.conv3.conv.weight.uniform_(-0.1, 0.1)
-            block.conv3.conv.bias.uniform_(-0.1, 0.1)
+            block.conv3.conv.weight.uniform_(-5, 5)
+            block.conv3.conv.bias.uniform_(-5, 5)
 
     print(block.conv1.conv.weight)
     print(block.conv1.conv.bias)
@@ -158,7 +173,7 @@ def test_residual_block():
         print(block.conv3.conv.weight)
         print(block.conv3.conv.bias)
 
-    input_tensor = torch.randn(3, 4, 4)
+    input_tensor = torch.randn(3, 15, 15)
     print(f"input initialized: {input_tensor}")
 
     output_tensor = block(input_tensor)
@@ -192,6 +207,7 @@ def test_linear():
     renju_input_tensor, storage1 = to_renju_tensor(input_tensor)
     renju.print_tensor(renju_input_tensor)
     renju_output_tensor = init_renju_tensor(list(output_tensor.shape))
+    print("output initialized")
     renju.linear_layer(ptr(renju_linear), ptr(renju_input_tensor), ptr(renju_output_tensor))
     renju.print_tensor(ptr(renju_output_tensor))
 
@@ -206,14 +222,14 @@ def test_conv():
     print(conv.conv.weight)
     print(conv.conv.bias)
 
-    input_tensor = torch.randn(3, 4, 4)
+    input_tensor = torch.randn(1, 3, 4, 4)
     print(f"input initialized: {input_tensor}")
 
     output_tensor = conv(input_tensor)
     print(f'output: {numpy.round(output_tensor.flatten().detach().numpy(), 2)}')
 
     renju_conv = conv.to_ctype()
-    renju_input_tensor, storage1 = to_renju_tensor(input_tensor)
+    renju_input_tensor, storage1 = to_renju_tensor(input_tensor, start=1)
     renju.print_tensor(renju_input_tensor)
     renju_output_tensor = init_renju_tensor(list(output_tensor.shape))
     renju.conv2d_layer(ptr(renju_conv), ptr(renju_input_tensor), ptr(renju_output_tensor), 0)

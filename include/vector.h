@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdio.h>
 
 typedef void (*free_func_t)(void*);
 
@@ -26,6 +27,8 @@ void vector_reverse(vector_t src);
 bool vector_contains_p(const vector_t* vector, const void* element, size_t element_size);
 int vector_serialize(char* dest, size_t size, const char* delim, vector_t vector,
                      int (*element_serialize)(char*, size_t, const void*));
+void vector_save(const vector_t* vector, FILE* file);
+void vector_load(vector_t* vector, FILE* file);
 
 #define vector_new(type, free_func)       vector_new_p(sizeof(type), free_func)
 #define vector_init(type, vec)            vector_init_p(&(vec), sizeof(type))

@@ -127,6 +127,22 @@ int vector_serialize(char* dest, size_t size, const char* delim, vector_t vector
     return offset;
 }
 
+void vector_save(const vector_t* vector, FILE* file) {
+    fwrite(&vector->element_size, sizeof(vector->element_size), 1, file);
+    fwrite(&vector->size, sizeof(vector->size), 1, file);
+    fwrite(&vector->capacity, sizeof(vector->capacity), 1, file);
+    fwrite(vector->data, vector->element_size, vector->size, file);
+}
+
+void vector_load(vector_t* vector, FILE* file) {
+    vector->free_func = NULL;
+    fread(&vector->element_size, sizeof(vector->element_size), 1, file);
+    fread(&vector->size, sizeof(vector->size), 1, file);
+    fread(&vector->capacity, sizeof(vector->capacity), 1, file);
+    vector->data = malloc(vector->capacity * vector->element_size);
+    fread(vector->data, vector->element_size, vector->size, file);
+}
+
 // int main()
 // {
 //     vector_t int_vector;

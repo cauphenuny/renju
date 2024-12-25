@@ -1,5 +1,7 @@
 #include "layer.h"
 
+#include "neuro.h"
+
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,6 +16,18 @@ void conv2d_layer_init(conv_layer_t* layer, conv_params_t param) {
 void conv2d_layer_free(conv_layer_t* layer) {
     tensor_free(&layer->weight);
     tensor_free(&layer->bias);
+}
+
+void conv2d_layer_save(const conv_layer_t* layer, FILE* file) {
+    fwrite(&layer->param, sizeof(layer->param), 1, file);
+    tensor_save(&layer->weight, file);
+    tensor_save(&layer->bias, file);
+}
+
+void conv2d_layer_load(conv_layer_t* layer, FILE* file) {
+    fread(&layer->param, sizeof(layer->param), 1, file);
+    tensor_load(&layer->weight, file);
+    tensor_load(&layer->bias, file);
 }
 
 void conv2d_layer(const conv_layer_t* layer, const tensor_t* input, tensor_t* output, int special) {
@@ -38,8 +52,8 @@ void conv2d_layer(const conv_layer_t* layer, const tensor_t* input, tensor_t* ou
                     layer->weight.data, layer->bias.data,              //
                     layer->param.kernel_size, layer->param.padding);
     }
-    if (layer->param.activate_func) {
-        layer->param.activate_func(output);
+    if (layer->param.activate) {
+        to_activate_func(layer->param.activate)(output);
     }
 }
 
@@ -54,14 +68,26 @@ void linear_layer_free(linear_layer_t* layer) {
     tensor_free(&layer->bias);
 }
 
+void linear_layer_save(const linear_layer_t* layer, FILE* file) {
+    fwrite(&layer->param, sizeof(layer->param), 1, file);
+    tensor_save(&layer->weight, file);
+    tensor_save(&layer->bias, file);
+}
+
+void linear_layer_load(linear_layer_t* layer, FILE* file) {
+    fread(&layer->param, sizeof(layer->param), 1, file);
+    tensor_load(&layer->weight, file);
+    tensor_load(&layer->bias, file);
+}
+
 void linear_layer(const linear_layer_t* layer, const tensor_t* input, tensor_t* output) {
     const int input_size = layer->param.input_size;
     const int output_size = layer->param.output_size;
     tensor_renew(output, output_size, -1);
     linear_impl(input->data, input_size, output->data, output_size,  //
                 layer->weight.data, layer->bias.data);
-    if (layer->param.activate_func) {
-        layer->param.activate_func(output);
+    if (layer->param.activate) {
+        to_activate_func(layer->param.activate)(output);
     }
 }
 
@@ -72,14 +98,14 @@ void residual_block_init(residual_block_t* block, residual_block_param_t param) 
         .output_channel = param.output_channel,
         .kernel_size = 3,
         .padding = 1,
-        .activate_func = relu,
+        .activate = ACT_RELU,
     };
     conv_params_t conv2_param = {
         .input_channel = param.output_channel,
         .output_channel = param.output_channel,
         .kernel_size = 3,
         .padding = 1,
-        .activate_func = NULL,
+        .activate = ACT_NONE,
     };
     conv2d_layer_init(&block->conv3x3_1, conv1_param);
     conv2d_layer_init(&block->conv3x3_2, conv2_param);
@@ -89,7 +115,7 @@ void residual_block_init(residual_block_t* block, residual_block_param_t param) 
             .output_channel = param.output_channel,
             .kernel_size = 1,
             .padding = 0,
-            .activate_func = NULL,
+            .activate = ACT_NONE,
         };
         conv2d_layer_init(&block->conv1x1, conv1x1_param);
     }
@@ -99,6 +125,24 @@ void residual_block_free(residual_block_t* block) {
     conv2d_layer_free(&block->conv3x3_1);
     conv2d_layer_free(&block->conv3x3_2);
     conv2d_layer_free(&block->conv1x1);
+}
+
+void residual_block_save(const residual_block_t* block, FILE* file) {
+    fwrite(&block->param, sizeof(block->param), 1, file);
+    conv2d_layer_save(&block->conv3x3_1, file);
+    conv2d_layer_save(&block->conv3x3_2, file);
+    if (block->param.input_channel != block->param.output_channel) {
+        conv2d_layer_save(&block->conv1x1, file);
+    }
+}
+
+void residual_block_load(residual_block_t* block, FILE* file) {
+    fread(&block->param, sizeof(block->param), 1, file);
+    conv2d_layer_load(&block->conv3x3_1, file);
+    conv2d_layer_load(&block->conv3x3_2, file);
+    if (block->param.input_channel != block->param.output_channel) {
+        conv2d_layer_load(&block->conv1x1, file);
+    }
 }
 
 void residual_block(const residual_block_t* block, const tensor_t* input, tensor_t* output) {
@@ -120,7 +164,6 @@ void residual_block(const residual_block_t* block, const tensor_t* input, tensor
         tensor_t tmp = tensor_new(block->param.output_channel, get3d_xy(input->shape), -1);
         conv2d_layer(&block->conv3x3_1, input, &tmp, 3);
         conv2d_layer(&block->conv3x3_2, &tmp, output, 3);
-        tensor_free(&tmp);
 
         conv2d_layer(&block->conv1x1, input, &tmp, 1);
         tensor_add(output, &tmp);

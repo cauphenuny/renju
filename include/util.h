@@ -95,7 +95,7 @@ int log_write(int level, const char* fmt, ...);
 
 #ifndef BOTZONE
 #define log_add(level, fmt, ...)                                                           \
-    log_write(level, DARK "%s/%s/%d: " RESET fmt "\n", base_name(__FILE__), __func__, __LINE__, \
+    log_write(level, DARK "%s:%s:%d: " RESET fmt "\n", base_name(__FILE__), __func__, __LINE__, \
               ##__VA_ARGS__)
 #else
 #define log_add(level, fmt, ...) log_write(level, "%s: " fmt, __func__, ##__VA_ARGS__)

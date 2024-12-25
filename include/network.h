@@ -56,13 +56,13 @@ const static network_params_t network_params = {
     .policy =
         {
             .res = {.input_channel = 256, .output_channel = 16},
-            .linear = {.input_size = 16 * 15 * 15, .output_size = 225, .activate_func = softmax},
+            .linear = {.input_size = 16 * 15 * 15, .output_size = 225, .activate = ACT_SOFTMAX},
         },
     .value =
         {
             .conv = {.input_channel = 256, .output_channel = 16, .kernel_size = 3, .padding = 1},
-            .linear1 = {.input_size = 16 * 15 * 15, .output_size = 256, .activate_func = relu},
-            .linear2 = {.input_size = 256, .output_size = 3, .activate_func = softmax},
+            .linear1 = {.input_size = 16 * 15 * 15, .output_size = 256, .activate = ACT_RELU},
+            .linear2 = {.input_size = 256, .output_size = 3, .activate = ACT_SOFTMAX},
         },
 };
 

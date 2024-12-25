@@ -126,6 +126,21 @@ void tensor_set(tensor_t* tensor, float value, int first_dim, ...) {
     tensor->data[offset] = value;
 }
 
+void tensor_save(const tensor_t* tensor, FILE* file) {
+    vector_save(&tensor->shape, file);
+    fwrite(&tensor->capacity, sizeof(int), 1, file);
+    fwrite(&tensor->numel, sizeof(int), 1, file);
+    fwrite(tensor->data, sizeof(float), tensor->numel, file);
+}
+
+void tensor_load(tensor_t* tensor, FILE* file) {
+    vector_load(&tensor->shape, file);
+    fread(&tensor->capacity, sizeof(int), 1, file);
+    fread(&tensor->numel, sizeof(int), 1, file);
+    tensor->data = (float*)malloc(tensor->capacity * sizeof(float));
+    fread(tensor->data, sizeof(float), tensor->numel, file);
+}
+
 int int_serialize(char* dest, size_t size, const void* ptr) {
     return snprintf(dest, size, "%d", *(int*)ptr);
 }
@@ -156,21 +171,16 @@ void softmax_array(float* x, int size) {
     }
 }
 
-void softmax(tensor_t* tensor) {
-    float* x = tensor->data;
-    const int size = tensor->numel;
-    float max_val = -1e9, sum = 0;
-    for (int i = 0; i < size; i++) {
-        max_val = fmax(max_val, x[i]);
-    }
-    for (int i = 0; i < size; i++) {
-        x[i] = exp(x[i] - max_val);
-        sum += x[i];
-    }
-    for (int i = 0; i < size; i++) {
-        x[i] = log(x[i] / sum);
+activate_func_t to_activate_func(activate_t activate) {
+    switch (activate) {
+        case ACT_SOFTMAX: return softmax;
+        case ACT_RELU: return relu;
+        case ACT_TANH: return tanh_;
+        default: return NULL;
     }
 }
+
+void softmax(tensor_t* tensor) { softmax_array(tensor->data, tensor->numel); }
 
 void sigmoid(tensor_t* tensor) {
     float* x = tensor->data;
@@ -236,7 +246,7 @@ double entropy(const float x[], int size, bool normalize) {
         const int input_size = input_x * input_y;                                                \
         const int kernel_sqrsize = kernel_size * kernel_size;                                    \
         const int kernel_all_ch_size = kernel_sqrsize * input_channel;                           \
-        /*_Pragma("omp parallel for")*/ for (int och = 0; och < output_channel; och++) {             \
+        _Pragma("omp parallel for") for (int och = 0; och < output_channel; och++) {             \
             for (int ich = 0; ich < input_channel; ich++) {                                      \
                 for (int i = 0; i < output_x; i++) {                                             \
                     for (int j = 0; j < output_y; j++) {                                         \
@@ -282,7 +292,7 @@ void conv2d_impl(const float* restrict input, int input_channel, int input_x, in
     const int input_size = input_x * input_y;
     const int kernel_sqrsize = kernel_size * kernel_size;
     const int kernel_all_ch_size = kernel_sqrsize * input_channel;
-// #pragma omp parallel for
+#pragma omp parallel for
     for (int och = 0; och < output_channel; och++) {
         for (int ich = 0; ich < input_channel; ich++) {
             for (int i = 0; i < output_x; i++) {
@@ -318,7 +328,7 @@ void conv2d_impl(const float* restrict input, int input_channel, int input_x, in
 void linear_impl(const float* restrict input, int input_size, float* restrict output,
                  int output_size, const float* restrict weight, const float* restrict bias) {
     // log("linear: %d => %d", input_size, output_size);
-// #pragma omp parallel for
+#pragma omp parallel for
     for (int i = 0; i < output_size; i++) {
         float sum = 0;
         for (int j = 0; j < input_size; j++) {

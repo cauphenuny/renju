@@ -147,7 +147,6 @@ game_result_t start_game(player_t p1, player_t p2, int first_player, int time_li
             }
             if (!available(game.board, pos)) {
                 log_e("invalid position!");
-                prompt_pause();
                 continue;
             }
             log_i("time: %.2lfms, chose " BOLD UNDERLINE "%c%d" RESET, duration, READABLE_POS(pos));
