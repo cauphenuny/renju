@@ -11,10 +11,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define GAME_STORAGE_SIZE 65536
+#define GAME_STORAGE_SIZE 4096
 #define DATASET_SIZE      65536
 
-int statistics[3][3];
+static int statistics[3][3];
 // [0][0]: draw count [0][1/2]: normal / reverse count
 // [1][0/1/2]: p1 win count (all / 1st / 2nd)
 // [2][0/1/2]: p2 win count (all / 1st / 2nd)
@@ -99,7 +99,7 @@ static void signal_handler(int signum) {
 
 #define AI_PLAYER MINIMAX_ADV
 #define PRESET_SIZE 3
-struct {
+static struct {
     int p1, p2;
     int time_limit;
     const char* name;

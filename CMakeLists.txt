@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 3.5)
 project (
     renju
-    VERSION 2.14.0
+    VERSION 2.14.1
     LANGUAGES C
 )
 
@@ -16,6 +16,7 @@ endif()
 
 string (ASCII 27 ESC)
 set (COLOR_GREEN "${ESC}[1;32m")
+set (COLOR_YELLOW "${ESC}[1;33m")
 set (COLOR_RED "${ESC}[1;31m")
 set (COLOR_RESET "${ESC}[0m")
 
@@ -24,7 +25,7 @@ find_package(BLAS)
 if(OpenMP_FOUND)
     message(STATUS "OpenMP found.")
 else()
-    message(STATUS "OpenMP not found.")
+    message(STATUS "${COLOR_YELLOW}OpenMP not found.${COLOR_RESET}")
 endif()
 if(BLAS_FOUND)
     message(STATUS "BLAS found.")
@@ -38,8 +39,10 @@ if(BLAS_FOUND)
     include_directories(${BLAS_INCLUDE_DIRS})
     add_compile_definitions(HAVE_BLAS)
 else()
-    message(STATUS "BLAS not found.")
+    message(STATUS "${COLOR_YELLOW}BLAS not found.${COLOR_RESET}")
 endif(BLAS_FOUND)
+
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     message (STATUS "${COLOR_RED}debug${COLOR_RESET}")
@@ -80,10 +83,9 @@ file(GLOB_RECURSE INCLUDE_LIST "*.h")
 
 add_library(renju_objects OBJECT ${SRC_LIST})
 target_link_libraries(renju_objects m)
-# target_compile_definitions(renju_objects PRIVATE NO_FORBID)
-# target_compile_definitions(renju_objects PRIVATE NO_COLOR)
 
 add_library(librenju SHARED $<TARGET_OBJECTS:renju_objects>)
+
 set_target_properties(librenju PROPERTIES OUTPUT_NAME "renju")
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     set_target_properties(librenju PROPERTIES EXCLUDE_FROM_ALL TRUE)
@@ -115,6 +117,10 @@ target_compile_definitions(test PRIVATE TEST)
 
 add_executable (botzone src/botzone.c ${SRC_LIST})
 target_compile_definitions(botzone PRIVATE NO_COLOR)
+
+target_link_libraries (main m)
+target_link_libraries (librenju m)
+target_link_libraries (test m)
 target_link_libraries (botzone m)
 
 if(OpenMP_FOUND)

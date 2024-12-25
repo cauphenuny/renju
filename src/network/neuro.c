@@ -4,7 +4,9 @@
 #include "vector.h"
 
 #include <assert.h>
+#ifdef HAVE_BLAS
 #include <cblas.h>
+#endif
 #include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
