@@ -133,7 +133,7 @@ int main(int argc, char* argv[]) {
                 sample_file = argv[i], load_dataset(&dataset, sample_file);
             } else if (strcmp(p, ".mod") == 0 && !model_file) {
                 if (!network_load(&network, argv[i])) {
-                    bind_network(&network, true);
+                    bind_network(&network, false);
                     model_file = argv[i];
                 } else {
                     log_e("invalid model: %s", argv[i]);

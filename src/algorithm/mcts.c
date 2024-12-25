@@ -556,9 +556,15 @@ point_t mcts(game_t game, const void* assets) {
         for (int i = 0; i < BOARD_AREA; i++) max_prob = max(max_prob, dist[i]);
         log("max prob: %.3f", max_prob);
         print_prob(game.board, (pfboard_t)dist);
-        int index = sample_from_dist(dist, BOARD_AREA);
-        log("selected prob: %f", dist[index]);
-        point_t pos = (point_t){index / BOARD_SIZE, index % BOARD_SIZE};
+        point_t pos = {-1, -1};
+        while (!in_board(pos)) {
+            int index = sample_from_dist(dist, BOARD_AREA);
+            log("selected prob: %f", dist[index]);
+            point_t p = (point_t){index / BOARD_SIZE, index % BOARD_SIZE};
+            if (!game.board[p.x][p.y] && !is_forbidden(game.board, p, game.cur_id, 3)) {
+                pos = p;
+            }
+        }
         move = find_child(root, pos);
     } else {
         move = max_count(root);

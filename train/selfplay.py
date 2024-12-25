@@ -39,7 +39,7 @@ def eval(ctype_net, n=20):
         eval_time *= 2
     return win_rate
 
-def self_play(ctype_net, dataset, n=50, time_per_step=1000):
+def self_play(ctype_net, dataset, n=50, time_per_step=500):
     renju.bind_network(ctypes.pointer(ctype_net), True)
     print(f"start self-playing, time_per_step: {time_per_step}ms")
     p1, p2 = renju.preset_players[renju.MCTS_NN], renju.preset_players[renju.MCTS_NN]
@@ -50,45 +50,45 @@ def self_play(ctype_net, dataset, n=50, time_per_step=1000):
             renju.log_disable()
         result = renju.start_game(p1, p2, first_id, time_per_step, ctypes.pointer(ctype_net))
         renju.add_games(dataset, ctypes.pointer(result), 1)
-        first_id = 3 - first_id
-        if (i + 1) % (n // 5) == 0:
-            end_time = time.time()
-            average_time = (end_time - start_time) / (n // 5)
-            start_time = end_time
-            print(f"finished {i + 1} games, average time: {average_time:.2f} seconds, now {dataset.size} samples")
-            print(f"last game:")
-            renju.print_game(result.game)
         if i != 0:
             renju.log_enable()
+        first_id = 3 - first_id
+        if (i + 1) % (n // 10) == 0:
+            end_time = time.time()
+            average_time = (end_time - start_time) / (n // 10)
+            start_time = end_time
+            print(f"finished {i + 1} games, average time: {average_time:.2f} seconds, now {dataset.contents.size} samples, next_pos: {dataset.contents.next_pos}")
+            print(f"last game:")
+            renju.print_game(result.game)
     renju.shuffle_dataset(dataset)
 
 # %%
 if __name__ == "__main__":
     renju.init()
-    dataset = GomokuDataset(file="data/3000ms.dat", device=try_mps())
-    test_dataset = GomokuDataset(file="data/5000ms.dat", device=try_mps())
+    dataset = GomokuDataset(file="data/5000ms.dat", device=try_mps())
+    test_dataset = GomokuDataset(file="data/3000ms.dat", device=try_mps())
     predictor = Predictor()
     predictor.load("model/start")
     
     games = 50
     sum = 0
     best_win_rate = 0
+    update_cnt = 0
     try: 
         while True:
             ctype_net = predictor.to_ctype()
-            self_play(ctype_net, dataset.handle)
+            self_play(ctype_net, dataset.handle, n=games)
             dataset.refresh()
             train(predictor, dataset, test_dataset, 2, 0.002)
             sum += games
-            if sum % 200 == 0:
+            if sum % 250 == 0:
                 predictor.save(f"model/selfplay/{sum}")
-            if sum % 1000 == 0:
+            if sum % 500 == 0:
                 cur_win_rate = eval(ctype_net, n=50)
                 if cur_win_rate > best_win_rate:
                     print(f"{Fore.GREEN}best model found!{Fore.RESET}")
                     predictor.save(f"model/selfplay/best")
+                    update_cnt += 1
     except KeyboardInterrupt:
-        print(f"interrupted, now {sum} games played")
-        name = input("input model name: ")
-        if name != "":
-            predictor.save(f"model/selfplay/{name}")
+        dataset.save("data/selfplay1000ms.dat")
+        print(f"interrupted, now {sum} games played, updated {update_cnt} model")

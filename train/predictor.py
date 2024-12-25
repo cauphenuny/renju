@@ -17,8 +17,10 @@ class Predictor(nn.Module):
         self.shared = nn.Sequential(OrderedDict([
             ('res1', ResidualBlock(4, 32)), 
             ('res2', ResidualBlock(32, 256)), 
-            ('dropout', nn.Dropout(0.3)),
+            ('dropout1', nn.Dropout(0.3)),
             ('res3', ResidualBlock(256, self.max_channel)),
+            ('dropout2', nn.Dropout(0.3)),
+            ('res4', ResidualBlock(self.max_channel, self.max_channel)),
         ]))
         self.policy = nn.Sequential(OrderedDict([
             ('res', ResidualBlock(self.max_channel, 16)),
@@ -75,7 +77,7 @@ class Predictor(nn.Module):
         dev = self.device
         self.to(cpu())
         layers = [
-            'shared.res1', 'shared.res2', 'shared.res3',
+            'shared.res1', 'shared.res2', 'shared.res3', 'shared.res4',
             'value.conv', 'value.linear1', 'value.linear2',
             'policy.res', 'policy.linear',
         ]

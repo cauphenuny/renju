@@ -57,25 +57,14 @@ void tanh_(tensor_t*);
 float mean(float x[], int size);
 
 double entropy(const float x[], int size, bool normalize);
+void conv2d_fast_impl(const float* restrict input, int input_channel, int input_x, int input_y,
+                      float* restrict output, int output_channel, int output_x, int output_y,
+                      const float* restrict kernel, const float* restrict bias, int kernel_size,
+                      int padding);
 void conv2d_impl(const float* restrict input, int input_channel, int input_x, int input_y,
-                 float* restrict output, int output_channel, int output_x, int output_y,
-                 const float* restrict kernel, const float* restrict bias, int kernel_size,
-                 int padding);
-void conv2d_3x3p1_impl(const float* restrict input, int input_channel, int input_x, int input_y,
                        float* restrict output, int output_channel, int output_x, int output_y,
-                       const float* restrict kernel, const float* restrict bias);
-void conv2d_1x1_impl(const float* restrict input, int input_channel, int input_x, int input_y,
-                     float* restrict output, int output_channel, int output_x, int output_y,
-                     const float* restrict kernel, const float* restrict bias);
+                       const float* restrict kernel, const float* restrict bias, int kernel_size, int padding);
 void linear_impl(const float* restrict input, int input_size, float* restrict output,
                  int output_size, const float* restrict weight, const float* restrict bias);
-
-#define conv2d_wrap(input, output, size, data, param, activate)                                    \
-    conv2d_impl(input, param.input_channel, size.x, size.y, output, param.output_channel, &size.x, \
-                &size.y, data.weight, data.bias, param.kernel_size, param.padding, activate)
-
-#define linear_wrap(input, output, data, param, activate)                                   \
-    linear_impl(input, param.input_size, output, param.output_size, data.weight, data.bias, \
-                activate)
 
 #endif

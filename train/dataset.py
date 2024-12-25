@@ -22,10 +22,16 @@ def to_tensor(sample: renju.sample_t, device = torch.device('cpu')):
 
 # %%
 class GomokuDataset():
+    def shuffle(self):
+        renju.shuffle_dataset(self.handle)
+    
     def refresh(self):
         self.index = 0
         self.samples = list(range(0, self.dataset.size))
         random.shuffle(self.samples)
+    
+    def save(self, file):
+        renju.save_dataset(self.handle, file)
 
     def __init__(self, file=None, dataset=None, batch_size=128, device=torch.device('cpu')):
         if dataset == None:
@@ -35,6 +41,8 @@ class GomokuDataset():
         else:
             self.dataset = dataset
             self.handle = ctypes.pointer(self.dataset)
+        if self.dataset.size < self.dataset.capacity:
+            self.dataset.next_pos = self.dataset.size
         self.batch_size = batch_size
         self.index = 0
         self.samples = list(range(0, self.dataset.size))

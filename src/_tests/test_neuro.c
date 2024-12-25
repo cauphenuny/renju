@@ -45,11 +45,14 @@ void test_conv() {
     tensor_t input = tensor_new(3, 4, 4, -1), output = {0};
     log_l("input initialized");
     for (int i = 0; i < input.numel; i++) input.data[i] = i * 2;
-    conv2d_layer(&conv, &input, &output, 0);
+    conv2d_layer(&conv, &input, &output, true);
     print_tensor(&output);
     int expected_shape[] = {4, 4, 4};
     for (int i = 0; i < 3; i++) {
-        assert(((int*)output.shape.data)[i] == expected_shape[i]);
+        if (((int*)output.shape.data)[i] != expected_shape[i]) {
+            log_e("shape dismatch");
+            exit(1);
+        }
     }
     assert(output.numel == 4 * 4 * 4);
     float expected_result[] = {
@@ -95,7 +98,10 @@ void test_residual_block() {
     print_tensor(&output);
     int expected_shape[] = {4, 4, 4};
     for (int i = 0; i < 3; i++) {
-        assert(((int*)output.shape.data)[i] == expected_shape[i]);
+        if (((int*)output.shape.data)[i] != expected_shape[i]) {
+            log_e("shape dismatch");
+            exit(1);
+        }
     }
     assert(output.numel == 4 * 4 * 4);
     residual_block_free(&block);
@@ -121,9 +127,13 @@ void test_network() {
     network_t network;
     network_init(&network);
     board_t board = {0};
+    prediction_t prediction;
     double tim = record_time();
-    prediction_t prediction = predict(&network, board, (point_t){7, 7}, 1);
-    log_i("tim: %.2lfms", get_time(tim));
+    int T = 100;
+    for (int i = 0; i < T; i++) {
+        prediction = predict(&network, board, (point_t){7, 7}, 1);
+    }
+    log_i("tim: %.2lfms", get_time(tim) / T);
     print_prediction(prediction);
     network_free(&network);
 }

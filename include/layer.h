@@ -18,7 +18,8 @@ void conv2d_layer_init(conv_layer_t* layer, conv_params_t param);
 void conv2d_layer_free(conv_layer_t* layer);
 void conv2d_layer_load(conv_layer_t* layer, FILE* file);
 void conv2d_layer_save(const conv_layer_t* layer, FILE* file);
-void conv2d_layer(const conv_layer_t* layer, const tensor_t* input, tensor_t* output, int special);
+void conv2d_layer(const conv_layer_t* layer, const tensor_t* input, tensor_t* output,
+                  bool accelerate);
 
 typedef struct {
     int input_size, output_size;

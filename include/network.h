@@ -5,7 +5,7 @@
 #include "game.h"
 #include "layer.h"
 
-#define NETWORK_VERSION 6
+#define NETWORK_VERSION 7
 #define MAX_CHANNEL     256
 
 #include "layer.h"
@@ -19,6 +19,8 @@
                [res2, 32:256]
                      |
                [res3, 256:256]
+                     |
+               [res4, 256:256]
                      |
      +---------------+----------------+
      |                                |
@@ -34,7 +36,7 @@
 
 typedef struct {
     struct {
-        residual_block_param_t res1, res2, res3;
+        residual_block_param_t res1, res2, res3, res4;
     } shared;
     struct {
         residual_block_param_t res;
@@ -52,6 +54,7 @@ const static network_params_t network_params = {
             .res1 = {.input_channel = 4, .output_channel = 32},
             .res2 = {.input_channel = 32, .output_channel = 256},
             .res3 = {.input_channel = 256, .output_channel = 256},
+            .res4 = {.input_channel = 256, .output_channel = 256},
         },
     .policy =
         {
@@ -68,7 +71,7 @@ const static network_params_t network_params = {
 
 typedef struct {
     struct {
-        residual_block_t res1, res2, res3;
+        residual_block_t res1, res2, res3, res4;
     } shared;
     struct {
         residual_block_t res;

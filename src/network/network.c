@@ -15,6 +15,7 @@ void network_init(network_t* network) {
     residual_block_init(&network->shared.res1, network_params.shared.res1);
     residual_block_init(&network->shared.res2, network_params.shared.res2);
     residual_block_init(&network->shared.res3, network_params.shared.res3);
+    residual_block_init(&network->shared.res4, network_params.shared.res4);
 
     residual_block_init(&network->policy.res, network_params.policy.res);
     linear_layer_init(&network->policy.linear, network_params.policy.linear);
@@ -28,6 +29,7 @@ void network_free(network_t* network) {
     residual_block_free(&network->shared.res1);
     residual_block_free(&network->shared.res2);
     residual_block_free(&network->shared.res3);
+    residual_block_free(&network->shared.res4);
 
     residual_block_free(&network->policy.res);
     linear_layer_free(&network->policy.linear);
@@ -43,12 +45,13 @@ void forward(const network_t* network, tensor_t* input, tensor_t* policy_output,
     residual_block(&network->shared.res1, input, &tmp[0]);
     residual_block(&network->shared.res2, &tmp[0], &tmp[1]);
     residual_block(&network->shared.res3, &tmp[1], &tmp[0]);
-    shared_output = tensor_clone(&tmp[0]);
+    residual_block(&network->shared.res4, &tmp[0], &tmp[1]);
+    shared_output = tensor_clone(&tmp[1]);
 
     residual_block(&network->policy.res, &shared_output, &tmp[0]);
     linear_layer(&network->policy.linear, &tmp[0], policy_output);
 
-    conv2d_layer(&network->value.conv, &shared_output, &tmp[0], 0);
+    conv2d_layer(&network->value.conv, &shared_output, &tmp[0], true);
     linear_layer(&network->value.linear1, &tmp[0], &tmp[1]);
     linear_layer(&network->value.linear2, &tmp[1], value_output);
 
@@ -108,6 +111,7 @@ int network_save(const network_t* network, const char* file_basename) {
     residual_block_save(&network->shared.res1, file);
     residual_block_save(&network->shared.res2, file);
     residual_block_save(&network->shared.res3, file);
+    residual_block_save(&network->shared.res4, file);
     residual_block_save(&network->policy.res, file);
     linear_layer_save(&network->policy.linear, file);
     conv2d_layer_save(&network->value.conv, file);
@@ -139,6 +143,7 @@ int network_load(network_t* network, const char* filename) {
     residual_block_load(&network->shared.res1, file);
     residual_block_load(&network->shared.res2, file);
     residual_block_load(&network->shared.res3, file);
+    residual_block_load(&network->shared.res4, file);
     residual_block_load(&network->policy.res, file);
     linear_layer_load(&network->policy.linear, file);
     conv2d_layer_load(&network->value.conv, file);
