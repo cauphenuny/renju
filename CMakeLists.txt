@@ -7,12 +7,13 @@ project (
 
 set (CMAKE_VERBOSE_MAKEFILE OFF)
 set (EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
-set (LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
+set (LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 set (CMAKE_C_STANDARD 99)
 set (CMAKE_EXPORT_COMPILE_COMMANDS True)
 if (NOT CMAKE_BUILD_TYPE)
     set (CMAKE_BUILD_TYPE Release)
 endif()
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 string (ASCII 27 ESC)
 set (COLOR_GREEN "${ESC}[1;32m")
@@ -22,13 +23,10 @@ set (COLOR_RESET "${ESC}[0m")
 
 find_package(OpenMP)
 find_package(BLAS)
-if(OpenMP_FOUND)
-    message(STATUS "OpenMP found.")
-else()
+if(NOT OpenMP_FOUND)
     message(STATUS "${COLOR_YELLOW}OpenMP not found.${COLOR_RESET}")
 endif()
 if(BLAS_FOUND)
-    message(STATUS "BLAS found.")
     find_path(BLAS_INCLUDE_DIRS cblas.h
         PATHS
         /usr/include
@@ -42,15 +40,13 @@ else()
     message(STATUS "${COLOR_YELLOW}BLAS not found.${COLOR_RESET}")
 endif(BLAS_FOUND)
 
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     message (STATUS "${COLOR_RED}debug${COLOR_RESET}")
-    add_compile_options (-Wall -Wextra -Wshadow) 
-    add_compile_options (-DDEBUG_LEVEL=2 -O0 -g -fno-omit-frame-pointer -fsanitize=undefined,address,leak,null,bounds)
-    add_link_options (-fno-omit-frame-pointer -fsanitize=undefined,address,leak,null,bounds)
-    # add_compile_options (-DDEBUG_LEVEL=2 -O0 -g -fno-omit-frame-pointer -fsanitize=undefined,null,bounds,thread)
-    # add_link_options (-fno-omit-frame-pointer -fsanitize=undefined,null,bounds,thread)
+    add_compile_options (-Wall -Wextra -Wshadow -DDEBUG_LEVEL=2 -O0 -g -fno-omit-frame-pointer)
+    add_compile_options (-fsanitize=undefined,null,bounds,leak,address)
+    add_link_options (-fsanitize=undefined,address,leak,null,bounds)
+    # add_compile_options (-fsanitize=undefined,null,bounds,thread)
+    # add_link_options (-fsanitize=undefined,null,bounds,thread)
     set (VERSION_STRING "${PROJECT_VERSION} (debug)")
 elseif (CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
     message (STATUS "${COLOR_GREEN}release with debug info${COLOR_RESET}")
@@ -82,7 +78,6 @@ include_directories (${PROJECT_SOURCE_DIR})
 file(GLOB_RECURSE INCLUDE_LIST "*.h")
 
 add_library(renju_objects OBJECT ${SRC_LIST})
-target_link_libraries(renju_objects m)
 
 add_library(librenju SHARED $<TARGET_OBJECTS:renju_objects>)
 
@@ -91,13 +86,12 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     set_target_properties(librenju PROPERTIES EXCLUDE_FROM_ALL TRUE)
 endif ()
 
-file(MAKE_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
 file(MAKE_DIRECTORY ${PROJECT_SOURCE_DIR}/train)
 file(MAKE_DIRECTORY ${PROJECT_SOURCE_DIR}/train/lib)
 
 add_custom_command(
     OUTPUT ${PROJECT_SOURCE_DIR}/train/lib/librenju.py
-    COMMAND ctypesgen -L${PROJECT_SOURCE_DIR}/lib -lrenju ${PROJECT_SOURCE_DIR}/include/* -o ${PROJECT_SOURCE_DIR}/train/lib/librenju.py
+    COMMAND ctypesgen -L${PROJECT_SOURCE_DIR}/bin -lrenju ${PROJECT_SOURCE_DIR}/include/* -o ${PROJECT_SOURCE_DIR}/train/lib/librenju.py
     DEPENDS ${INCLUDE_LIST}
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/train
     COMMENT "Running ctypesgen to generate Python bindings"
@@ -118,17 +112,19 @@ target_compile_definitions(test PRIVATE TEST)
 add_executable (botzone src/botzone.c ${SRC_LIST})
 target_compile_definitions(botzone PRIVATE NO_COLOR)
 
-target_link_libraries (main m)
-target_link_libraries (librenju m)
-target_link_libraries (test m)
-target_link_libraries (botzone m)
+if (UNIX AND NOT APPLE)
+    target_link_libraries (main m)
+    target_link_libraries (librenju m)
+    target_link_libraries (test m)
+    target_link_libraries (botzone m)
+endif()
 
 if(OpenMP_FOUND)
     target_link_libraries(main OpenMP::OpenMP_C)
     target_link_libraries(librenju OpenMP::OpenMP_C)
     target_link_libraries(test OpenMP::OpenMP_C)
     target_link_libraries(botzone OpenMP::OpenMP_C)
-endif()
+endif(OpenMP_FOUND)
 
 if(BLAS_FOUND)
     target_link_libraries(main ${BLAS_LIBRARIES})

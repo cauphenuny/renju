@@ -14,7 +14,7 @@
 #define GAME_STORAGE_SIZE 4096
 #define DATASET_SIZE      65536
 
-static int statistics[3][3];
+int statistics[3][3];
 // [0][0]: draw count [0][1/2]: normal / reverse count
 // [1][0/1/2]: p1 win count (all / 1st / 2nd)
 // [2][0/1/2]: p2 win count (all / 1st / 2nd)
@@ -38,7 +38,7 @@ static void print_statistics(void) {
     }
 }
 
-static game_result_t results[GAME_STORAGE_SIZE];
+static game_result_t* results;
 static int tot;
 static char* sample_file;
 static char* model_file;
@@ -86,9 +86,11 @@ static void signal_handler(int signum) {
             if (tot) {
                 save_data();
             }
+            free(results);
             exit(0);
         default: log_e("unexpected signal %d", signum);
     }
+    free(results);
     exit(signum);
 }
 
@@ -114,6 +116,7 @@ int main(int argc, char* argv[]) {
 
     log_l("renju v%s", VERSION);
     init();
+    results = malloc(GAME_STORAGE_SIZE * sizeof(game_result_t));
 
 #ifdef DEFAULT_MODEL
     char fullname[256];

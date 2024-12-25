@@ -39,7 +39,7 @@ def eval(ctype_net, n=20):
         eval_time *= 2
     return win_rate
 
-def self_play(ctype_net, dataset, n=50, time_per_step=500):
+def self_play(ctype_net, dataset, n=50, time_per_step=1000):
     renju.bind_network(ctypes.pointer(ctype_net), True)
     print(f"start self-playing, time_per_step: {time_per_step}ms")
     p1, p2 = renju.preset_players[renju.MCTS_NN], renju.preset_players[renju.MCTS_NN]
@@ -66,7 +66,7 @@ def self_play(ctype_net, dataset, n=50, time_per_step=500):
 if __name__ == "__main__":
     renju.init()
     dataset = GomokuDataset(file="data/5000ms.dat", device=try_mps())
-    test_dataset = GomokuDataset(file="data/3000ms.dat", device=try_mps())
+    test_dataset = GomokuDataset(file="data/3000ms-raw.dat", device=try_mps())
     predictor = Predictor()
     predictor.load("model/start")
     

@@ -72,6 +72,7 @@ void player_init() {
     mcts_params_nn.eval_type = EVAL_NETWORK;
     mcts_params_adv = mcts_params_default;
     mcts_params_adv.eval_type = EVAL_HEURISTIC;
+    mcts_params_default.use_vct = false;
 }
 
 void bind_network(network_t* network, bool is_train) {

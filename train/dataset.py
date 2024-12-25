@@ -29,11 +29,12 @@ class GomokuDataset():
         self.index = 0
         self.samples = list(range(0, self.dataset.size))
         random.shuffle(self.samples)
+        print(f"refreshed dataset, now {len(self.samples)} samples")
     
     def save(self, file):
         renju.save_dataset(self.handle, file)
 
-    def __init__(self, file=None, dataset=None, batch_size=128, device=torch.device('cpu')):
+    def __init__(self, file=None, dataset=None, batch_size=32, device=torch.device('cpu')):
         if dataset == None:
             self.dataset = renju.dataset_t()
             self.handle = ctypes.pointer(self.dataset)
