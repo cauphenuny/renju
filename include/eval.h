@@ -14,6 +14,8 @@ typedef vector_t* threat_storage_t[PAT_TYPE_SIZE];  // vector<threat_t>
 
 #define EVAL_INF 1000000
 
+int eval_pos(board_t board, point_t pos);
+int eval_empty_pos(board_t board, point_t pos, int id);
 int eval(board_t board);
 
 /// @param storage array of vector<threat_t>*, bind pattern type to storage

@@ -56,7 +56,7 @@ int vct_depth_sum, vct_depth_cur, vct_depth_max, game_cnt;
 /// @param time_limit time limit of every step
 game_result_t start_game(player_t p1, player_t p2, int first_player, int time_limit, network_t* network) {
 
-    const char* colors[] = {"", L_GREEN, L_RED};
+    const char* colors[] = {"", L_BLUE, L_RED};
     set_color(first_player == 1);
 
     game_cnt++, vct_depth_cur = 0;

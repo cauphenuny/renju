@@ -123,11 +123,19 @@ def test_predictor(pred, ctype_pred):
 
 # %%
 if __name__ == "__main__":
-    pred = Predictor()
-    # pred.load("model/static")
-    ctype_pred = pred.to_ctype()
-    # renju.network_save(ctypes.pointer(ctype_pred), "model/static")
+    mode = input('input mode [test/convert]: ')
+    if mode == 'test':
+        pred = Predictor()
+        # pred.load("model/static")
+        ctype_pred = pred.to_ctype()
+        # renju.network_save(ctypes.pointer(ctype_pred), "model/static")
 # %%
-    test_predictor(pred, ctype_pred)
+        test_predictor(pred, ctype_pred)
+    elif mode == 'convert':
+        name = input('input name: ')
+        pred = Predictor(name)
+        pred.export_ctype()
+    else:
+        print(f'unrecognized mode{mode}')
 
 # %%

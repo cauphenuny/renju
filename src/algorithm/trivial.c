@@ -62,7 +62,7 @@ point_t trivial_move(board_t board, int self_id, double time_limit, bool use_vct
             pos = vector_get(point_t, vct_sequence, 0);
             log_l("found VCT", get_time(start_time));
             print_points(vct_sequence, PROMPT_NOTE, " -> ");
-            sleep(1);
+            // sleep(1);
         }
         vector_free(vct_sequence);
     }

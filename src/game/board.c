@@ -57,15 +57,15 @@ void print_points(vector_t point_array, int log_level, const char* delim) {
     log_add(log_level, "%s", buffer);
 }
 
-static char* piece_color[] = {RESET, GREEN, RED, L_GREEN, L_RED};
+static char* piece_color[] = {RESET, BLUE, RED, L_BLUE, L_RED};
 
-void set_color(bool green_first) {
-    if (green_first) {
-        piece_color[1] = GREEN, piece_color[3] = L_GREEN;
+void set_color(bool blue_first) {
+    if (blue_first) {
+        piece_color[1] = BLUE, piece_color[3] = L_BLUE;
         piece_color[2] = RED, piece_color[4] = L_RED;
     } else {
         piece_color[1] = RED, piece_color[3] = L_RED;
-        piece_color[2] = GREEN, piece_color[4] = L_GREEN;
+        piece_color[2] = BLUE, piece_color[4] = L_BLUE;
     }
 }
 
@@ -76,10 +76,10 @@ void print_impl(const board_t board, vector_t emph_pos, const fboard_t prob) {
                                      {"╚", "═", "╧", "═", "╝"}};  //
     const char* piece_ch[5] = {
         " ",  // empty
-        "o",  // previous p1 pieces
-        "x",  // previous p2 pieces
-        "o",  // current p1 piece
-        "x",  // current p2 piece
+        "◉",  // previous p1 pieces
+        "◎",  // previous p2 pieces
+        "◉",  // current p1 piece
+        "◎",  // current p2 piece
     };
 #define LEVELS 7
     const struct {
@@ -248,13 +248,6 @@ int check(board_t board, point_t pos) {
     int id = board[pos.x][pos.y];
     pattern4_t pat4 = get_pattern4(board, pos, id, false);
     return pat4 == PAT4_WIN ? (id == 1 ? 1 : -1) : 0;
-}
-
-int put_and_check(board_t board, point_t pos, int id) {
-    board[pos.x][pos.y] = id;
-    int result = check(board, pos);
-    board[pos.x][pos.y] = 0;
-    return result;
 }
 
 /// @brief check if {pos} is forbidden for player{id}

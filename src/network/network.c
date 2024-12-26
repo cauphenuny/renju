@@ -5,6 +5,7 @@
 #include "game.h"
 #include "layer.h"
 #include "neuro.h"
+#include "trivial.h"
 #include "util.h"
 
 #include <string.h>
@@ -156,9 +157,16 @@ int network_load(network_t* network, const char* filename) {
 
 point_t nn_move(game_t game, const void* assets) {
     if (!game.count) return (point_t){(int8_t)N / 2, (int8_t)N / 2};
-    const network_t* network = (network_t*)assets;
-    if (!network) return (point_t){-1, -1};
-    prediction_t prediction = predict(network, game.board, game.steps[game.count - 1], game.cur_id);
+    const nn_player_param_t param = *(nn_player_param_t*)assets;
+    if (!param.network) return (point_t){-1, -1};
+    if (param.use_vct) {
+        point_t pos = trivial_move(game.board, game.cur_id, (double)game.time_limit / 2, true);
+        if (in_board(pos)) {
+            return pos;
+        }
+    }
+    prediction_t prediction =
+        predict(param.network, game.board, game.steps[game.count - 1], game.cur_id);
     point_t pos = {0, 0};
     bool forbid = game.cur_id == 1;
     for (int8_t i = 0; i < N; i++) {

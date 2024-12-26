@@ -14,6 +14,7 @@ enum {
     MINIMAX_ADV,
     MINIMAX_ULT,
     NEURAL_NETWORK,  // pure neural network
+    NEURAL_NETWORK_VCT,  // pure neural network
     PLAYER_CNT,
 };
 

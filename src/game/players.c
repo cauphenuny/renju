@@ -5,6 +5,7 @@
 #include "manual.h"
 #include "mcts.h"
 #include "minimax.h"
+#include "network.h"
 
 #include <string.h>
 
@@ -30,14 +31,24 @@ const static minimax_param_t minimax_params_advanced = {
     .parallel = true,
     .max_depth = 12,
     .strategy = {.adjacent = 2},
-    .optim = {.begin_vct = true, .look_forward = true},
+    .optim = {.begin_vct = true, .look_ahead = true, .leaf_vct_depth = 0},
 };
 
 const static minimax_param_t minimax_params_ultimate = {
     .parallel = true,
     .max_depth = 12,
     .strategy = {.adjacent = 2},
-    .optim = {.begin_vct = true, .look_forward = true, .leaf_vct_depth = 6},
+    .optim = {.begin_vct = true, .look_ahead = true, .leaf_vct_depth = 0, .dynamic_depth = true},
+};
+
+static nn_player_param_t nn_params_default = {
+    .network = NULL,
+    .use_vct = false,
+};
+
+static nn_player_param_t nn_params_vct = {
+    .network = NULL,
+    .use_vct = true,
 };
 
 player_t preset_players[MAX_PLAYERS] = {
@@ -55,15 +66,19 @@ player_t preset_players[MAX_PLAYERS] = {
                  .move = minimax,
                  .assets = &minimax_params_normal,
                  .attribute = {.enable_vct = minimax_params_normal.optim.begin_vct}},
-    [MINIMAX_ADV] = {.name = "minimax, look forward, external VCT",
+    [MINIMAX_ADV] = {.name = "minimax, look ahead, VCT",
                      .move = minimax,
                      .assets = &minimax_params_advanced,
                      .attribute = {.enable_vct = minimax_params_advanced.optim.begin_vct}},
-    [MINIMAX_ULT] = {.name = "minimax, look forward, full VCT",
+    [MINIMAX_ULT] = {.name = "minimax, look ahead, VCT, dynamic depth",
                      .move = minimax,
                      .assets = &minimax_params_ultimate,
                      .attribute = {.enable_vct = minimax_params_ultimate.optim.begin_vct}},
-    [NEURAL_NETWORK] = {.name = "neural network", .move = nn_move, .assets = NULL}};
+    [NEURAL_NETWORK] = {.name = "neural network", .move = nn_move, .assets = &nn_params_default},
+    [NEURAL_NETWORK_VCT] = {.name = "neural network, VCT",
+                            .move = nn_move,
+                            .assets = &nn_params_vct},
+};
 
 point_t move(game_t game, player_t player) { return player.move(game, player.assets); }
 
@@ -76,7 +91,8 @@ void player_init() {
 }
 
 void bind_network(network_t* network, bool is_train) {
-    preset_players[NEURAL_NETWORK].assets = network;
+    nn_params_default.network = network;
+    nn_params_vct.network = network;
     mcts_params_nn.network = network;
     mcts_params_nn.is_train = is_train;
 }

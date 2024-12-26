@@ -8,8 +8,11 @@ typedef struct {
     bool parallel;
     int max_depth;
     struct {
-        bool begin_vct, look_forward;
+        bool begin_vct;
+        bool look_ahead;
         int leaf_vct_depth;
+        bool dynamic_depth;
+        bool dynamic_width;
     } optim;
     struct {
         int adjacent;

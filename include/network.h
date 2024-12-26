@@ -99,6 +99,11 @@ prediction_t predict(const network_t* network,  //
                      const board_t board, point_t last_move, int cur_id);
 void print_prediction(const prediction_t prediction);
 
+typedef struct {
+    network_t* network;
+    bool use_vct;
+} nn_player_param_t;
+
 point_t nn_move(game_t game, const void* assets);
 
 #endif
