@@ -79,8 +79,8 @@ def cross_entropy_loss(log_y_hat, y):
 def train(net, train_iter, test_iter, num_epochs, lr, device=try_mps()):
     print(f'training on {device}, lr: {lr}, num_epochs: {num_epochs}')
     net.to(device)
-    # optimizer = torch.optim.SGD(net.parameters(), lr=lr, momentum=0.9)
-    optimizer = torch.optim.Adam(net.parameters(), lr=lr)
+    optimizer = torch.optim.SGD(net.parameters(), lr=lr, momentum=0.9)
+    # optimizer = torch.optim.Adam(net.parameters(), lr=lr)
     print(f'optimizer: {optimizer}')
     timer, num_batches = d2l.Timer(), len(train_iter)
     print(f'num_batches: {num_batches}')

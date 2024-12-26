@@ -95,7 +95,7 @@ class Predictor(nn.Module):
             name = input('input model name: ')
         print(f'exporting model "{name}"')
         ctype_net = self.to_ctype()
-        renju.save_network(ctypes.pointer(ctype_net), name)
+        renju.network_save(ctypes.pointer(ctype_net), name)
 
 # %%
 def test_predictor(pred, ctype_pred):

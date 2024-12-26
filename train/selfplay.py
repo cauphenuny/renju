@@ -77,18 +77,19 @@ if __name__ == "__main__":
     try: 
         while True:
             ctype_net = predictor.to_ctype()
-            self_play(ctype_net, dataset.handle, n=games)
-            dataset.refresh()
-            train(predictor, dataset, test_dataset, 2, 0.002)
-            sum += games
-            if sum % 250 == 0:
-                predictor.save(f"model/selfplay/{sum}")
             if sum % 500 == 0:
                 cur_win_rate = eval(ctype_net, n=50)
                 if cur_win_rate > best_win_rate:
                     print(f"{Fore.GREEN}best model found!{Fore.RESET}")
                     predictor.save(f"model/selfplay/best")
                     update_cnt += 1
+                    cur_win_rate = best_win_rate
+            self_play(ctype_net, dataset.handle, n=games)
+            dataset.refresh()
+            train(predictor, dataset, test_dataset, 1, 0.005)
+            sum += games
+            if sum % 250 == 0:
+                predictor.save(f"model/selfplay/{sum}")
     except KeyboardInterrupt:
         dataset.save("data/selfplay1000ms.dat")
         print(f"interrupted, now {sum} games played, updated {update_cnt} model")

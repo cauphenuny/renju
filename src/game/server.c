@@ -137,7 +137,8 @@ game_result_t start_game(player_t p1, player_t p2, int first_player, int time_li
                         prediction_t prediction =
                             predict(network, game.board, game.steps[game.count - 1], game.cur_id);
                         if (pos.y) {
-                            print_prediction(prediction);
+                            print_prob(game.board, prediction.prob);
+                            log_l("eval: %.3lf", prediction.eval);
                         } else {
                             log_l("eval: %.3lf", prediction.eval);
                         }
