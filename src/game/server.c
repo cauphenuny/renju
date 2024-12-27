@@ -1,3 +1,6 @@
+/// @file server.c
+/// @brief implementation of server
+
 #include "board.h"
 #include "game.h"
 #include "pattern.h"

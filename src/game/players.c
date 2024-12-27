@@ -1,3 +1,6 @@
+/// @file players.c
+/// @brief some preset players and implementation of player operations
+
 #include "players.h"
 
 #include "board.h"

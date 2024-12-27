@@ -28,11 +28,11 @@ sample_input_t to_sample_input(const board_t board, point_t last_move, int first
 void print_sample(sample_t sample);
 
 typedef struct {
-    int size;
-    int next_pos;
-    int capacity;
-    int sizeof_sample;
-    sample_t* samples;
+    int size;           // number of samples
+    int next_pos;       // next position to add a sample
+    int capacity;       // capacity of the dataset
+    int sizeof_sample;  // size of a sample
+    sample_t* samples;  // array of samples
 } dataset_t;
 
 dataset_t new_dataset(int capacity);

@@ -1,3 +1,6 @@
+/// @file game.c
+/// @brief implementation of game operations
+
 #include "game.h"
 
 #include <stdio.h>

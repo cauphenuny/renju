@@ -1,3 +1,6 @@
+/// @file botzone.c
+/// @brief main function of the program for botzone
+
 #include "board.h"
 #include "game.h"
 #include "init.h"

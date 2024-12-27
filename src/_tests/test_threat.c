@@ -2,10 +2,8 @@
 #include "eval.h"
 #include "server.h"
 #include "game.h"
-#include "minimax.h"
 #include "pattern.h"
 #include "players.h"
-#include "trivial.h"
 #include "util.h"
 #include "vct.h"
 #include "vector.h"
@@ -74,7 +72,7 @@ void test_upd() {
         vector_t array = vector_new(point_t, NULL);
         board[pos.x][pos.y] = 2;
         for_all_dir(d, dx, dy) {
-            vector_t tmp = find_relative_points(CONSIST, board, pos, dx, dy, 2, false);
+            vector_t tmp = find_relative_points(ATTACK, board, pos, dx, dy, 2, false);
             print_emph_mutiple(board, tmp);
             vector_cat(array, tmp);
             vector_free(tmp);
@@ -136,8 +134,6 @@ void test_threat_tree() {
     //         log_l("type: %s", pattern_typename[info.type]);
     //         log_l("pos: (%d, %d)", info.action.x, info.action.y);
     //         print_emph(board, info.action);
-    //         log_l("consists:");
-    //         print_emph_mutiple(board, info.consists);
     //         log_l("defends:");
     //         print_emph_mutiple(board, info.defenses);
     //     }

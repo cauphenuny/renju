@@ -1,3 +1,6 @@
+/// @file manual.c
+/// @brief manual input for game
+
 #include "board.h"
 #include "game.h"
 #include "util.h"

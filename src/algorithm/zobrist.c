@@ -1,3 +1,6 @@
+/// @file zobrist.c
+/// @brief implementation of Zobrist hashing
+
 #include "zobrist.h"
 
 #include "board.h"

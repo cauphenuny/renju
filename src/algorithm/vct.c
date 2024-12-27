@@ -1,3 +1,6 @@
+/// @file vct.c
+/// @brief implementation of VCT algorithm (Allis, L. & Herik, H. & Huntjens, M.. (1994).
+/// Go-Moku and Threat-Space Search.)
 #include "vct.h"
 
 #include "board.h"
@@ -26,23 +29,21 @@ typedef struct threat_tree_node_t {
 void free_threat_info(void* ptr) {
     if (!ptr) return;
     threat_info_t* threat_info = ptr;
-    vector_free(threat_info->consists);
     vector_free(threat_info->defenses);
 }
 
 threat_info_t clone_threat_info(const threat_info_t* threat_info) {
     threat_info_t result;
     memcpy(&result, threat_info, sizeof(threat_info_t));
-    result.consists = vector_clone(threat_info->consists);
     result.defenses = vector_clone(threat_info->defenses);
     return result;
 }
 
-/// @brief get threat info (consists, defenses) of {threat} on {board}
+/// @brief get threat info (defenses) of {threat} on {board}
 threat_info_t attach_threat_info(board_t board, threat_t threat) {
     threat_info_t info = {.type = threat.pattern,
-                          .consists = find_relative_points(CONSIST, board, threat.pos, threat.dir.x, threat.dir.y, threat.id, true),
-                          .defenses = find_relative_points(DEFENSE, board, threat.pos, threat.dir.x, threat.dir.y, threat.id, true),
+                          .defenses = find_relative_points(DEFENSE, board, threat.pos, threat.dir.x,
+                                                           threat.dir.y, threat.id, true),
                           .action = threat.pos,
                           .dir = threat.dir,
                           .id = threat.id};
@@ -220,11 +221,17 @@ void print_threat_tree(local_var_t* assets, threat_tree_node_t* root) {
     if (root->depth) assets->indent--;
 }
 
+/// @brief update board state after a round contained by {threat}
+/// @param board current board state
+/// @param threat threat information
 void act_round(board_t board, threat_info_t threat) {
     board[threat.action.x][threat.action.y] = threat.id;
     for_each(point_t, threat.defenses, defend) { board[defend.x][defend.y] = 3 - threat.id; }
 }
 
+/// @brief revert board state after a round contained by {threat}
+/// @param board current board state
+/// @param threat threat information
 void revert_round(board_t board, threat_info_t threat) {
     board[threat.action.x][threat.action.y] = 0;
     for_each(point_t, threat.defenses, defend) { board[defend.x][defend.y] = 0; }
@@ -232,6 +239,7 @@ void revert_round(board_t board, threat_info_t threat) {
 
 void build_threat_tree(local_var_t* assets, threat_tree_node_t* node);
 
+/// @brief check if {info} is conflicted with {board}
 bool threat_confilct(board_t board, threat_info_t info) {
     if (board[info.action.x][info.action.y]) return true;
     if (is_forbidden(board, info.action, info.id, 3)) return true;
@@ -241,6 +249,7 @@ bool threat_confilct(board_t board, threat_info_t info) {
     return false;
 }
 
+/// @brief check if {chain} is conflicted with {board}
 bool chain_conflict(board_t board, threat_tree_node_t* chain[], int length) {
     board_t tmp;
     memcpy(tmp, board, sizeof(board_t));
@@ -251,6 +260,7 @@ bool chain_conflict(board_t board, threat_tree_node_t* chain[], int length) {
     return false;
 }
 
+/// @brief add a threat to the threat tree, and build its subtree
 void add_threat(local_var_t* assets, threat_tree_node_t* node, threat_info_t threat) {
     if (node->threat.type >= PAT_A4) return;
     for (threat_tree_node_t* child = node->son; child; child = child->brother) {
@@ -275,6 +285,7 @@ void add_threat(local_var_t* assets, threat_tree_node_t* node, threat_info_t thr
     node->subtree_size += child->subtree_size;
 }
 
+/// @brief build the threat tree of {node}
 void build_threat_tree(local_var_t* assets, threat_tree_node_t* node) {
     if (get_time(assets->start_time) > assets->step_time_limit) return;
     if (assets->current_depth >= assets->DEPTH_LIMIT) return;
@@ -334,7 +345,9 @@ bool compatible(threat_tree_node_t* node1, threat_tree_node_t* node2) {
         vector_cat(defense2, threat.defenses);
     }
     bool result = true;
+    // if have same actions, then it is duplicate
     if (result && have_same_point(actions1, actions2)) result = false;
+    // otherwise, check if have same defense, which means the threat is not compatible
     if (result && have_same_point(actions1, defense2)) result = false;
     if (result && have_same_point(actions2, defense1)) result = false;
     if (result && have_same_point(defense1, defense2)) result = false;
@@ -392,6 +405,7 @@ bool try_defend_chain(local_var_t* assets, board_t board, threat_tree_node_t* st
     // dead_four_defenses.size);
     // for_each(threat_t, dead_four_defenses, d4) { print_threat(attach_threat_info(board, d4)); }
     bool result = false;
+    // five defense is always valid
     if (five_defenses.size && chain[0]->threat.type < PAT_WIN) {
         for_each(threat_t, five_defenses, five) {
             if (point_equal(five.pos, chain[0]->threat.action)) continue;
@@ -400,6 +414,7 @@ bool try_defend_chain(local_var_t* assets, board_t board, threat_tree_node_t* st
             goto ret;
         }
     }
+    // alive four defense is valid if the chain is not started by a dead four
     if (alive_four_defenses.size && chain[0]->threat.type < PAT_D4) {
         for_each(threat_t, alive_four_defenses, alive_four) {
             if (point_equal(alive_four.pos, chain[0]->threat.action)) continue;
@@ -408,6 +423,8 @@ bool try_defend_chain(local_var_t* assets, board_t board, threat_tree_node_t* st
             goto ret;
         }
     }
+    // dead four defense is invalid if the chain is started by a dead four
+    // otherwise, need to check if the chain can be defended after this defense
     if (dead_four_defenses.size && chain[0]->threat.type < PAT_D4) {
         for_each(threat_t, dead_four_defenses, dead_four) {
             if (point_equal(dead_four.pos, chain[0]->threat.action)) continue;

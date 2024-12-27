@@ -1,3 +1,6 @@
+/// @file distribute.c
+/// @brief dirichlet distribution and some operations on distribution
+
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>

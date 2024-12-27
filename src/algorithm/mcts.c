@@ -1,3 +1,6 @@
+/// @file mcts.c
+/// @brief MCTS algorithm implementation
+
 #include "mcts.h"
 
 #include "board.h"
@@ -90,7 +93,7 @@ static void get_win_pos(state_t* st) {
     const point_t pos = st->pos;
     memset(st->win_pos, -1, sizeof(st->win_pos));
     if (!in_board(pos)) return;
-    const line_t* board = st->board;
+    const row_t* board = st->board;
     const int id = st->id, oppo = 3 - st->id;
     if (!id) {
         return;

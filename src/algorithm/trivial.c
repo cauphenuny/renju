@@ -1,3 +1,6 @@
+/// @file trivial.c
+/// @brief implementation of several trivial strategies
+
 #include "board.h"
 #include "eval.h"
 #include "game.h"
@@ -207,6 +210,11 @@ static bool check_opening_match(board_t board, const opening_t* opening, int dep
     return false;
 }
 
+/// @brief find a move from opening book
+/// @param board current board state
+/// @param depth current search depth
+/// @param player_id current player's ID
+/// @return best move
 static point_t find_opening_move(board_t board, int depth, int player_id) {
     point_t best_move = {-1, -1};
     int best_score = player_id == 1 ? -1000 : 1000;
@@ -240,6 +248,11 @@ static point_t find_opening_move(board_t board, int depth, int player_id) {
 }
 
 /// @brief find a trivial move from {game.board}
+/// @param game current game state
+/// @param time_limit time limit for search
+/// @param use_opening whether to use opening book
+/// @param use_vct whether to use VCT
+/// @return best move
 point_t trivial_move(game_t game, double time_limit, bool use_opening, bool use_vct) {
     const int self_id = game.cur_id;
     const int oppo_id = 3 - self_id;

@@ -1,3 +1,6 @@
+/// @file dataset.c
+/// @brief operations of dataset that used for training
+
 #include "dataset.h"
 
 #include "board.h"
@@ -11,6 +14,12 @@
 
 #define N BOARD_SIZE
 
+/// @brief convert a game board state into neural network input format
+/// @param board current game board state
+/// @param last last move played
+/// @param first_player ID of player who moved first (1 or 2)
+/// @param cur_player ID of current player (1 or 2)
+/// @return neural network input representation of the game state
 sample_input_t to_sample_input(const board_t board, point_t last, int first_player,
                                int cur_player) {
     assert(first_player >= 0 && first_player <= 2);
@@ -35,6 +44,14 @@ sample_input_t to_sample_input(const board_t board, point_t last, int first_play
     return input;
 }
 
+/// @brief convert a game state into a complete training sample with input and target output
+/// @param board current game board state
+/// @param last last move played
+/// @param first_player ID of player who moved first
+/// @param cur_player ID of current player
+/// @param prob probability distribution over moves from policy network
+/// @param result game result (1 = first player won, 2 = second player won)
+/// @return complete training sample with input features and target values
 sample_t to_sample(const board_t board, point_t last, int first_player, int cur_player,
                    const fboard_t prob, int result) {
     assert(result > 0 && result <= 2);
@@ -49,6 +66,8 @@ sample_t to_sample(const board_t board, point_t last, int first_player, int cur_
     return sample;
 }
 
+/// @brief print a training sample for debugging
+/// @param sample sample to print
 void print_sample(sample_t sample) {
     board_t board = {0};
     for (int i = 0; i < N; i++) {
@@ -66,6 +85,9 @@ void print_sample(sample_t sample) {
     printf("result: %d\n", sample.output.result);
 }
 
+/// @brief create a new empty dataset with given capacity
+/// @param capacity maximum number of samples to store
+/// @return initialized empty dataset
 dataset_t new_dataset(int capacity) {
     dataset_t dataset = {0};
     dataset.capacity = capacity;
@@ -74,6 +96,8 @@ dataset_t new_dataset(int capacity) {
     return dataset;
 }
 
+/// @brief free memory used by a dataset
+/// @param dataset dataset to free
 void free_dataset(dataset_t* dataset) {
     if (dataset->samples != NULL) {
         free(dataset->samples);
@@ -82,6 +106,8 @@ void free_dataset(dataset_t* dataset) {
     dataset->capacity = dataset->size = dataset->next_pos = 0;
 }
 
+/// @brief randomly shuffle samples in a dataset
+/// @param dataset dataset to shuffle
 void shuffle_dataset(const dataset_t* dataset) {
     const int n = dataset->size;
     for (int i = 0; i < n; i++) {
@@ -163,6 +189,10 @@ static void add_sample(dataset_t* dataset, sample_t sample) {
     }
 }
 
+/// @brief add test game results to dataset without data augmentation
+/// @param dataset dataset to add samples to
+/// @param results array of game results to add
+/// @param count number of games to add
 void add_testgames(dataset_t* dataset, const game_result_t* results, int count) {
     for (int i = 0; i < count; i++) {
         if (!results[i].winner) continue;
@@ -181,6 +211,10 @@ void add_testgames(dataset_t* dataset, const game_result_t* results, int count) 
     log_l("added %d games, cur pos: %d, size: %d", count, dataset->next_pos, dataset->size);
 }
 
+/// @brief add game results to dataset with data augmentation through rotations and reflections
+/// @param dataset dataset to add samples to
+/// @param results array of game results to add
+/// @param count number of games to add
 void add_games(dataset_t* dataset, const game_result_t* results, int count) {
     for (int i = 0; i < count; i++) {
         if (!results[i].winner) continue;
@@ -206,6 +240,10 @@ void add_games(dataset_t* dataset, const game_result_t* results, int count) {
     log_l("added %d games, cur pos: %d, size: %d", count, dataset->next_pos, dataset->size);
 }
 
+/// @brief save dataset to a binary file
+/// @param dataset dataset to save
+/// @param file_name path to output file
+/// @return 0 on success, 1 on failure
 int save_dataset(const dataset_t* dataset, const char* file_name) {
     FILE* file = fopen(file_name, "wb");
     if (!file) {
@@ -224,6 +262,10 @@ int save_dataset(const dataset_t* dataset, const char* file_name) {
     return 0;
 }
 
+/// @brief load dataset from a binary file
+/// @param dataset dataset to load into
+/// @param file_name path to input file
+/// @return 0 on success, 1 on failure
 int load_dataset(dataset_t* dataset, const char* file_name) {
     free_dataset(dataset);
     FILE* file = fopen(file_name, "rb");
@@ -246,10 +288,17 @@ int load_dataset(dataset_t* dataset, const char* file_name) {
     return 0;
 }
 
+/// @brief get a random sample from the dataset
+/// @param dataset dataset to sample from
+/// @return random training sample
 sample_t random_sample(const dataset_t* dataset) {
     return dataset->samples[rand() % dataset->size];
 }
 
+/// @brief get a specific sample by index from the dataset
+/// @param dataset dataset to get sample from
+/// @param index index of desired sample
+/// @return sample at given index, or random sample if index invalid
 sample_t find_sample(const dataset_t* dataset, int index) {
     if (index < dataset->size) return dataset->samples[index];
     log_e("index out of range: %d, expected [0, %d)", index, dataset->size);

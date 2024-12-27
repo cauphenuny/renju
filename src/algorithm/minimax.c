@@ -1,3 +1,6 @@
+/// @file minimax.c
+/// @brief implementation of minimax algorithm
+
 #include "minimax.h"
 
 #include "board.h"
@@ -28,6 +31,12 @@ typedef struct {
     point_t pos;
 } state_t;
 
+/// @brief update game state after putting a piece on the board
+/// @param board current board state
+/// @param state current game state
+/// @param pos position to put the piece
+/// @param pat4 next pattern4 type of the move
+/// @return updated game state
 static state_t put_piece(board_t board, state_t state, point_t pos, pattern4_t pat4) {
     const int put_id = state.sgn == 1 ? 1 : 2;
     state.hash = zobrist_update(state.hash, pos, board[pos.x][pos.y], put_id);
@@ -47,12 +56,12 @@ static state_t put_piece(board_t board, state_t state, point_t pos, pattern4_t p
             state.candidate[np.x][np.y] = 1;
         }
     }
-    // vector_t threats = find_threats(board, pos, false);
-    // for_each(threat_t, threats, threat) {
-    //     point_t p = threat.pos;
-    //     state.candidate[p.x][p.y] = 1;
-    // }
-    // vector_free(threats);
+    vector_t threats = find_threats(board, pos, false);  // expand candidate set by threats
+    for_each(threat_t, threats, threat) {
+        point_t p = threat.pos;
+        state.candidate[p.x][p.y] = 1;
+    }
+    vector_free(threats);
     return state;
 }
 
@@ -79,6 +88,11 @@ void print_result_vector(vector_t results, const char* delim) {
 
 static double tim, time_limit;
 
+/// @brief initialize candidate positions around existing pieces within {adjacent} range
+/// @param board current board state
+/// @param candidate board to store candidate positions
+/// @param cur_id current player's ID
+/// @param adjacent range of positions to consider around board center
 static void init_candidate(board_t board, cboard_t candidate, int cur_id, int adjacent) {
     memset(candidate, 0, sizeof(cboard_t));
     const int mid = BOARD_SIZE / 2;
@@ -161,6 +175,15 @@ static bool array_contains(vector_t point_array, point_t pos) {
     return false;
 }
 
+/// @brief look ahead to find immediate threats and responses
+/// @param board current board state
+/// @param self_id current player's ID
+/// @param self_5 vector of self's five-in-a-row threats
+/// @param self_a4 vector of self's active four threats
+/// @param self_d4 vector of self's dormant four threats
+/// @param oppo_5 vector of opponent's five-in-a-row threats
+/// @param oppo_a4 vector of opponent's active four threats
+/// @return forward analysis result containing value and candidate moves
 static forward_result_t look_forward(board_t board, int self_id, vector_t* self_5,
                                      vector_t* self_a4, vector_t* self_d4, vector_t* oppo_5,
                                      vector_t* oppo_a4) {
@@ -171,8 +194,6 @@ static forward_result_t look_forward(board_t board, int self_id, vector_t* self_
         .type = PAT_EMPTY,
     };
     ret.points = vector_new(point_t, NULL);
-    // log_l("s5: %d, o5: %d, sa4: %d, oa4: %d, sd4: %d", self_5.size, oppo_5.size, self_a4.size,
-    // oppo_a4.size, self_d4.size);
     if (self_5->size) {
         ret.value = EVAL_MAX * sgn;
         threat_t attack = vector_get(threat_t, *self_5, 0);
@@ -196,10 +217,6 @@ static forward_result_t look_forward(board_t board, int self_id, vector_t* self_
         ret.type = PAT_A4, ret.is_self = true;
     } else if (oppo_a4->size) {
         for_each(threat_t, *oppo_a4, oppo_attack) {
-            // if (!array_contains(ret.points, defense.pos) &&
-            //     !is_forbidden(board, defense.pos, self_id, 2)) {
-            //     vector_push_back(ret.points, defense.pos);
-            // }
             vector_t defences =
                 find_relative_points(DEFENSE, board, oppo_attack.pos, oppo_attack.dir.x,
                                      oppo_attack.dir.y, oppo_id, false);
@@ -208,8 +225,6 @@ static forward_result_t look_forward(board_t board, int self_id, vector_t* self_
                     vector_push_back(ret.points, p);
                 }
             }
-            // print_emph_mutiple(board, defences);
-            // prompt_pause();
             vector_free(defences);
             /*
             fix for
@@ -230,8 +245,14 @@ static forward_result_t look_forward(board_t board, int self_id, vector_t* self_
     return ret;
 }
 
-// vector_t points;
-
+/// @brief core minimax search algorithm with alpha-beta pruning
+/// @param board current board state
+/// @param state current game state
+/// @param preset_candidate preset candidate positions for the first move
+/// @param depth current search depth
+/// @param alpha alpha value for pruning
+/// @param beta beta value for pruning
+/// @return search result containing best move and evaluation
 static result_t minimax_search(board_t board, state_t state, cboard_t preset_candidate, int depth,
                                int alpha, int beta) {
     const int sgn = state.sgn, self_id = sgn == 1 ? 1 : 2, oppo_id = 3 - self_id;
@@ -390,6 +411,12 @@ static result_t minimax_search(board_t board, state_t state, cboard_t preset_can
     return ret;
 }
 
+/// @brief entry point for parallel minimax search
+/// @param board current board state
+/// @param init_state initial game state
+/// @param init_candidates initial candidate positions
+/// @param parallel whether to use parallel search
+/// @return search result from all parallel branches
 result_t minimax_search_entry(board_t board, state_t init_state, cboard_t init_candidates,
                               bool parallel) {
     const int self_id = init_state.sgn == 1 ? 1 : 2;
@@ -445,6 +472,9 @@ result_t minimax_search_entry(board_t board, state_t init_state, cboard_t init_c
     return best_result;
 }
 
+/// @brief find initial move using simple strategies or neural network
+/// @param game current game state
+/// @return selected move position
 static point_t initial_move(game_t game) {
     const int self_id = game.cur_id, oppo_id = 3 - self_id;
     vector_t critical_threats = vector_new(threat_t, NULL);
@@ -508,6 +538,10 @@ void print_result(result_t result, double duration) {
           duration, result.value, result.tree_size / duration);
 }
 
+/// @brief main minimax algorithm interface
+/// @param game current game state
+/// @param assets algorithm parameters
+/// @return selected best move
 point_t minimax(game_t game, const void* assets) {
     // if (!points.data) points = vector_new(point_t, NULL);
     if (game.count == 0) {
@@ -515,7 +549,7 @@ point_t minimax(game_t game, const void* assets) {
     }
     tim = record_time();
     param = *(minimax_param_t*)assets;
-    point_t pos = trivial_move(game, min(1500, game.time_limit / 2), true, param.optim.begin_vct);
+    point_t pos = trivial_move(game, min(2000, game.time_limit / 2), true, param.optim.begin_vct);
     if (in_board(pos)) {
         return pos;
     } else {

@@ -1,3 +1,6 @@
+/// @file main.c
+/// @brief main function of the program
+
 #include "dataset.h"
 #include "game.h"
 #include "init.h"

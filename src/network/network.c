@@ -1,3 +1,6 @@
+/// @file network.c
+/// @brief implementation of neural network
+
 #include "network.h"
 
 #include "board.h"

@@ -9,7 +9,6 @@
 /// @note: need to call free_threat_info
 typedef struct {
     pattern_t type;
-    vector_t consists; // vector<point_t>
     vector_t defenses; // vector<point_t>
     point_t action;
     point_t dir;

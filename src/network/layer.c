@@ -1,3 +1,6 @@
+/// @file layer.c
+/// @brief implementation of neural network layers
+
 #include "layer.h"
 
 #include "neuro.h"

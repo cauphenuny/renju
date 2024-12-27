@@ -15,7 +15,7 @@ typedef enum {
     EMPTY_PIECE,
     SELF_PIECE,
     OPPO_PIECE,
-    PIECE_SIZE = 4,
+    PIECE_SIZE = 4,  // used for bitwise operations, do not change it
 } piece_t;
 
 typedef struct {
@@ -60,14 +60,14 @@ bool is_equal(const board_t b1, const board_t b2);
 #define READABLE_POS(pos)   ((pos).y + 'A'), ((pos).x + 1)
 
 #if BOARD_SIZE <= 16
-typedef uint32_t line_t;
+typedef uint32_t row_t;  // a integer contains info of a whole row
 #elif BOARD_SIZE <= 32
-typedef uint64_t line_t;
+typedef uint64_t row_t;
 #else
 #    error "board size too large!"
 #endif
 
-typedef line_t comp_board_t[BOARD_SIZE];  // compressed board
+typedef row_t comp_board_t[BOARD_SIZE];  // compressed board
 
 /// @brief read and modify compressed board
 #define get_xy(arr, x, y)      (int)((arr[x] >> ((y) * 2)) & 3)

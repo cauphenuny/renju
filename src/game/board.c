@@ -1,3 +1,6 @@
+/// @file board.c
+/// @brief implementation of board operations
+
 #include "board.h"
 
 #include "pattern.h"
@@ -322,7 +325,7 @@ void encode(const board_t src, comp_board_t dest) {
 /// @brief decode from compressed board to raw board
 void decode(const comp_board_t src, board_t dest) {
     for (int i = 0; i < BOARD_SIZE; i++) {
-        line_t tmp = src[i];
+        row_t tmp = src[i];
         for (int j = 0; j < BOARD_SIZE; j++) {
             dest[i][j] = tmp & 3;
             tmp >>= 2;

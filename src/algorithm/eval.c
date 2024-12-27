@@ -1,3 +1,6 @@
+/// @file eval.c
+/// @brief evaluation functions and threat scanning
+
 #include "eval.h"
 
 #include "board.h"

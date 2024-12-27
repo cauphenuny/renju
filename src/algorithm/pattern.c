@@ -1,3 +1,7 @@
+/// @file pattern.c
+/// @brief generate patterns memory for pattern recognition, and get pattern type of a position,
+/// which is used for forbidden move detection and VCT search
+
 #include "pattern.h"
 
 #include "board.h"
@@ -26,13 +30,10 @@ const char* pattern4_typename[] = {[PAT4_OTHERS] = "others",
 /// @example
 /// . x . o o . o . . -> PAT_A3
 /// . . . . . # . . . : attack_col
-/// . . . # # . # . . : consist_col
-/// . . # . . # . # . : defend_col
+/// . . # . . # . # . : defense_col
 typedef struct {
     int attack_col[SEGMENT_SIZE][COL_STORAGE_SIZE];
     int attack_col_cnt[SEGMENT_SIZE];
-    int consist_col[SEGMENT_SIZE][COL_STORAGE_SIZE];
-    int consist_col_cnt[SEGMENT_SIZE];
     int defense_col[SEGMENT_SIZE][COL_STORAGE_SIZE];
     int defense_col_cnt[SEGMENT_SIZE];
     pattern_t pattern[SEGMENT_SIZE];
@@ -64,11 +65,6 @@ static void dp(memo_t* memo, bool consider_forbid) {
             if (right - left >= WIN_LENGTH) break;
         }
         if (memo->pattern[idx]) {
-            for (int col = left; col < right; col++) {
-                if (segment.pieces[col] == SELF_PIECE) {
-                    memo->consist_col[idx][memo->consist_col_cnt[idx]++] = col;
-                }
-            }
             continue;  /// is terminate state PAT_TL/PAT_WIN
         }
 
@@ -100,13 +96,7 @@ static void dp(memo_t* memo, bool consider_forbid) {
 
         memo->parent_pattern[idx] = parent_pattern;
         switch (parent_pattern) {
-            case PAT_TL:
-                memo->pattern[idx] = PAT_ATL;
-                // if (right - left < 8)
-                //     memo->pattern[idx] = PAT_ATL;
-                // else
-                //     memo->pattern[idx] = PAT_44;
-                break;
+            case PAT_TL: memo->pattern[idx] = PAT_ATL; break;
             case PAT_WIN:
                 if (memo->attack_col_cnt[idx] == 1)
                     memo->pattern[idx] = PAT_D4;
@@ -114,7 +104,7 @@ static void dp(memo_t* memo, bool consider_forbid) {
                     if (!consider_forbid || win_pos[1] - win_pos[0] >= WIN_LENGTH) {
                         memo->pattern[idx] = PAT_A4;
                     } else {
-                        memo->pattern[idx] = PAT_44;  // x o o - ? o - o o
+                        memo->pattern[idx] = PAT_44;  // x o o - ? o - o o is PAT_44
                     }
                 }
                 break;
@@ -128,9 +118,6 @@ static void dp(memo_t* memo, bool consider_forbid) {
         }
 
         for (int col = left; col < right; col++) {
-            if (segment.pieces[col] == SELF_PIECE) {
-                memo->consist_col[idx][memo->consist_col_cnt[idx]++] = col;
-            }
             if (segment.pieces[col] == EMPTY_PIECE) {
                 int new_idx = update(idx, col, OPPO_PIECE);
                 if (memo->pattern[idx] != memo->pattern[new_idx]) {
@@ -264,13 +251,9 @@ void print_segment(segment_t s, bool consider_forbid) {
     // printf("]: level = %s, \tcols: [%d, %d, %d]\n", pattern_typename[pattern_mem[idx]],
     //        from_col[idx][0], from_col[idx][1], from_col[idx][2]);
     printf("]: level = %s, ", pattern_typename[memo->pattern[idx]]);
-    printf("upd: [");
+    printf("atk: [");
     for (int i = 0; i < memo->attack_col_cnt[idx]; i++) {
         printf("%d%s", memo->attack_col[idx][i], i == memo->attack_col_cnt[idx] - 1 ? "" : ", ");
-    }
-    printf("], con: [");
-    for (int i = 0; i < memo->consist_col_cnt[idx]; i++) {
-        printf("%d%s", memo->consist_col[idx][i], i == memo->consist_col_cnt[idx] - 1 ? "" : ", ");
     }
     printf("], def: [");
     for (int i = 0; i < memo->defense_col_cnt[idx]; i++) {
@@ -279,6 +262,13 @@ void print_segment(segment_t s, bool consider_forbid) {
     printf("]\n");
 }
 
+/// @brief get segment around a position
+/// @param board current board state
+/// @param pos position to get segment
+/// @param dx x direction
+/// @param dy y direction
+/// @param id current player's ID
+/// @return segment
 segment_t get_segment(board_t board, point_t pos, int dx, int dy, int id) {
     segment_t seg;
     for (int8_t j = -HALF; j <= HALF; j++) {
@@ -303,6 +293,13 @@ pattern_t to_pattern(int segment_value, bool consider_forbid) {
         return no_forbid.pattern[segment_value];
 }
 
+/// @brief get pattern type of a position
+/// @param board current board state
+/// @param pos position to get pattern type
+/// @param dx x direction
+/// @param dy y direction
+/// @param self_id current player's ID
+/// @return pattern type
 pattern_t get_pattern(board_t board, point_t pos, int dx, int dy, int self_id) {
     int value = 0;
     for (int i = -HALF; i <= HALF; i++) {
@@ -317,6 +314,10 @@ pattern_t get_pattern(board_t board, point_t pos, int dx, int dy, int self_id) {
     return to_pattern(value, self_id == 1);
 }
 
+/// @brief get parent pattern type of a segment
+/// @param segment_value the int value of segment
+/// @param consider_forbid whether to consider forbidden pattern
+/// @return parent pattern type
 pattern_t to_upgraded_pattern(int segment_value, bool consider_forbid) {
     assert(pattern_initialized);
     if (consider_forbid)
@@ -335,14 +336,18 @@ pattern4_t to_pattern4(int x, int y, int u, int v, bool consider_forbid) {
     }
 }
 
+/// @brief get pattern4 type of a position
+/// @param board current board state
+/// @param pos position to get pattern4 type
+/// @param self_id current player's ID
+/// @param put_piece whether to put a piece on the board
+/// @return pattern4 type
 pattern4_t get_pattern4(board_t board, point_t pos, int self_id, bool put_piece) {
     if (put_piece) {
         board[pos.x][pos.y] = self_id;
     }
     pattern_t idx[4];
-    for_all_dir(d, dx, dy) {
-        idx[d] = get_pattern(board, pos, dx, dy, self_id);
-    }
+    for_all_dir(d, dx, dy) { idx[d] = get_pattern(board, pos, dx, dy, self_id); }
     if (put_piece) {
         board[pos.x][pos.y] = 0;
     }
@@ -374,7 +379,8 @@ point_t column_to_point(point_t pos, int dx, int dy, int col) {
 
 /// @brief find (ATTACK|CONSIST|DEFENSE) points of {pos} in {dx, dy} direction
 /// @return vector<point_t>
-vector_t find_relative_points(int type, board_t board, point_t pos, int dx, int dy, int id, bool put_piece) {
+vector_t find_relative_points(int type, board_t board, point_t pos, int dx, int dy, int id,
+                              bool put_piece) {
     vector_t vec = vector_new(point_t, NULL);
     if (put_piece) {
         board[pos.x][pos.y] = id;
@@ -385,9 +391,6 @@ vector_t find_relative_points(int type, board_t board, point_t pos, int dx, int 
     switch (type) {
         case ATTACK:
             col = memo->attack_col[seg_value], size = memo->attack_col_cnt[seg_value];
-            break;
-        case CONSIST:
-            col = memo->consist_col[seg_value], size = memo->consist_col_cnt[seg_value];
             break;
         case DEFENSE:
             col = memo->defense_col[seg_value], size = memo->defense_col_cnt[seg_value];

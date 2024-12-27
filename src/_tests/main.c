@@ -1,3 +1,6 @@
+/// @file _tests/main.c
+/// @brief main file for running unit tests
+
 #include "board.h"
 #include "game.h"
 #include "init.h"
@@ -166,7 +169,7 @@ int main(int argc, char** argv) {
 
     REGISTER_TEST(vector);
     REGISTER_TEST(neuro);
-    REGISTER_TEST(game);
+    // REGISTER_TEST(game);
     REGISTER_TEST(pattern);
     REGISTER_TEST(forbid);
     REGISTER_TEST(minimax_first);

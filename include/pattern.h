@@ -47,7 +47,6 @@ typedef enum {
 } pattern4_t;
 
 extern const char* pattern_typename[PAT_TYPE_SIZE];
-
 extern const char* pattern4_typename[PAT4_TYPE_SIZE];
 
 typedef struct {
@@ -61,7 +60,6 @@ bool segment_valid(segment_t s);
 segment_t get_segment(board_t board, point_t pos, int dx, int dy, int id);
 enum {
     ATTACK,
-    CONSIST,
     DEFENSE,
 };
 

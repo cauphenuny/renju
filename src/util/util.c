@@ -1,3 +1,6 @@
+/// @file util.c
+/// @brief some utility functions, including logging, timing, filesystem, etc.
+
 #include "util.h"
 
 #include <stdarg.h>
