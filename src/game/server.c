@@ -177,7 +177,7 @@ game_result_t start_game(player_t p1, player_t p2, int first_player, int time_li
 #endif
             add_step(&game, pos);
             print_game(game);
-            serialize_game(game, "");
+            // serialize_game(game, "");
             // log_l("eval: %d", eval(game.board));
 
             if (is_draw(game.board)) WIN(0);
