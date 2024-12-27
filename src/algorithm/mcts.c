@@ -457,7 +457,7 @@ point_t mcts(game_t game, const void* assets) {
     param = *((mcts_param_t*)assets);
 
     point_t trivial_pos =
-        trivial_move(game.board, game.cur_id, game.time_limit / 20.0, param.use_vct && !param.is_train);
+        trivial_move(game.board, game.cur_id, min(1000, game.time_limit / 5.0), param.use_vct && !param.is_train);
     if (in_board(trivial_pos)) {
         if (param.output_prob) param.output_prob[trivial_pos.x][trivial_pos.y] = 1;
         print_prob(game.board, param.output_prob);

@@ -641,8 +641,7 @@ vector_t vct(bool only_four, board_t board, int id, double time_ms) {
     assets.step_time_limit = min(time_ms * 0.4, TIMEOUT_LIMIT);
     int depth;
     vector_t threats = scan_threats_info(board, id, only_four);
-    int last_size = 0;
-    for (depth = 2; depth < 10; depth++) {
+    for (depth = 2; depth < 30; depth++) {
         if (get_time(tim) > time_ms) break;
         assets.node_cnt = 0;
         assets.DEPTH_LIMIT = depth;
@@ -658,12 +657,58 @@ vector_t vct(bool only_four, board_t board, int id, double time_ms) {
             max_vct_depth = max(max_vct_depth, depth);
             break;
         } else {
-            int cur_size = root->subtree_size;
             delete_threat_tree(root);
-            if (cur_size == last_size) break;
-            last_size = cur_size;
         }
     }
     vector_free(threats);
+    return sequence;
+}
+
+vector_t complex_vct(bool only_four, board_t board, int self_id, double time_ms, int depth) {
+    const int oppo_id = 3 - self_id;
+    vector_t sequence = vct(only_four, board, self_id, time_ms / 2);
+    if (sequence.size || !depth) return sequence;
+    vector_t attacks = scan_threats_info(board, self_id, false);
+    vector_t critical_defends = scan_threats_by_threshold(board, oppo_id, PAT_A4);
+    vector_t defends = vector_new(threat_t, NULL);
+    scan_threats(board, oppo_id, oppo_id, (threat_storage_t){[PAT_D4] = &defends});
+#define free_threats()    \
+    vector_free(attacks); \
+    vector_free(critical_defends)
+    if (critical_defends.size) {
+        free_threats();
+        return sequence;
+    }
+    int situation_count = 0;
+    for_each(threat_info_t, attacks, attack) { situation_count += attack.defenses.size; }
+    for_each(threat_info_t, attacks, attack) {
+        bool exists_defend = false;
+        vector_t cur_seq = {0};
+        vector_t defensive_points = vector_new(point_t, NULL);
+        vector_cat(defensive_points, attack.defenses);
+        if (attack.type == PAT_A3) {
+            for_each(threat_t, defends, defend) { vector_push_back(defensive_points, defend.pos); }
+        }
+        for_each(point_t, defensive_points, defend_pos) {
+            board[attack.action.x][attack.action.y] = self_id;
+            board[defend_pos.x][defend_pos.y] = oppo_id;
+            vector_free(cur_seq);
+            cur_seq =
+                complex_vct(only_four, board, self_id, (time_ms / 2) / situation_count, depth - 1);
+            board[attack.action.x][attack.action.y] = 0;
+            board[defend_pos.x][defend_pos.y] = 0;
+            if (!cur_seq.size) {
+                exists_defend = true;
+                break;
+            }
+        }
+        vector_free(defensive_points);
+        if (!exists_defend) {
+            vector_push_back(sequence, attack.action);
+            vector_cat(sequence, cur_seq);
+            break;
+        }
+    }
+    free_threats();
     return sequence;
 }

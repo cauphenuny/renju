@@ -60,54 +60,29 @@ void scan_threats(board_t board, int id, int filter_id, threat_storage_t storage
             value = ((value * PIECE_SIZE) % SEGMENT_SIZE) + pieces[idx];
             if (idx < HALF) continue;
             point_t center = {id2x[idx - HALF], id2y[idx - HALF]};
-            if (!in_board(center) || board[center.x][center.y] != id) continue;
-            pattern_t pat = to_upgraded_pattern(value, id == 1);
-            // log("pat: %s", pattern_typename[pat]);
+            if (!in_board(center) || board[center.x][center.y] != 0) continue;
+            // add a piece at center
+            pattern_t pat = to_pattern(value + (SELF_PIECE << (HALF * 2)), id == 1);
             if (storage[pat]) {
-                int columns[5];
-                get_attack_columns(value, id == 1, columns, 5);
-                for (int j = 0; j < 5; j++) {
-                    if (columns[j] != -1) {
-                        int cur_idx = idx - columns[j];
-                        point_t pos = {id2x[cur_idx], id2y[cur_idx]};
-                        board[pos.x][pos.y] = id;
-                        pattern_t real_pat = get_pattern(board, pos, dir_x, dir_y, id);
-                        board[pos.x][pos.y] = 0;
-                        if (real_pat != pat) {
-                            continue;
-                        }
-                        bool save = true;
-                        for_each(threat_t, *storage[pat], stored_threat) {
-                            if (stored_threat.id == id && point_equal(stored_threat.pos, pos) &&
-                                stored_threat.dir.x == dir_x && stored_threat.dir.y == dir_y) {
-                                save = false;
-                                break;
-                            }
-                        }
-                        for_each(point_t, forbidden_pos, f_pos) {
-                            if (f_pos.x == pos.x && f_pos.y == pos.y) {
-                                save = false;
-                                break;
-                            }
-                        }
-                        if (save && is_forbidden(board, pos, filter_id, 3)) {
-                            save = false;
-                            vector_push_back(forbidden_pos, pos);
-                        }
-                        if (save) {
-                            threat_t threat = {
-                                .pos = pos,
-                                .dir =
-                                    {
-                                        .x = dir_x,
-                                        .y = dir_y,
-                                    },
-                                .pattern = pat,
-                                .id = id,
-                            };
-                            vector_push_back(*storage[pat], threat);
-                        }
+                bool save = true;
+                for_each(point_t, forbidden_pos, f_pos) {
+                    if (point_equal(f_pos, center)) {
+                        save = false;
+                        break;
                     }
+                }
+                if (save && is_forbidden(board, center, filter_id, 1)) {
+                    save = false;
+                    vector_push_back(forbidden_pos, center);
+                }
+                if (save) {
+                    threat_t threat = {
+                        .pos = center,
+                        .dir = {.x = dir_x, .y = dir_y},
+                        .pattern = pat,
+                        .id = id,
+                    };
+                    vector_push_back(*storage[pat], threat);
                 }
             }
         }
@@ -134,7 +109,7 @@ vector_t scan_five_threats(board_t board, int id) {
     threat_storage_t storage = {
         [PAT_WIN] = &result,
     };
-    scan_threats(board, id,  id, storage);
+    scan_threats(board, id, id, storage);
     return result;
 }
 
@@ -155,14 +130,14 @@ int eval_pos(board_t board, point_t pos) {
     int id = board[pos.x][pos.y];
     const static int score_board[PAT_TYPE_SIZE] = {
         [PAT_EMPTY] = 0, [PAT_44] = 0,     [PAT_ATL] = 0,      [PAT_TL] = 0,   [PAT_D1] = 5,
-        [PAT_A1] = 10,   [PAT_D2] = 10,    [PAT_A2] = 150,     [PAT_D3] = 100, [PAT_A3] = 1500,
-        [PAT_D4] = 1000, [PAT_A4] = 10000, [PAT_WIN] = 100000,
+        [PAT_A1] = 10,   [PAT_D2] = 12,    [PAT_A2] = 150,     [PAT_D3] = 100, [PAT_A3] = 1200,
+        [PAT_D4] = 1200, [PAT_A4] = 10000, [PAT_WIN] = 100000,
     };
     const static int relativity[PAT_TYPE_SIZE][PAT_TYPE_SIZE] = {
         [PAT_A3] = {[PAT_A3] = score_board[PAT_A4] / 2, [PAT_D4] = score_board[PAT_A4]},
         [PAT_D4] = {[PAT_A3] = score_board[PAT_A4], [PAT_D4] = score_board[PAT_A4] / 2},
-        [PAT_A2] = {[PAT_A2] = score_board[PAT_A3] / 5, [PAT_D3] = score_board[PAT_A3] / 5},
-        [PAT_D3] = {[PAT_A2] = score_board[PAT_A3] / 5, [PAT_D3] = score_board[PAT_A3] / 5},
+        [PAT_A2] = {[PAT_A2] = score_board[PAT_A3] / 4, [PAT_D3] = score_board[PAT_A3] / 4},
+        [PAT_D3] = {[PAT_A2] = score_board[PAT_A3] / 4, [PAT_D3] = score_board[PAT_A3] / 4},
     };
     int result = 0;
     int cnt[PAT_TYPE_SIZE] = {0};

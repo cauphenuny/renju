@@ -73,6 +73,13 @@ restore_game(10000,27,(point_t[]){{7,7},{6,7},{8,6},{7,8},{8,9},{8,5},{9,9},{5,8
     }
 }
 
+void test_minimax_first(void) {
+    game_t game = new_game(10000);
+    add_step(&game, (point_t){7, 7});
+    point_t pos = move(game, preset_players[MINIMAX_ADV]);
+    log_l("%c%d", READABLE_POS(pos));
+}
+
 void test_neuro();
 void test_upd();
 void test_eval();
@@ -106,9 +113,44 @@ void test_vector() {
     printf("%s", (char*)str.data);
 }
 
+void test_game() {
+    game_t game = new_game(1000);
+    int n;
+    scanf("%d", &n);
+    point_t p;
+    int id = 1, is_first = 1;
+    for (int i = 0; i < 2 * n - 1; i++) {
+        int x, y;
+        scanf("%d%d", &x, &y);
+        p.x = x, p.y = y;
+        if (in_board(p)) {
+            if (is_first && is_forbidden(game.board, p, 1, -1)) {
+                printf("-1 0\n");
+                printf("forbidden\n");
+                return;
+            }
+            add_step(&game, p);
+            if (check(game.board, p)) {
+                printf("-1 %d\n", id);
+                printf("%s win\n", is_first == 1 ? "black" : "white");
+                return;
+            }
+            is_first = !is_first;
+        }
+        id = 3 - id;
+    }
+}
+
+void test_mcts(void);
+
+#define RUN_TEST(name) \
+    log_l("running test `%s`", #name), test_##name(), log_i("test `%s` passed.", #name)
+
+#define REGISTER_TEST(name) \
+    if (strcmp(argv[1], #name) == 0 || all) RUN_TEST(name)
+
 int main(int argc, char** argv) {
     init();
-    int ret = 0;
     log_l("running test");
 
     if (argc < 2) {
@@ -116,53 +158,23 @@ int main(int argc, char** argv) {
         // log_l("input test name: ");
         // prompt_scanf("%s", s);
         // argv[1] = s;
-        argv[1] = "neuro";
+        argv[1] = "minimax_first";
     }
     bool all = 0;
     if (strcmp(argv[1], "all") == 0) all = 1;
 
-    if (strcmp(argv[1], "vector") == 0 || all) {
-        log_l("test vector");
-        test_vector();
-    }
-    if (strcmp(argv[1], "neuro") == 0 || all) {
-        log_l("test neuro");
-        test_neuro();
-    }
-    if (strcmp(argv[1], "pattern") == 0 || all) {
-        log_l("test pattern");
-        test_pattern();
-    }
-    if (strcmp(argv[1], "forbid") == 0 || all) {
-        log_l("test forbid");
-        ret = test_forbid();
-        if (ret) return ret;
-        log_i("forbid tests passed.");
-    }
-    if (strcmp(argv[1], "minimax") == 0 || all) {
-        log_l("test minimax");
-        test_minimax();
-        log_i("minimax tests passed.");
-    }
-    if (strcmp(argv[1], "mcts") == 0 || all) {
-        void mcts_test_entrance(void);
-        log_l("test mcts");
-        mcts_test_entrance();
-        log_i("mcts tests passed.");
-    }
-    if (strcmp(argv[1], "threat") == 0 || all) {
-        log_l("test threat");
-        test_threat();
-    }
-    if (strcmp(argv[1], "threat_seq") == 0 || all) {
-        log_l("test threat_seq");
-        test_threat_seq();
-    }
-    if (strcmp(argv[1], "threat_tree") == 0 || all) {
-        log_l("test threat_tree");
-        test_threat_tree();
-    }
+    REGISTER_TEST(vector);
+    REGISTER_TEST(neuro);
+    REGISTER_TEST(game);
+    REGISTER_TEST(pattern);
+    REGISTER_TEST(forbid);
+    REGISTER_TEST(minimax_first);
+    REGISTER_TEST(minimax);
+    REGISTER_TEST(mcts);
+    REGISTER_TEST(threat);
+    REGISTER_TEST(threat_seq);
+    REGISTER_TEST(threat_tree);
 
-    log_i("test `%s` passed.", argv[1]);
+    if (all) log_i("test `%s` passed.", argv[1]);
     return 0;
 }

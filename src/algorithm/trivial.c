@@ -57,12 +57,14 @@ point_t trivial_move(board_t board, int self_id, double time_limit, bool use_vct
 
     if (use_vct) {
         double start_time = record_time();
-        vector_t vct_sequence = vct(false, board, self_id, time_limit);
+        vector_t vct_sequence = complex_vct(false, board, self_id, time_limit, 2);
         if (vct_sequence.size) {
             pos = vector_get(point_t, vct_sequence, 0);
-            log_l("found VCT", get_time(start_time));
+            log_l("found VCT in %.2lfms", get_time(start_time));
             print_points(vct_sequence, PROMPT_NOTE, " -> ");
             // sleep(1);
+        } else {
+            log_l("VCT not found, %.2lfms", get_time(start_time));
         }
         vector_free(vct_sequence);
     }

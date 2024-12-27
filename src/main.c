@@ -99,7 +99,7 @@ static void signal_handler(int signum) {
 // //clang-format on
 // }
 
-#define AI_PLAYER MINIMAX_ADV
+#define AI_PLAYER MINIMAX_ULT
 #define PRESET_SIZE 3
 static struct {
     int p1, p2;
@@ -192,7 +192,7 @@ int main(int argc, char* argv[]) {
     int id = 1;
     while (1) {
         const game_result_t result = start_game(preset_players[player1], preset_players[player2],
-                                                id, time_limit, model_file ? &network : NULL);
+                                                id, time_limit, NULL, model_file ? &network : NULL);
         if (tot < GAME_STORAGE_SIZE) results[tot++] = result;
         const int winner = result.winner;
         statistics[0][id]++;

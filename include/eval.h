@@ -25,7 +25,7 @@ vector_t scan_five_threats(board_t board, int id);
 /// @param return vector<threat_t>
 vector_t scan_four_threats(board_t board, int id);
 /// @param return vector<threat_t>
-vector_t find_threats_by_threshold(board_t board, int id, pattern_t threshold);
+vector_t scan_threats_by_threshold(board_t board, int id, pattern_t threshold);
 
 int add_with_eval(board_t board, int current_eval, point_t pos, int id);
 

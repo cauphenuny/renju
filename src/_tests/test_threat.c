@@ -1,5 +1,6 @@
 #include "board.h"
 #include "eval.h"
+#include "server.h"
 #include "game.h"
 #include "minimax.h"
 #include "pattern.h"
@@ -87,9 +88,15 @@ void test_threat() {
     game_t game = restore_game(2000,18,(point_t[]){{7,7},{6,6},{5,7},{4,7},{6,8},{4,6},{5,9},{4,10},{7,8},{7,6},{8,6},{9,5},{8,7},{4,9},{4,8},{5,8},{6,7},{9,7}});
     print_game(game);
     // clang-format on
-    vector_t a3 = vector_new(threat_t, NULL);
-    scan_threats(game.board, 1, 1, (threat_storage_t){[PAT_A3] = &a3});
+    // vector_t a3 = vector_new(threat_t, NULL);
+    // scan_threats(game.board, 1, 1, (threat_storage_t){[PAT_A3] = &a3});
+    vector_t a3 = scan_threats_by_threshold(game.board, 1, PAT_A3);
     for_each(threat_t, a3, a) { print_emph(game.board, a.pos); }
+    double t = record_time();
+    for (int i = 0; i < 100000; i++) {
+        vector_t a3 = scan_threats_by_threshold(game.board, 1, PAT_A3);
+    }
+    log_l("time: %.2lf ms", get_time(t));
 }
 
 void test_threat_tree() {
@@ -100,10 +107,13 @@ void test_threat_tree() {
     [G10] (H11) [I10] (J10) [I11] (I12) [E10] (F10) [E9] (E7) 
     '*/
     game_t game2 = 
-    restore_game(15000,33,(point_t[]){{7,7},{7,8},{6,6},{8,8},{6,8},{8,6},{6,7},{6,5},{8,7},{5,7},{5,9},{4,10},{6,10},{6,9},{5,8},{9,7},{3,8},{4,8},{4,9},{3,10},{5,10},{6,11},{7,6},{8,5},{7,5},{7,4},{2,7},{1,6},{5,6},{9,6},{10,7},{9,8},{9,5}});
+    restore_game(10000,18,(point_t[]){{7,7},{6,7},{6,6},{5,5},{7,5},{8,4},{7,6},{7,8},{5,6},{8,6},{4,7},{3,8},{4,6},{3,6},{4,8},{4,9},{8,7},{9,8}});
+    game_t game3 = 
+    restore_game(10000,20,(point_t[]){{7,7},{6,7},{6,6},{5,5},{7,5},{8,4},{7,6},{7,8},{5,6},{8,6},{4,7},{3,8},{4,6},{3,6},{4,8},{4,9},{8,7},{9,8},{7,4},{7,3}});
     // char buffer[1024];
     // board_serialize(game.board, buffer);
     // printf("%s", buffer);
+    game2 = game3;
     print_game(game2);
     double st = record_time();
     vector_t vct2 = vct(false, game2.board, game2.cur_id, 5000);
@@ -111,6 +121,7 @@ void test_threat_tree() {
     print_points(vct2, PROMPT_LOG, " -> ");
     vector_free(vct2);
     log_l("time: %.2lfms", du);
+    start_game(preset_players[MANUAL], preset_players[MINIMAX_ADV], 1, 10000, &game2, NULL);
     // clang-format on
 
     // #include "boards.txt"

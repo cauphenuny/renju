@@ -9,8 +9,7 @@ typedef struct {
     int max_depth;
     struct {
         bool begin_vct;
-        bool look_ahead;
-        int leaf_vct_depth;
+        bool look_forward;
         bool dynamic_depth;
         bool dynamic_width;
     } optim;

@@ -10,7 +10,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if DEBUG_LEVEL > 0 && (defined(__unix__) || defined(__unix) || (defined(__APPLE__) && defined(__MACH__)))
+#if DEBUG_LEVEL > 0 && \
+    (defined(__unix__) || defined(__unix) || (defined(__APPLE__) && defined(__MACH__)))
 #define BACKTRACE 1
 #else
 #define BACKTRACE 0
@@ -18,8 +19,8 @@
 
 #if BACKTRACE
 #include <execinfo.h>
-#include <signal.h>
 #include <setjmp.h>
+#include <signal.h>
 #include <unistd.h>
 
 static jmp_buf env;
@@ -54,7 +55,8 @@ int vct_depth_sum, vct_depth_cur, vct_depth_max, game_cnt;
 
 /// @brief start a game with player {p1} and {p2}, {first_player} moves first
 /// @param time_limit time limit of every step
-game_result_t start_game(player_t p1, player_t p2, int first_player, int time_limit, network_t* network) {
+game_result_t start_game(player_t p1, player_t p2, int first_player, int time_limit, game_t* start,
+                         network_t* network) {
 
     const char* colors[] = {"", L_BLUE, L_RED};
     set_color(first_player == 1);
@@ -78,7 +80,11 @@ game_result_t start_game(player_t p1, player_t p2, int first_player, int time_li
         return result;                                                    \
     } while (0)
 
-    game_t game = new_game(time_limit);
+    game_t game;
+    if (!start)
+        game = new_game(time_limit);
+    else
+        game = *start;
     log_l("[%s] vs [%s], time_limit: %dms", p1.name, p2.name, time_limit);
     print_game(game);
     while (1) {
@@ -168,7 +174,7 @@ game_result_t start_game(player_t p1, player_t p2, int first_player, int time_li
 #endif
             add_step(&game, pos);
             print_game(game);
-            // serialize_game(game, "");
+            serialize_game(game, "");
             // log_l("eval: %d", eval(game.board));
 
             if (is_draw(game.board)) WIN(0);
@@ -176,17 +182,22 @@ game_result_t start_game(player_t p1, player_t p2, int first_player, int time_li
             player = 3 - player;
 
             if (!claim_winner) {
-                vector_t vct_sequence = vct(false, game.board, game.cur_id, 200);
-                if (vct_sequence.size) {
-                    print_points(vct_sequence, PROMPT_NOTE, " -> ");
-                    vct_depth_cur = vct_sequence.size;
-                    vct_depth_sum += vct_sequence.size;
-                    vct_depth_max = max(vct_depth_max, (int)vct_sequence.size);
-                    log_w("found VCT sequence, claim p%d will win", player);
-                    claim_winner = player;
-                    // if (vct_sequence.size < 3) prompt_pause(); // TODO:
+                for (int vct_depth = 0; vct_depth <= 2 && !claim_winner; vct_depth++) {
+                    double vct_tim = record_time();
+                    vector_t vct_sequence =
+                        complex_vct(false, game.board, game.cur_id, 1000, vct_depth);
+                    vct_tim = get_time(vct_tim);
+                    if (vct_sequence.size) {
+                        print_points(vct_sequence, PROMPT_NOTE, " -> ");
+                        vct_depth_cur = vct_sequence.size;
+                        vct_depth_sum += vct_sequence.size;
+                        vct_depth_max = max(vct_depth_max, (int)vct_sequence.size);
+                        log_w("found VCT sequence (depth: %d, %.2lfms), claim p%d will win",
+                              vct_depth, vct_tim, player);
+                        claim_winner = player;
+                    }
+                    vector_free(vct_sequence);
                 }
-                vector_free(vct_sequence);
             }
 #if BACKTRACE
         } else {

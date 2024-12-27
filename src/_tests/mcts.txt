@@ -1,6 +1,6 @@
 // set file type to txt to avoid errors produced by language server.
 // clang-format off
-void mcts_test_entrance()
+void test_mcts()
 {
     // state_t state = {
     //     .board = {[0] = 446080614, [1] = 644438186, [2] = 648391061, [3] = 425290134, [4] = 446063974, [5] = 429479590, [6] = 429234522, [7] = 644257129, [8] = 714435174, [9] = 429561253, [10] = 375740777, [11] = 644240985, [12] = 446081449, [13] = 626612842, [14] = 447124902},

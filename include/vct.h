@@ -22,5 +22,7 @@ vector_t find_threats(board_t board, point_t pos, bool only_four);
 
 /// @return vector<point_t>
 vector_t vct(bool only_four, board_t board, int id, double time_ms);
+/// @return vector<point_t>
+vector_t complex_vct(bool only_four, board_t board, int self_id, double time_ms, int depth);
 
 #endif
