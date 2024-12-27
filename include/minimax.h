@@ -11,7 +11,7 @@ typedef struct {
         bool begin_vct;
         bool look_forward;
         bool dynamic_depth;
-        bool dynamic_width;
+        bool narrow_width;
     } optim;
     struct {
         int adjacent;

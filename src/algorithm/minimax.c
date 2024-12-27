@@ -136,6 +136,7 @@ static int eval_cmp(const void* p1, const void* p2) {
 typedef struct {
     int max_depth;
     bool leaf_vct;
+    int narrow_width;
 } search_param_t;
 
 static search_param_t search_param;
@@ -199,10 +200,11 @@ static forward_result_t look_forward(board_t board, int self_id, vector_t* self_
             //     !is_forbidden(board, defense.pos, self_id, 2)) {
             //     vector_push_back(ret.points, defense.pos);
             // }
-            vector_t defences = find_relative_points(DEFENSE, board, oppo_attack.pos, oppo_attack.dir.x, oppo_attack.dir.y, oppo_id, false);
+            vector_t defences =
+                find_relative_points(DEFENSE, board, oppo_attack.pos, oppo_attack.dir.x,
+                                     oppo_attack.dir.y, oppo_id, false);
             for_each(point_t, defences, p) {
-                if (!array_contains(ret.points, p) &&
-                    !is_forbidden(board, p, self_id, 2)) {
+                if (!array_contains(ret.points, p) && !is_forbidden(board, p, self_id, 2)) {
                     vector_push_back(ret.points, p);
                 }
             }
@@ -214,7 +216,8 @@ static forward_result_t look_forward(board_t board, int self_id, vector_t* self_
             restore_game(10000,21,(point_t[]){{7,7},{7,8},{8,6},{6,7},{8,9},{8,5},{9,9},{5,8},{7,6},{6,8},{8,8},{6,6},{6,5},{4,8},{3,8},{6,9},{6,10},{8,7},{5,10},{3,9},{5,7}});
             eval to -EVAL_MAX
 
-            because - # o o - o is also a valid defense point, but the previous code only considers - o o # o -
+            because - # o o - o is also a valid defense point, but the previous code only considers
+            - o o # o -
             */
         }
         for_each(threat_t, *self_d4, attack) {
@@ -345,7 +348,7 @@ static result_t minimax_search(board_t board, state_t state, cboard_t preset_can
         vector_free(eval_vector);
     }
     free_threats();
-    if (param.optim.dynamic_width) {
+    if (search_param.narrow_width) {
         const size_t max_width[] = {STEP_INF, 15, 12, 10, 8, 5, 5, 5};
         const int max_width_size = sizeof(max_width) / sizeof(max_width[0]);
         available_pos.size = min(max_width[min(depth, max_width_size - 1)], available_pos.size);
@@ -500,9 +503,9 @@ void print_candidates(board_t board, cboard_t candidates) {
 
 void print_result(result_t result, double duration) {
     log_l("depth %d%s, pos %c%d, %c%d, size %.2lfk, time %.2lfms, value %d, speed %.2lf",
-          search_param.max_depth, search_param.leaf_vct ? " (vct)" : "", READABLE_POS(result.pos),
-          READABLE_POS(result.next_pos), result.tree_size * 1e-3, duration, result.value,
-          result.tree_size / duration);
+          search_param.max_depth, search_param.narrow_width ? "" : "(full)",
+          READABLE_POS(result.pos), READABLE_POS(result.next_pos), result.tree_size * 1e-3,
+          duration, result.value, result.tree_size / duration);
 }
 
 point_t minimax(game_t game, const void* assets) {
@@ -512,7 +515,7 @@ point_t minimax(game_t game, const void* assets) {
     }
     tim = record_time();
     param = *(minimax_param_t*)assets;
-    point_t pos = trivial_move(game, min(1000, game.time_limit / 2), true, param.optim.begin_vct);
+    point_t pos = trivial_move(game, min(1500, game.time_limit / 2), true, param.optim.begin_vct);
     if (in_board(pos)) {
         return pos;
     } else {
@@ -536,7 +539,7 @@ point_t minimax(game_t game, const void* assets) {
     // log_l("searching...");
     vector_t preset_params = vector_new(search_param_t, NULL);
     for (int i = 2; i < param.max_depth + 2; i += 2) {
-        search_param_t p = {i, false};
+        search_param_t p = {i, false, param.optim.narrow_width};
         vector_push_back(preset_params, p);
         // if (param.optim.leaf_vct_depth && i >= param.optim.leaf_vct_depth) {
         //     p.leaf_vct = true;
@@ -547,15 +550,25 @@ point_t minimax(game_t game, const void* assets) {
     vector_t choice = vector_new(point_t, NULL);
     for_each(search_param_t, preset_params, preset_param) {
         search_param = preset_param;
-        double start_time = record_time();
-        result_t ret = minimax_search_entry(game.board, state, candidate, param.parallel);
+        result_t ret = {0};
+        double start_time;
+    start:
+        start_time = record_time();
+        ret = minimax_search_entry(game.board, state, candidate, param.parallel);
         if (ret.valid == 0) break;
         print_result(ret, get_time(start_time));
         calculated_depth = preset_param.max_depth, vector_push_back(choice, ret.pos);
         if (ret.value * state.sgn != -EVAL_MAX) {
             best_result = ret, pos = ret.pos;
         }
-        if (ret.value * state.sgn == EVAL_MAX) break;
+        if (ret.value == EVAL_MAX || ret.value == -EVAL_MAX) {
+            if (!search_param.narrow_width) {
+                break;
+            } else {
+                search_param.narrow_width = false;
+                goto start;  // if find win or lose in narrowed width, then check it in full width
+            }
+        }
     }
     vector_free(choice);
     vector_free(preset_params);

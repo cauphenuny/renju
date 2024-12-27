@@ -282,7 +282,15 @@ point_t trivial_move(game_t game, double time_limit, bool use_opening, bool use_
 
     if (use_vct) {
         double start_time = record_time();
-        vector_t vct_sequence = complex_vct(false, game.board, self_id, time_limit, 2);
+        vector_t vct_sequence = complex_vct(false, game.board, self_id, time_limit / 2, 2);
+        if (!vct_sequence.size) {
+            vector_free(vct_sequence);
+            vct_sequence = complex_vct(false, game.board, self_id, time_limit / 2, 3);
+            if (vct_sequence.size) {
+                log_l("find in 3 depth but not in 2 depth!");
+                prompt_pause();
+            }
+        }
         if (vct_sequence.size) {
             pos = vector_get(point_t, vct_sequence, 0);
             log_l("found VCT in %.2lfms", get_time(start_time));

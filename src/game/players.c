@@ -38,7 +38,7 @@ const static minimax_param_t minimax_params_ultimate = {
     .parallel = true,
     .max_depth = 16,
     .strategy = {.adjacent = 1},
-    .optim = {.begin_vct = true, .look_forward = true, .dynamic_width = true},
+    .optim = {.begin_vct = true, .look_forward = true, .narrow_width = true},
 };
 
 static nn_player_param_t nn_params_default = {
@@ -99,5 +99,6 @@ void bind_network(network_t* network, bool is_train) {
 
 void bind_output_prob(pfboard_t output_array) {
     mcts_params_default.output_prob = output_array;
+    mcts_params_adv.output_prob = output_array;
     mcts_params_nn.output_prob = output_array;
 }
