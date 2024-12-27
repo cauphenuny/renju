@@ -160,7 +160,7 @@ point_t nn_move(game_t game, const void* assets) {
     const nn_player_param_t param = *(nn_player_param_t*)assets;
     if (!param.network) return (point_t){-1, -1};
     if (param.use_vct) {
-        point_t pos = trivial_move(game.board, game.cur_id, (double)game.time_limit / 2, true);
+        point_t pos = trivial_move(game, (double)game.time_limit / 2, false, true);
         if (in_board(pos)) {
             return pos;
         }

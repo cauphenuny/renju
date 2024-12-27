@@ -28,7 +28,7 @@ const static minimax_param_t minimax_params_normal = {
     .optim = {.begin_vct = true},
 };
 const static minimax_param_t minimax_params_advanced = {
-    .parallel = true,
+    .parallel = false,
     .max_depth = 16,
     .strategy = {.adjacent = 1},
     .optim = {.begin_vct = true, .look_forward = true},

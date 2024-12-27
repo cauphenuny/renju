@@ -58,14 +58,14 @@ int encode_segment(segment_t s);
 segment_t decode_segment(int v, int base);
 void print_segment(segment_t s, bool consider_forbid);
 bool segment_valid(segment_t s);
-segment_t get_segment(board_t board, point_t pos, int dx, int dy);
+segment_t get_segment(board_t board, point_t pos, int dx, int dy, int id);
 enum {
     ATTACK,
     CONSIST,
     DEFENSE,
 };
 
-vector_t find_relative_points(int type, board_t board, point_t pos, int dx, int dy);
+vector_t find_relative_points(int type, board_t board, point_t pos, int dx, int dy, int id, bool put_piece);
 
 pattern_t to_pattern(int segment_value, bool consider_forbid);
 pattern_t get_pattern(board_t board, point_t pos, int dx, int dy, int self_id);

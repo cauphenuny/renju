@@ -163,7 +163,7 @@ static bool array_contains(vector_t point_array, point_t pos) {
 static forward_result_t look_forward(board_t board, int self_id, vector_t* self_5,
                                      vector_t* self_a4, vector_t* self_d4, vector_t* oppo_5,
                                      vector_t* oppo_a4) {
-    const int sgn = self_id == 1 ? 1 : -1;
+    const int sgn = self_id == 1 ? 1 : -1, oppo_id = 3 - self_id;
     forward_result_t ret = {
         .value = 0,
         .points = {0},
@@ -194,11 +194,28 @@ static forward_result_t look_forward(board_t board, int self_id, vector_t* self_
         for_each(threat_t, *self_a4, attack) vector_push_back(ret.points, attack.pos);
         ret.type = PAT_A4, ret.is_self = true;
     } else if (oppo_a4->size) {
-        for_each(threat_t, *oppo_a4, defense) {
-            if (!array_contains(ret.points, defense.pos) &&
-                !is_forbidden(board, defense.pos, self_id, 2)) {
-                vector_push_back(ret.points, defense.pos);
+        for_each(threat_t, *oppo_a4, oppo_attack) {
+            // if (!array_contains(ret.points, defense.pos) &&
+            //     !is_forbidden(board, defense.pos, self_id, 2)) {
+            //     vector_push_back(ret.points, defense.pos);
+            // }
+            vector_t defences = find_relative_points(DEFENSE, board, oppo_attack.pos, oppo_attack.dir.x, oppo_attack.dir.y, oppo_id, false);
+            for_each(point_t, defences, p) {
+                if (!array_contains(ret.points, p) &&
+                    !is_forbidden(board, p, self_id, 2)) {
+                    vector_push_back(ret.points, p);
+                }
             }
+            // print_emph_mutiple(board, defences);
+            // prompt_pause();
+            vector_free(defences);
+            /*
+            fix for
+            restore_game(10000,21,(point_t[]){{7,7},{7,8},{8,6},{6,7},{8,9},{8,5},{9,9},{5,8},{7,6},{6,8},{8,8},{6,6},{6,5},{4,8},{3,8},{6,9},{6,10},{8,7},{5,10},{3,9},{5,7}});
+            eval to -EVAL_MAX
+
+            because - # o o - o is also a valid defense point, but the previous code only considers - o o # o -
+            */
         }
         for_each(threat_t, *self_d4, attack) {
             if (!array_contains(ret.points, attack.pos)) {
@@ -495,8 +512,7 @@ point_t minimax(game_t game, const void* assets) {
     }
     tim = record_time();
     param = *(minimax_param_t*)assets;
-    point_t pos = trivial_move(game.board, game.cur_id, min(1000, game.time_limit / 2),
-                               param.optim.begin_vct);
+    point_t pos = trivial_move(game, min(1000, game.time_limit / 2), true, param.optim.begin_vct);
     if (in_board(pos)) {
         return pos;
     } else {
@@ -531,9 +547,10 @@ point_t minimax(game_t game, const void* assets) {
     vector_t choice = vector_new(point_t, NULL);
     for_each(search_param_t, preset_params, preset_param) {
         search_param = preset_param;
+        double start_time = record_time();
         result_t ret = minimax_search_entry(game.board, state, candidate, param.parallel);
         if (ret.valid == 0) break;
-        print_result(ret, get_time(tim));
+        print_result(ret, get_time(start_time));
         calculated_depth = preset_param.max_depth, vector_push_back(choice, ret.pos);
         if (ret.value * state.sgn != -EVAL_MAX) {
             best_result = ret, pos = ret.pos;

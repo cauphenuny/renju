@@ -41,15 +41,11 @@ threat_info_t clone_threat_info(const threat_info_t* threat_info) {
 /// @brief get threat info (consists, defenses) of {threat} on {board}
 threat_info_t attach_threat_info(board_t board, threat_t threat) {
     threat_info_t info = {.type = threat.pattern,
-                          .consists = {0},
-                          .defenses = {0},
+                          .consists = find_relative_points(CONSIST, board, threat.pos, threat.dir.x, threat.dir.y, threat.id, true),
+                          .defenses = find_relative_points(DEFENSE, board, threat.pos, threat.dir.x, threat.dir.y, threat.id, true),
                           .action = threat.pos,
                           .dir = threat.dir,
                           .id = threat.id};
-    board[threat.pos.x][threat.pos.y] = threat.id;
-    info.consists = find_relative_points(CONSIST, board, threat.pos, threat.dir.x, threat.dir.y);
-    info.defenses = find_relative_points(DEFENSE, board, threat.pos, threat.dir.x, threat.dir.y);
-    board[threat.pos.x][threat.pos.y] = 0;
     return info;
 }
 
@@ -78,7 +74,7 @@ vector_t find_threats(board_t board, point_t pos, bool only_four) {
     vector_t result = vector_new(threat_t, NULL);
     if (!id) return result;
     for_all_dir(d, dx, dy) {
-        segment_t seg = get_segment(board, pos, dx, dy);
+        segment_t seg = get_segment(board, pos, dx, dy, id);
         int value = encode_segment(seg);
         pattern_t pat = to_upgraded_pattern(value, id == 1);
         bool select = false;

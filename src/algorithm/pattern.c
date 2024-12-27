@@ -279,9 +279,8 @@ void print_segment(segment_t s, bool consider_forbid) {
     printf("]\n");
 }
 
-segment_t get_segment(board_t board, point_t pos, int dx, int dy) {
+segment_t get_segment(board_t board, point_t pos, int dx, int dy, int id) {
     segment_t seg;
-    const int id = board[pos.x][pos.y];
     for (int8_t j = -HALF; j <= HALF; j++) {
         const point_t np = (point_t){pos.x + dx * j, pos.y + dy * j};
         if (!in_board(np))
@@ -375,12 +374,13 @@ point_t column_to_point(point_t pos, int dx, int dy, int col) {
 
 /// @brief find (ATTACK|CONSIST|DEFENSE) points of {pos} in {dx, dy} direction
 /// @return vector<point_t>
-vector_t find_relative_points(int type, board_t board, point_t pos, int dx, int dy) {
-    int id = board[pos.x][pos.y];
+vector_t find_relative_points(int type, board_t board, point_t pos, int dx, int dy, int id, bool put_piece) {
     vector_t vec = vector_new(point_t, NULL);
-    if (!id) return vec;
+    if (put_piece) {
+        board[pos.x][pos.y] = id;
+    }
     memo_t* memo = id == 1 ? &forbid : &no_forbid;
-    int seg_value = encode_segment(get_segment(board, pos, dx, dy));
+    int seg_value = encode_segment(get_segment(board, pos, dx, dy, id));
     int *col, size;
     switch (type) {
         case ATTACK:
@@ -396,9 +396,12 @@ vector_t find_relative_points(int type, board_t board, point_t pos, int dx, int 
     }
     for (int i = 0; i < size; i++) {
         point_t np = column_to_point(pos, dx, dy, col[i]);
-        if (np.x == pos.x && np.y == pos.y) continue;
+        if (put_piece && np.x == pos.x && np.y == pos.y) continue;
         assert(in_board(np));
         vector_push_back(vec, np);
+    }
+    if (put_piece) {
+        board[pos.x][pos.y] = 0;
     }
     return vec;
 }

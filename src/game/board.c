@@ -271,7 +271,7 @@ int is_forbidden(board_t board, point_t pos, int id, int max_depth) {
     // pause();
     board[pos.x][pos.y] = id;
     for_all_dir(i, dx, dy) {
-        seg[i] = get_segment(board, pos, dx, dy);
+        seg[i] = get_segment(board, pos, dx, dy, id);
         value[i] = encode_segment(seg[i]);
         pats[i] = to_pattern(value[i], true);
     }

@@ -74,7 +74,7 @@ void test_upd() {
         vector_t array = vector_new(point_t, NULL);
         board[pos.x][pos.y] = 2;
         for_all_dir(d, dx, dy) {
-            vector_t tmp = find_relative_points(CONSIST, board, pos, dx, dy);
+            vector_t tmp = find_relative_points(CONSIST, board, pos, dx, dy, 2, false);
             print_emph_mutiple(board, tmp);
             vector_cat(array, tmp);
             vector_free(tmp);
