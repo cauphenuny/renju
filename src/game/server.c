@@ -75,7 +75,6 @@ game_result_t start_game(player_t p1, player_t p2, int first_player, int time_li
         if (claim_winner && players[claim_winner].attribute.enable_vct && \
             winner_id != claim_winner) {                                  \
             log_w("claim incorrect!");                                    \
-            prompt_pause();                                               \
         }                                                                 \
         log_l("VCT sequence cur: %d, avg: %.2lf, max: %d", vct_depth_cur, \
               (double)vct_depth_sum / game_cnt, vct_depth_max);           \
@@ -156,7 +155,7 @@ game_result_t start_game(player_t p1, player_t p2, int first_player, int time_li
                 default: break;
             }
             if (!available(game.board, pos)) {
-                log_e("invalid position!");
+                log_e("invalid position %c%d: (%d, %d)!", READABLE_POS(pos), pos.x, pos.y);
                 continue;
             }
             log_i("time: %.2lfms, chose " BOLD UNDERLINE "%c%d" RESET, duration, READABLE_POS(pos));
@@ -171,7 +170,7 @@ game_result_t start_game(player_t p1, player_t p2, int first_player, int time_li
                     log_e("forbidden position! (%s)", pattern4_typename[forbid]);
                     prompt_pause();
                     continue;
-                    // WIN(3 - id);
+                    // WIN(3 - player);
                 }
             }
 #endif
@@ -188,7 +187,7 @@ game_result_t start_game(player_t p1, player_t p2, int first_player, int time_li
                 for (int vct_depth = 0; vct_depth <= 2 && !claim_winner; vct_depth++) {
                     double vct_tim = record_time();
                     vector_t vct_sequence =
-                        complex_vct(false, game.board, game.cur_id, 1000, vct_depth);
+                        complex_vct(false, game.board, game.cur_id, 500, vct_depth);
                     vct_tim = get_time(vct_tim);
                     if (vct_sequence.size) {
                         print_points(vct_sequence, PROMPT_NOTE, " -> ");

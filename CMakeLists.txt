@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 3.5)
 project (
     renju
-    VERSION 2.18.1
+    VERSION 2.19.0
     LANGUAGES C
 )
 

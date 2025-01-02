@@ -32,136 +32,271 @@ typedef struct {
     const char* name;
 } opening_t;
 
-static const opening_t openings[] = {
-    // 开局1: 黑天元 - 白天元防 - 黑花月 - 白反花月 - 黑三手 - 白防守 - 黑进攻 - 白防守
-    {.moves =
-         {
-             {7, 7},  // 天元
-             {8, 8},  // 天元防
-             {7, 8},  // 花月
-             {6, 7},  // 反花月
-             {8, 7},  // 黑三手
-             {6, 8},  // 白防守
-             {9, 7},  // 黑进攻
-             {5, 7}   // 白防守
-         },
-     .size = 8,
-     .score = 3,  // 黑棋较优
-     .name = "天元花月进攻型"},
+static const opening_t black_openings[] = {
+    {
+        .moves =
+            {
+                {7, 7},
+                {6, 8},
+                {5, 6},
+                {8, 7},
+                {7, 8},
+                {7, 6},
+                {6, 5},
+            },
+        .size = 7,
+        .score = 7,
+        .name = "#1-0",
+    },
+    {
+        .moves =
+            {
+                {7, 7},
+                {6, 8},
+                {5, 6},
+                {6, 7},
+                {6, 6},
+            },
+        .size = 5,
+        .score = 3,
+        .name = "#1-1",
+    },
+    {
+        .moves =
+            {
+                {7, 7},
+                {6, 8},
+                {5, 6},
+                {6, 6},
+                {6, 5},
+            },
+        .size = 5,
+        .score = 2,
+        .name = "#1-2",
+    },
+    {
+        .moves =
+            {
+                {7, 7},
+                {6, 8},
+                {5, 6},
+                {8, 8},
+                {5, 8},
+            },
+        .size = 5,
+        .score = 2,
+        .name = "#1-3",
+    },
+    {
+        .moves =
+            {
+                {7, 7},
+                {6, 8},
+                {5, 6},
+                {6, 9},
+                {6, 6},
+            },
+        .size = 5,
+        .score = 2,
+        .name = "#1-4",
+    },
+    {
+        .moves =
+            {
+                {7, 7},
+                {7, 8},
+                {6, 8},
+                {8, 6},
+                {6, 9},
+                {6, 7},
+                {5, 9},
+            },
+        .size = 7,
+        .score = 4,
+        .name = "#2-0",
+    },
+    {
+        .moves =
+            {
+                {7, 7},
+                {7, 8},
+                {6, 8},
+                {6, 7},
+                {8, 9},
+                {8, 8},
+                {5, 9},
+            },
+        .size = 7,
+        .score = 4,
+        .name = "#2-1",
+    },
+    {
+        .moves =
+            {
+                {7, 7},
+                {7, 8},
+                {6, 8},
+                {6, 7},
+                {8, 9},
+                {8, 6},
+                {8, 10},
+            },
+        .size = 7,
+        .score = 4,
+        .name = "#2-2",
+    },
+};
 
-    // 开局2: 黑天元 - 白一路防 - 黑花月 - 白反花月 - 黑连击 - 白防守 - 黑进攻 - 白防守
-    {.moves =
-         {
-             {7, 7},  // 天元
-             {7, 8},  // 一路防
-             {7, 6},  // 花月
-             {8, 7},  // 反花月
-             {6, 7},  // 黑连击
-             {8, 6},  // 白防守
-             {6, 8},  // 黑进攻
-             {8, 8}   // 白防守
-         },
-     .size = 8,
-     .score = -2,  // 白棋较优
-     .name = "一路花月防守型"},
+static const opening_t white_openings[] = {
+    {
+        .moves =
+            {
+                {7, 7},
+                {6, 8},
+                {5, 6},
+                {8, 7},
+                {7, 8},
+                {7, 6},
+                {6, 7},
+                {4, 5},
+            },
+        .score = 2,
+        .name = "#1",
+        .size = 8,
+    },
+    {
+        .moves =
+            {
+                {7, 7},
+                {6, 8},
+                {5, 7},
+                {6, 7},
+                {6, 6},
+                {5, 5},
+            },
+        .score = 2,
+        .name = "#2",
+        .size = 6,
+    },
+    {
+        .moves =
+            {
+                {7, 7},
+                {6, 8},
+                {7, 6},
+                {7, 5},
+            },
+        .score = 2,
+        .name = "#3",
+        .size = 4,
+    },
+    {
+        .moves =
+            {
+                {7, 7},
+                {6, 8},
+                {6, 7},
+                {7, 6},
+                {8, 8},
+                {8, 7},
+            },
+        .score = 2,
+        .name = "#3-0",
+        .size = 6,
+    },
+    {
+        .moves =
+            {
+                {7, 7},
+                {6, 8},
+                {6, 7},
+                {7, 6},
+                {5, 7},
+                {8, 7},
+            },
+        .score = 2,
+        .name = "#3-1",
+        .size = 6,
+    },
+    {
+        .moves =
+            {
+                {7, 7},
+                {6, 8},
+                {6, 7},
+                {7, 6},
+                {8, 7},
+                {5, 7},
+            },
+        .score = 2,
+        .name = "#3-2",
+        .size = 6,
+    },
+    {
+        .moves =
+            {
+                {7, 7},
+                {6, 8},
+                {6, 6},
+                {8, 8},
+                {7, 8},
+                {7, 6},
+                {5, 7},
+                {8, 7},
+            },
+        .score = 4,
+        .name = "#4-0",
+        .size = 6,
+    },
+    {
+        .moves =
+            {
+                {7, 7},
+                {6, 8},
+                {6, 6},
+                {8, 8},
+                {5, 8},
+                {5, 6},
+            },
+        .score = 4,
+        .name = "#4-1",
+        .size = 6,
+    },
+    {
+        .moves =
+            {
+                {7, 7},
+                {6, 8},
+                {6, 6},
+                {8, 8},
+                {9, 8},
+                {5, 7},
+            },
+        .score = 4,
+        .name = "#4-2",
+        .size = 6,
+    },
+};
 
-    // 开局3: 黑天元 - 白二路防 - 黑花月 - 白反花月 - 黑斜进 - 白防守 - 黑压制 - 白缓冲
-    {.moves =
-         {
-             {7, 7},  // 天元
-             {6, 7},  // 二路防
-             {8, 7},  // 花月
-             {7, 8},  // 反花月
-             {8, 6},  // 黑斜进
-             {6, 8},  // 白防守
-             {9, 6},  // 黑压制
-             {7, 6}   // 白缓冲
-         },
-     .size = 8,
-     .score = 1,  // 黑棋略优
-     .name = "二路花月斜进型"},
+static const int black_opening_count = sizeof(black_openings) / sizeof(opening_t);
+static const int white_opening_count = sizeof(white_openings) / sizeof(opening_t);
 
-    // 开局4: 黑天元 - 白三路防 - 黑花月 - 白反花月 - 黑包围 - 白突破 - 黑补防 - 白反击
-    {.moves =
-         {
-             {7, 7},  // 天元
-             {5, 7},  // 三路防
-             {8, 7},  // 花月
-             {7, 8},  // 反花月
-             {6, 6},  // 黑包围
-             {7, 6},  // 白突破
-             {6, 8},  // 黑补防
-             {8, 6}   // 白反击
-         },
-     .size = 8,
-     .score = -1,  // 白棋略优
-     .name = "三路花月包围型"},
-
-    // 开局5: 黑天元 - 白斜防 - 黑花月 - 白反花月 - 黑压制 - 白防守 - 黑进攻 - 白防守
-    {.moves =
-         {
-             {7, 7},  // 天元
-             {8, 6},  // 斜防
-             {6, 8},  // 花月
-             {7, 8},  // 反花月
-             {8, 8},  // 黑压制
-             {6, 7},  // 白防守
-             {9, 8},  // 黑进攻
-             {5, 8}   // 白防守
-         },
-     .size = 8,
-     .score = 2,  // 黑棋优势
-     .name = "斜防花月压制型"},
-
-    // 开局6: 黑天元 - 白远角防 - 黑花月 - 白反花月 - 黑连击 - 白防守 - 黑进攻 - 白防守
-    {.moves =
-         {
-             {7, 7},  // 天元
-             {9, 9},  // 远角防
-             {8, 8},  // 花月
-             {7, 8},  // 反花月
-             {6, 8},  // 黑连击
-             {8, 7},  // 白防守
-             {6, 9},  // 黑进攻
-             {8, 6}   // 白防守
-         },
-     .size = 8,
-     .score = 0,  // 均势
-     .name = "远角花月连击型"},
-
-    // 新增开局7: 黑天元 - 白近角防 - 黑花月 - 白反花月 - 黑包围 - 白防守 - 黑进攻 - 白防守
-    {.moves =
-         {
-             {7, 7},  // 天元
-             {8, 8},  // 近角防
-             {6, 8},  // 花月
-             {7, 8},  // 反花月
-             {8, 7},  // 黑包围
-             {6, 7},  // 白防守
-             {9, 7},  // 黑进攻
-             {5, 8}   // 白防守
-         },
-     .size = 8,
-     .score = 1,  // 黑棋略优
-     .name = "近角花月包围型"},
-
-    // 新增开局8: 黑天元 - 白中路防 - 黑花月 - 白反花月 - 黑连击 - 白防守 - 黑压制 - 白防守
-    {.moves =
-         {
-             {7, 7},  // 天元
-             {7, 6},  // 中路防
-             {8, 7},  // 花月
-             {7, 8},  // 反花月
-             {8, 8},  // 黑连击
-             {6, 7},  // 白防守
-             {9, 8},  // 黑压制
-             {6, 8}   // 白防守
-         },
-     .size = 8,
-     .score = 2,  // 黑棋优势
-     .name = "中路花月连击型"}};
-
-static const int opening_count = sizeof(openings) / sizeof(opening_t);
+void test_opening() {
+    for (int i = 0; i < black_opening_count; i++) {
+        game_t game = new_game(1000);
+        for (int j = 0; j < black_openings[i].size; j++) {
+            add_step(&game, black_openings[i].moves[j]);
+        }
+        print_game(game);
+        double start_time = record_time();
+        vector_t vct_sequence = complex_vct(false, game.board, 1, 1000, 3);
+        if (vct_sequence.size) {
+            log_l("found VCT in %.2lfms", get_time(start_time));
+            print_points(vct_sequence, PROMPT_NOTE, " -> ");
+        }
+        vector_free(vct_sequence);
+    }
+}
 
 static point_t rotate_point(point_t p, int rotation) {
     point_t center = {7, 7};
@@ -191,23 +326,20 @@ static point_t mirror_point(point_t p, bool mirror) {
 static bool check_opening_match(board_t board, const opening_t* opening, int depth, int rotation,
                                 bool mirror, point_t* out_move) {
     if (depth >= opening->size) return false;
+    board_t expected_board = {0};
     for (int j = 0; j < depth; j++) {
         point_t p = opening->moves[j];
         p = rotate_point(p, rotation);
         p = mirror_point(p, mirror);
-        if (!board[p.x][p.y]) {
-            return false;
-        }
+        int expect_id = (j % 2 == 0) ? 1 : 2;
+        expected_board[p.x][p.y] = expect_id;
     }
-
-    if (depth < opening->size) {
-        point_t next_move = opening->moves[depth];
-        next_move = rotate_point(next_move, rotation);
-        next_move = mirror_point(next_move, mirror);
-        *out_move = next_move;
-        return true;
-    }
-    return false;
+    if (!is_equal(board, expected_board)) return false;
+    point_t next_move = opening->moves[depth];
+    next_move = rotate_point(next_move, rotation);
+    next_move = mirror_point(next_move, mirror);
+    *out_move = next_move;
+    return true;
 }
 
 /// @brief find a move from opening book
@@ -217,27 +349,19 @@ static bool check_opening_match(board_t board, const opening_t* opening, int dep
 /// @return best move
 static point_t find_opening_move(board_t board, int depth, int player_id) {
     point_t best_move = {-1, -1};
-    int best_score = player_id == 1 ? -1000 : 1000;
+    int best_score = -1000;
+    const opening_t* openings = player_id == 1 ? black_openings : white_openings;
+    int opening_count = player_id == 1 ? black_opening_count : white_opening_count;
 
     for (int i = 0; i < opening_count; i++) {
-        if (openings[i].score < 0 && player_id == 1) continue;
-        if (openings[i].score > 0 && player_id == 2) continue;
         for (int rotation = 0; rotation < 4; rotation++) {
             for (int mirror = 0; mirror <= 1; mirror++) {
                 point_t move;
                 if (check_opening_match(board, &openings[i], depth, rotation, mirror, &move)) {
-                    if (player_id == 1) {
-                        if (openings[i].score > best_score) {
-                            best_score = openings[i].score;
-                            best_move = move;
-                            log_l("find opening: %s, score: %d", openings[i].name, best_score);
-                        }
-                    } else {
-                        if (openings[i].score < best_score) {
-                            best_score = openings[i].score;
-                            best_move = move;
-                            log_l("find opening: %s, score: %d", openings[i].name, best_score);
-                        }
+                    if (openings[i].score > best_score) {
+                        best_score = openings[i].score;
+                        best_move = move;
+                        log_l("find opening: %s, score: %d", openings[i].name, best_score);
                     }
                 }
             }
@@ -296,13 +420,14 @@ point_t trivial_move(game_t game, double time_limit, bool use_opening, bool use_
     if (use_vct) {
         double start_time = record_time();
         vector_t vct_sequence = complex_vct(false, game.board, self_id, time_limit / 2, 2);
+        double duration = get_time(start_time);
         if (!vct_sequence.size) {
             vector_free(vct_sequence);
-            vct_sequence = complex_vct(false, game.board, self_id, time_limit / 2, 3);
-            if (vct_sequence.size) {
-                log_l("find in 3 depth but not in 2 depth!");
-                prompt_pause();
-            }
+            vct_sequence = complex_vct(false, game.board, self_id, time_limit - duration, 3);
+            // if (vct_sequence.size) {
+            //     log_l("find in 3 depth but not in 2 depth!");
+            //     prompt_pause();
+            // }
         }
         if (vct_sequence.size) {
             pos = vector_get(point_t, vct_sequence, 0);

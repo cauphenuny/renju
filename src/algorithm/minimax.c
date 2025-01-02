@@ -363,14 +363,14 @@ static result_t minimax_search(board_t board, state_t state, cboard_t preset_can
                 }
             }
         }
-        // vector_shuffle(eval_vector);
+        vector_shuffle(eval_vector);
         qsort(eval_vector.data, eval_vector.size, eval_vector.element_size, eval_cmp);
         for_each(point_eval_t, eval_vector, eval) { vector_push_back(available_pos, eval.pos); }
         vector_free(eval_vector);
     }
     free_threats();
     if (search_param.narrow_width) {
-        const size_t max_width[] = {STEP_INF, 15, 12, 10, 8, 5, 5, 5};
+        const size_t max_width[] = {STEP_INF, 20, 15, 12, 10, 8, 5, 5};
         const int max_width_size = sizeof(max_width) / sizeof(max_width[0]);
         available_pos.size = min(max_width[min(depth, max_width_size - 1)], available_pos.size);
     }
@@ -411,6 +411,13 @@ static result_t minimax_search(board_t board, state_t state, cboard_t preset_can
     return ret;
 }
 
+void print_result(result_t result, double duration) {
+    log_l("depth %d%s, pos %c%d, %c%d, size %.2lfk, time %.2lfms, value %d, speed %.2lf",
+          search_param.max_depth, search_param.narrow_width ? "(f)" : "",
+          READABLE_POS(result.pos), READABLE_POS(result.next_pos), result.tree_size * 1e-3,
+          duration, result.value, result.tree_size / duration);
+}
+
 /// @brief entry point for parallel minimax search
 /// @param board current board state
 /// @param init_state initial game state
@@ -419,6 +426,7 @@ static result_t minimax_search(board_t board, state_t state, cboard_t preset_can
 /// @return search result from all parallel branches
 result_t minimax_search_entry(board_t board, state_t init_state, cboard_t init_candidates,
                               bool parallel) {
+    double start_time = record_time();
     const int self_id = init_state.sgn == 1 ? 1 : 2;
     cboard_t candidates[BOARD_AREA] = {0};
     result_t results[BOARD_AREA];
@@ -469,6 +477,7 @@ result_t minimax_search_entry(board_t board, state_t init_state, cboard_t init_c
         }
     }
     best_result.tree_size = tree_size;
+    print_result(best_result, get_time(start_time));
     return best_result;
 }
 
@@ -531,13 +540,6 @@ void print_candidates(board_t board, cboard_t candidates) {
     print_prob(board, tmp);
 }
 
-void print_result(result_t result, double duration) {
-    log_l("depth %d%s, pos %c%d, %c%d, size %.2lfk, time %.2lfms, value %d, speed %.2lf",
-          search_param.max_depth, search_param.narrow_width ? "" : "(full)",
-          READABLE_POS(result.pos), READABLE_POS(result.next_pos), result.tree_size * 1e-3,
-          duration, result.value, result.tree_size / duration);
-}
-
 /// @brief main minimax algorithm interface
 /// @param game current game state
 /// @param assets algorithm parameters
@@ -549,7 +551,8 @@ point_t minimax(game_t game, const void* assets) {
     }
     tim = record_time();
     param = *(minimax_param_t*)assets;
-    point_t pos = trivial_move(game, min(2000, game.time_limit / 2), true, param.optim.begin_vct);
+    // if (game.cur_id == 2) param.optim.narrow_width = false, param.optim.dynamic_depth = false;
+    point_t pos = trivial_move(game, min(1500, game.time_limit / 2), true, param.optim.begin_vct);
     if (in_board(pos)) {
         return pos;
     } else {
@@ -586,23 +589,16 @@ point_t minimax(game_t game, const void* assets) {
         search_param = preset_param;
         result_t ret = {0};
         double start_time;
-    start:
-        start_time = record_time();
         ret = minimax_search_entry(game.board, state, candidate, param.parallel);
         if (ret.valid == 0) break;
-        print_result(ret, get_time(start_time));
+        if (!in_board(ret.pos)) {
+            log_w("out of board");
+            // prompt_pause();
+            break;
+        }
         calculated_depth = preset_param.max_depth, vector_push_back(choice, ret.pos);
-        if (ret.value * state.sgn != -EVAL_MAX) {
-            best_result = ret, pos = ret.pos;
-        }
-        if (ret.value == EVAL_MAX || ret.value == -EVAL_MAX) {
-            if (!search_param.narrow_width) {
-                break;
-            } else {
-                search_param.narrow_width = false;
-                goto start;  // if find win or lose in narrowed width, then check it in full width
-            }
-        }
+        if (ret.value * state.sgn > -EVAL_MAX) best_result = ret, pos = ret.pos;
+        if (ret.value * state.sgn == EVAL_MAX) break;
     }
     vector_free(choice);
     vector_free(preset_params);

@@ -1,6 +1,7 @@
 /// @file _tests/main.c
 /// @brief main file for running unit tests
 
+#include "server.h"
 #include "board.h"
 #include "game.h"
 #include "init.h"
@@ -84,6 +85,19 @@ void test_minimax_first(void) {
     log_l("%c%d", READABLE_POS(pos));
 }
 
+void test_server(void) {
+    game_t game = restore_game(
+        10000, 24, (point_t[]){{7, 7}, {7, 8}, {6, 7}, {8, 7}, {6, 8},  {6, 9},  {5, 10}, {8, 6},
+                               {5, 7}, {8, 5}, {8, 8}, {9, 6}, {10, 5}, {10, 7}, {7, 4},  {11, 6},
+                               {7, 6}, {9, 8}, {8, 9}, {9, 7}, {4, 7},  {3, 7},  {7, 5},  {7, 3}});
+    int id;
+    prompt_scanf("%d", &id);
+    if (id == 1)
+        start_game(preset_players[MINIMAX_ADV], preset_players[MINIMAX_ULT], 2, 10000, &game, NULL);
+    else
+        start_game(preset_players[MINIMAX_ADV], preset_players[MINIMAX_ADV], 2, 10000, &game, NULL);
+}
+
 void test_neuro();
 void test_upd();
 void test_eval();
@@ -153,6 +167,8 @@ void test_mcts(void);
 #define REGISTER_TEST(name) \
     if (strcmp(argv[1], #name) == 0 || all) RUN_TEST(name)
 
+void test_opening(void);
+
 int main(int argc, char** argv) {
     init();
     log_l("running test");
@@ -162,7 +178,7 @@ int main(int argc, char** argv) {
         // log_l("input test name: ");
         // prompt_scanf("%s", s);
         // argv[1] = s;
-        argv[1] = "minimax_first";
+        argv[1] = "opening";
     }
     bool all = 0;
     if (strcmp(argv[1], "all") == 0) all = 1;
@@ -178,6 +194,8 @@ int main(int argc, char** argv) {
     REGISTER_TEST(threat);
     REGISTER_TEST(threat_seq);
     REGISTER_TEST(threat_tree);
+    REGISTER_TEST(server);
+    REGISTER_TEST(opening);
 
     if (all) log_i("test `%s` passed.", argv[1]);
     return 0;

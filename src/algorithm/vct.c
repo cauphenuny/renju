@@ -1,6 +1,5 @@
 /// @file vct.c
-/// @brief implementation of VCT algorithm (Allis, L. & Herik, H. & Huntjens, M.. (1994).
-/// Go-Moku and Threat-Space Search.)
+/// @brief implementation of VCT algorithm (Go-Moku and Threat-Space Search, Allis et. al. 1994)
 #include "vct.h"
 
 #include "board.h"
