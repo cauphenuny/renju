@@ -52,7 +52,7 @@ threat_info_t attach_threat_info(board_t board, threat_t threat) {
 /// @return vector<threat_info_t, free_threat_info>
 vector_t scan_threats_info(board_t board, int id, bool only_four) {
     vector_t threat_info = vector_new(threat_info_t, free_threat_info);
-    vector_t threats = vector_new(threat_t, NULL);
+    vector_t threats = vector_new(threat_t);
     threat_storage_t storage = {0};
     storage[PAT_WIN] = storage[PAT_A4] = storage[PAT_D4] = &threats;
     if (!only_four) {
@@ -71,7 +71,7 @@ vector_t scan_threats_info(board_t board, int id, bool only_four) {
 /// @return vector<threat_t>
 vector_t find_threats(board_t board, point_t pos, bool only_four) {
     int id = board[pos.x][pos.y];
-    vector_t result = vector_new(threat_t, NULL);
+    vector_t result = vector_new(threat_t);
     if (!id) return result;
     for_all_dir(d, dx, dy) {
         segment_t seg = get_segment(board, pos, dx, dy, id);
@@ -167,8 +167,8 @@ static void initialize_node(local_var_t* assets, threat_tree_node_t* node, board
     node->subtree_size = 1;
     node->win_count = 0;
     node->win_depth = INF;
-    node->win_nodes = vector_new(threat_tree_node_t*, NULL);
-    node->best_sequence = vector_new(point_t, NULL);
+    node->win_nodes = vector_new(threat_tree_node_t*);
+    node->best_sequence = vector_new(point_t);
     memcpy(node->board, board, sizeof(board_t));
     assets->node_cnt++;
 }
@@ -330,11 +330,11 @@ bool have_same_point(vector_t points1, vector_t points2) {
 
 /// @brief check if {node2}'s threat can be inserted into {node1}'s threat tree
 bool compatible(threat_tree_node_t* node1, threat_tree_node_t* node2) {
-    vector_t seq1 = vector_new(threat_info_t, NULL), seq2 = vector_new(threat_info_t, NULL);
+    vector_t seq1 = vector_new(threat_info_t), seq2 = vector_new(threat_info_t);
     record_sequence(node1, &seq1);
     record_sequence(node2, &seq2);
-    vector_t actions1 = vector_new(point_t, NULL), actions2 = vector_new(point_t, NULL);
-    vector_t defense1 = vector_new(point_t, NULL), defense2 = vector_new(point_t, NULL);
+    vector_t actions1 = vector_new(point_t), actions2 = vector_new(point_t);
+    vector_t defense1 = vector_new(point_t), defense2 = vector_new(point_t);
     for_each(threat_info_t, seq1, threat) {
         vector_push_back(actions1, threat.action);
         vector_cat(defense1, threat.defenses);

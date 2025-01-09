@@ -30,15 +30,16 @@ int vector_serialize(char* dest, size_t size, const char* delim, vector_t vector
 void vector_save(const vector_t* vector, FILE* file);
 void vector_load(vector_t* vector, FILE* file);
 
-#define vector_new(type, free_func)       vector_new_p(sizeof(type), free_func)
-#define vector_init(type, vec)            vector_init_p(&(vec), sizeof(type))
-#define vector_push_back(vec, value)      vector_push_back_p(&(vec), &(value))
-#define vector_get(type, vec, index)      (*(type*)vector_get_p(&(vec), (index)))
-#define vector_cat(dest, src)             vector_cat_p(&(dest), &(src))
-#define vector_copy(dest, src)            vector_copy_p(&(dest), &(src))
-#define vector_contains(type, vec, value) vector_contains_p(&(vec), &(value), sizeof(type))
-#define vector_free(vec)                  vector_free_p(&(vec))
-#define vector_data(type, vec)            ((type*)(vec).data)
+#define vector_complete_new(type, free_func, ...) vector_new_p(sizeof(type), free_func)
+#define vector_new(type, ...)                     vector_complete_new(type, (NULL, ##__VA_ARGS__))
+#define vector_init(type, vec)                    vector_init_p(&(vec), sizeof(type))
+#define vector_push_back(vec, value)              vector_push_back_p(&(vec), &(value))
+#define vector_get(type, vec, index)              (*(type*)vector_get_p(&(vec), (index)))
+#define vector_cat(dest, src)                     vector_cat_p(&(dest), &(src))
+#define vector_copy(dest, src)                    vector_copy_p(&(dest), &(src))
+#define vector_contains(type, vec, value)         vector_contains_p(&(vec), &(value), sizeof(type))
+#define vector_free(vec)                          vector_free_p(&(vec))
+#define vector_data(type, vec)                    ((type*)(vec).data)
 
 #define for_each(type, vec, element)                                                             \
     for (type* element##_iter = (type*)(vec).data, element;                                      \

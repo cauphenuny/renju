@@ -152,7 +152,7 @@ void print_impl(const board_t board, vector_t emph_pos, const fboard_t prob) {
 
 /// @brief print {board} with one emphasized position {pos} or predicted probability
 void print_all(const board_t board, point_t emph_pos, const fboard_t prob) {
-    vector_t points = vector_new(point_t, NULL);
+    vector_t points = vector_new(point_t);
     vector_push_back(points, emph_pos);
     print_impl(board, points, prob);
     vector_free(points);

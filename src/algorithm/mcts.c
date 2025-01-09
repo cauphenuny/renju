@@ -290,7 +290,7 @@ static void trivial_evaluate_children(node_t* node) {
     double time = record_time();
 
     vector_t threats[5];
-    for (int i = 0; i < 5; i++) threats[i] = vector_new(threat_t, NULL);
+    for (int i = 0; i < 5; i++) threats[i] = vector_new(threat_t);
     threat_storage_t storage = {
         [PAT_WIN] = &threats[0],                          //
         [PAT_A4] = &threats[1],  [PAT_D4] = &threats[2],  //

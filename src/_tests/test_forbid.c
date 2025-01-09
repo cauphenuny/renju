@@ -33,7 +33,7 @@ point_t parse_board(board_t dest, const char* str)
 
 extern bool enable_forbid_log;
 
-int test_forbid(void)
+void test_forbid(void)
 {
     enable_forbid_log = true;
 #include "boards.txt"
@@ -47,14 +47,20 @@ int test_forbid(void)
         log_l("got %s, expected %s", pattern4_typename[forbid], pattern4_typename[tests[i].id]);
         if (forbid != tests[i].id) {
             log_e("failed.");
-            return 1;
+            exit(1);
         }
     }
-    return 0;
+    enable_forbid_log = false;
+    const int T = 1000 * 1000;
+    log_l("testing speed...");
+    double t = record_time();
+    for (int i = 0; i < T; i++) {
+        for (int k = 0; k < TESTS; k++) {
+            pos = parse_board(board, tests[k].str);
+            is_forbidden(board, pos, 1, -1);
+        }
+    }
+    t = get_time(t);
+    log_l("avg time: %.2lfns", t / TESTS);
 }
 
-/*
-"
-
-
-*/

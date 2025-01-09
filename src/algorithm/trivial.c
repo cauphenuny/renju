@@ -380,11 +380,11 @@ static point_t find_opening_move(board_t board, int depth, int player_id) {
 point_t trivial_move(game_t game, double time_limit, bool use_opening, bool use_vct) {
     const int self_id = game.cur_id;
     const int oppo_id = 3 - self_id;
-    vector_t self_5 = vector_new(threat_t, NULL);
-    vector_t self_4 = vector_new(threat_t, NULL);
+    vector_t self_5 = vector_new(threat_t);
+    vector_t self_4 = vector_new(threat_t);
     scan_threats(game.board, self_id, self_id,
                  (threat_storage_t){[PAT_WIN] = &self_5, [PAT_A4] = &self_4});
-    vector_t oppo_5 = vector_new(threat_t, NULL);
+    vector_t oppo_5 = vector_new(threat_t);
     scan_threats(game.board, oppo_id, oppo_id, (threat_storage_t){[PAT_WIN] = &oppo_5});
     point_t pos = {-1, -1};
     bool is_attack;

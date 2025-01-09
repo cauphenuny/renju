@@ -50,7 +50,7 @@ void flatten(board_t board, int perspective, int dir_x, int dir_y, int pieces[],
 /// @param filter_id the player to check whether the pos is a valid position to put piece
 void scan_threats(board_t board, int id, int filter_id, threat_storage_t storage) {
     int pieces[BOARD_AREA * 2], tot, id2x[BOARD_AREA * 2], id2y[BOARD_AREA * 2];
-    vector_t forbidden_pos = vector_new(point_t, NULL);
+    vector_t forbidden_pos = vector_new(point_t);
     for_all_dir(d, dir_x, dir_y) {
         // log("============= dir: {%d, %d} =============", dir[d][0], dir[d][1]);
         flatten(board, id, dir_x, dir_y, pieces, id2x, id2y, BOARD_AREA * 2, &tot);
@@ -96,7 +96,7 @@ void scan_threats(board_t board, int id, int filter_id, threat_storage_t storage
 /// @brief scan 4-threats of {id} (e.g. . x o o # . o . ) on {board}
 /// @return vector<threat_t>
 vector_t scan_four_threats(board_t board, int id) {
-    vector_t result = vector_new(threat_t, NULL);
+    vector_t result = vector_new(threat_t);
     threat_storage_t storage = {
         [PAT_A4] = &result,
         [PAT_D4] = &result,
@@ -108,7 +108,7 @@ vector_t scan_four_threats(board_t board, int id) {
 /// @brief scan 5-threats of {id} (e.g. . x o o # o o . ) on {board}
 /// @return vector<threat_t>
 vector_t scan_five_threats(board_t board, int id) {
-    vector_t result = vector_new(threat_t, NULL);
+    vector_t result = vector_new(threat_t);
     threat_storage_t storage = {
         [PAT_WIN] = &result,
     };
@@ -118,7 +118,7 @@ vector_t scan_five_threats(board_t board, int id) {
 
 /// @brief scan threats by given pattern {threshold}, e.g. PAT_A3: . . o o . # . .
 vector_t scan_threats_by_threshold(board_t board, int id, pattern_t threshold) {
-    vector_t result = vector_new(threat_t, NULL);
+    vector_t result = vector_new(threat_t);
     threat_storage_t storage = {0};
     for (int i = (int)threshold; i < (int)PAT_TYPE_SIZE; i++) {
         storage[i] = &result;

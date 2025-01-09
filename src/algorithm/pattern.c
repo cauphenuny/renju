@@ -381,7 +381,7 @@ point_t column_to_point(point_t pos, int dx, int dy, int col) {
 /// @return vector<point_t>
 vector_t find_relative_points(int type, board_t board, point_t pos, int dx, int dy, int id,
                               bool put_piece) {
-    vector_t vec = vector_new(point_t, NULL);
+    vector_t vec = vector_new(point_t);
     if (put_piece) {
         board[pos.x][pos.y] = id;
     }

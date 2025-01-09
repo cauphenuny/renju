@@ -22,7 +22,7 @@ void tensor_free(tensor_t* tensor) {
 
 void tensor_renew(tensor_t* tensor, int first_dim, ...) {
     if (!tensor->shape.data) {
-        tensor->shape = vector_new(int, NULL);
+        tensor->shape = vector_new(int);
     } else {
         tensor->shape.size = 0;
     }
@@ -45,7 +45,7 @@ void tensor_renew(tensor_t* tensor, int first_dim, ...) {
 
 tensor_t tensor_new(int first_dim, ...) {
     tensor_t tensor = {0};
-    tensor.shape = vector_new(int, NULL);
+    tensor.shape = vector_new(int);
     va_list args;
     va_start(args, first_dim);
     int numel = 1, dim = first_dim;
@@ -92,7 +92,7 @@ void tensor_add(tensor_t* tensor, const tensor_t* other) {
 float tensor_get(const tensor_t* tensor, int first_dim, ...) {
     va_list args;
     va_start(args, first_dim);
-    vector_t index = vector_new(int, NULL);
+    vector_t index = vector_new(int);
     int dim = first_dim;
     while (dim != -1) {
         vector_push_back(index, dim);
@@ -112,7 +112,7 @@ float tensor_get(const tensor_t* tensor, int first_dim, ...) {
 void tensor_set(tensor_t* tensor, float value, int first_dim, ...) {
     va_list args;
     va_start(args, first_dim);
-    vector_t index = vector_new(int, NULL);
+    vector_t index = vector_new(int);
     int dim = first_dim;
     while (dim != -1) {
         vector_push_back(index, dim);

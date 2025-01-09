@@ -116,7 +116,7 @@ static void init_candidate(board_t board, cboard_t candidate, int cur_id, int ad
             }
         }
     }
-    vector_t threats = vector_new(threat_t, NULL);
+    vector_t threats = vector_new(threat_t);
     threat_storage_t storage = {0};
     storage[PAT_WIN] = storage[PAT_A4] = storage[PAT_D4] = storage[PAT_A3] = storage[PAT_D3] =
         &threats;
@@ -193,7 +193,7 @@ static forward_result_t look_forward(board_t board, int self_id, vector_t* self_
         .points = {0},
         .type = PAT_EMPTY,
     };
-    ret.points = vector_new(point_t, NULL);
+    ret.points = vector_new(point_t);
     if (self_5->size) {
         ret.value = EVAL_MAX * sgn;
         threat_t attack = vector_get(threat_t, *self_5, 0);
@@ -268,13 +268,13 @@ static result_t minimax_search(board_t board, state_t state, cboard_t preset_can
     result_t ret = {true, -EVAL_INF * sgn, {-1, -1}, 1, {-1, -1}};
     vector_t available_pos = {0};
     vector_t self_5, self_a4, self_d4, self_others, oppo_5, oppo_a4, oppo_others;
-    self_5 = vector_new(threat_t, NULL);
-    self_a4 = vector_new(threat_t, NULL);
-    self_d4 = vector_new(threat_t, NULL);
-    self_others = vector_new(threat_t, NULL);
-    oppo_5 = vector_new(threat_t, NULL);
-    oppo_a4 = vector_new(threat_t, NULL);
-    oppo_others = vector_new(threat_t, NULL);
+    self_5 = vector_new(threat_t);
+    self_a4 = vector_new(threat_t);
+    self_d4 = vector_new(threat_t);
+    self_others = vector_new(threat_t);
+    oppo_5 = vector_new(threat_t);
+    oppo_a4 = vector_new(threat_t);
+    oppo_others = vector_new(threat_t);
 #define free_threats()                                                                         \
     vector_free(self_5), vector_free(self_a4), vector_free(self_d4), vector_free(self_others), \
         vector_free(oppo_5), vector_free(oppo_a4), vector_free(oppo_others)
@@ -308,7 +308,7 @@ static result_t minimax_search(board_t board, state_t state, cboard_t preset_can
             free_threats();
             return ret;
         }
-        available_pos = vector_new(point_t, NULL);
+        available_pos = vector_new(point_t);
         vector_cat(available_pos, result.points);
         if (param.optim.dynamic_depth && result.type == PAT_WIN) {
             depth -= 2;  // the defend for dead 4 is trivial
@@ -316,11 +316,11 @@ static result_t minimax_search(board_t board, state_t state, cboard_t preset_can
         }
         free_forward_result(&result);
     } else {
-        available_pos = vector_new(point_t, NULL);
+        available_pos = vector_new(point_t);
     }
 
     if (!available_pos.size) {
-        vector_t eval_vector = vector_new(point_eval_t, NULL);
+        vector_t eval_vector = vector_new(point_eval_t);
         if (!preset_candidate) {
             for (int i = 0; i < BOARD_SIZE; i++) {
                 for (int j = 0; j < BOARD_SIZE; j++) {
@@ -486,9 +486,9 @@ result_t minimax_search_entry(board_t board, state_t init_state, cboard_t init_c
 /// @return selected move position
 static point_t initial_move(game_t game) {
     const int self_id = game.cur_id, oppo_id = 3 - self_id;
-    vector_t critical_threats = vector_new(threat_t, NULL);
-    vector_t normal_threats = vector_new(threat_t, NULL);
-    vector_t trivial_threats = vector_new(threat_t, NULL);
+    vector_t critical_threats = vector_new(threat_t);
+    vector_t normal_threats = vector_new(threat_t);
+    vector_t trivial_threats = vector_new(threat_t);
     threat_storage_t storage = {
         [PAT_WIN] = &critical_threats, [PAT_A4] = &critical_threats,  //
         [PAT_D4] = &normal_threats,    [PAT_A3] = &normal_threats,    //
@@ -497,7 +497,7 @@ static point_t initial_move(game_t game) {
     };
     scan_threats(game.board, self_id, self_id, storage);
     scan_threats(game.board, oppo_id, self_id, storage);
-    vector_t candidates = vector_new(point_t, NULL);
+    vector_t candidates = vector_new(point_t);
     if (critical_threats.size) {
         // log_l("critical");
         for_each(threat_t, critical_threats, threat) { vector_push_back(candidates, threat.pos); }
@@ -545,7 +545,7 @@ void print_candidates(board_t board, cboard_t candidates) {
 /// @param assets algorithm parameters
 /// @return selected best move
 point_t minimax(game_t game, const void* assets) {
-    // if (!points.data) points = vector_new(point_t, NULL);
+    // if (!points.data) points = vector_new(point_t);
     if (game.count == 0) {
         return (point_t){BOARD_SIZE / 2, BOARD_SIZE / 2};
     }
@@ -574,7 +574,7 @@ point_t minimax(game_t game, const void* assets) {
     int calculated_depth = 0;
     result_t best_result = {0};
     // log_l("searching...");
-    vector_t preset_params = vector_new(search_param_t, NULL);
+    vector_t preset_params = vector_new(search_param_t);
     for (int i = 2; i < param.max_depth + 2; i += 2) {
         search_param_t p = {i, false, param.optim.narrow_width};
         vector_push_back(preset_params, p);
@@ -584,7 +584,7 @@ point_t minimax(game_t game, const void* assets) {
         //     log_l("vct on depth %d", i);
         // }
     }
-    vector_t choice = vector_new(point_t, NULL);
+    vector_t choice = vector_new(point_t);
     for_each(search_param_t, preset_params, preset_param) {
         search_param = preset_param;
         result_t ret = {0};

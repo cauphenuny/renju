@@ -13,8 +13,8 @@
 
 void test_eval() {
 #include "boards.txt"
-    vector_t result_5 = vector_new(threat_t, NULL), result_4 = vector_new(threat_t, NULL),
-             result_3 = vector_new(threat_t, NULL);
+    vector_t result_5 = vector_new(threat_t), result_4 = vector_new(threat_t),
+             result_3 = vector_new(threat_t);
     for (int i = 0; i < 1; i++) {
         board_t board;
         point_t pos;
@@ -69,7 +69,7 @@ void test_upd() {
         point_t pos;
         pos = parse_board(board, tests[i].str);
         print_emph(board, pos);
-        vector_t array = vector_new(point_t, NULL);
+        vector_t array = vector_new(point_t);
         board[pos.x][pos.y] = 2;
         for_all_dir(d, dx, dy) {
             vector_t tmp = find_relative_points(ATTACK, board, pos, dx, dy, 2, false);
@@ -86,7 +86,7 @@ void test_threat() {
     game_t game = restore_game(2000,18,(point_t[]){{7,7},{6,6},{5,7},{4,7},{6,8},{4,6},{5,9},{4,10},{7,8},{7,6},{8,6},{9,5},{8,7},{4,9},{4,8},{5,8},{6,7},{9,7}});
     print_game(game);
     // clang-format on
-    // vector_t a3 = vector_new(threat_t, NULL);
+    // vector_t a3 = vector_new(threat_t);
     // scan_threats(game.board, 1, 1, (threat_storage_t){[PAT_A3] = &a3});
     vector_t a3 = scan_threats_by_threshold(game.board, 1, PAT_A3);
     for_each(threat_t, a3, a) { print_emph(game.board, a.pos); }

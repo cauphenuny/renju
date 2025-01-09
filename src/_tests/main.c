@@ -20,7 +20,15 @@
 #error "define TEST to run unit tests!"
 #endif
 
-int test_forbid(void);
+void test_forbid(void);
+void test_neuro(void);
+void test_upd(void);
+void test_eval(void);
+void test_threat(void);
+void test_threat_tree(void);
+void test_threat_seq(void);
+void test_mcts(void);
+void test_opening(void);
 
 int test_pattern(void) {
     /*
@@ -98,17 +106,11 @@ void test_server(void) {
         start_game(preset_players[MINIMAX_ADV], preset_players[MINIMAX_ADV], 2, 10000, &game, NULL);
 }
 
-void test_neuro();
-void test_upd();
-void test_eval();
-void test_threat();
-void test_threat_tree();
-void test_threat_seq();
 
 int int_serialize(char* dest, size_t size, const void* ptr);
 
 void test_vector() {
-    vector_t vec = vector_new(int, NULL);
+    vector_t vec = vector_new(int);
     for (int i = 0; i < 10; i++) {
         vector_push_back(vec, i);
     }
@@ -118,13 +120,13 @@ void test_vector() {
     log_l("serialize: %s", buffer);
     vector_free(vec);
 
-    vector_t str = vector_new(char, NULL);
+    vector_t str = vector_new(char);
     char s[] = "Hello World";
     for (int i = 0, l = strlen(s); i < l; i++) {
         vector_push_back(str, s[i]);
     }
     char tmp = '\0';
-    vector_t str2 = vector_new(char, NULL);
+    vector_t str2 = vector_new(char);
     tmp = '\n', vector_push_back(str2, tmp);
     tmp = '\0', vector_push_back(str2, tmp);
     vector_cat(str, str2);
@@ -159,16 +161,6 @@ void test_game() {
     }
 }
 
-void test_mcts(void);
-
-#define RUN_TEST(name) \
-    log_l("running test `%s`", #name), test_##name(), log_i("test `%s` passed.", #name)
-
-#define REGISTER_TEST(name) \
-    if (strcmp(argv[1], #name) == 0 || all) RUN_TEST(name)
-
-void test_opening(void);
-
 int main(int argc, char** argv) {
     init();
     log_l("running test");
@@ -180,12 +172,15 @@ int main(int argc, char** argv) {
         // argv[1] = s;
         argv[1] = "opening";
     }
-    bool all = 0;
+    bool all = 0, ok = 0;
     if (strcmp(argv[1], "all") == 0) all = 1;
+
+#define REGISTER_TEST(name) \
+    if (strcmp(argv[1], #name) == 0 || all) \
+        log_l("running test `%s`", #name), test_##name(), log_i("test `%s` passed.", #name), ok = 1
 
     REGISTER_TEST(vector);
     REGISTER_TEST(neuro);
-    // REGISTER_TEST(game);
     REGISTER_TEST(pattern);
     REGISTER_TEST(forbid);
     REGISTER_TEST(minimax_first);
@@ -197,6 +192,7 @@ int main(int argc, char** argv) {
     REGISTER_TEST(server);
     REGISTER_TEST(opening);
 
+    if (!ok) log_e("invalid test name `%s`", argv[1]);
     if (all) log_i("test `%s` passed.", argv[1]);
     return 0;
 }
